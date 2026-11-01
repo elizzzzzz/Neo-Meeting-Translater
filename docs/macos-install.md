@@ -12,7 +12,9 @@ pip install -e '.[apple,translation]'
 python -m meeting_interpreter.desktop
 ```
 
-程序启动后会自动打开 `http://127.0.0.1:8000`。
+程序启动后会自动打开一个独立的 Chrome/Edge App 窗口，不显示地址栏。默认服务地址是 `http://127.0.0.1:8000`；如果 8000 已被旧实例或其他程序占用，程序会自动选择可用端口，并在页面底部显示本次实际地址。
+
+如果之前打开过旧版本，先关闭旧的 `LocalMeetingInterpreter` 窗口，再启动新安装包，避免同时运行多个本地服务实例。
 
 ## 构建 DMG
 
