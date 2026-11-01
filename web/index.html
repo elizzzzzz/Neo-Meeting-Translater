@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Local Meeting Interpreter</title>
+    <style>
+      :root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif; }
+      body { margin: 0; background: #f4f5f7; color: #18202a; }
+      main { max-width: 980px; margin: 0 auto; padding: 36px 20px 64px; }
+      .hero { display: flex; justify-content: space-between; gap: 20px; align-items: end; margin-bottom: 24px; }
+      h1 { margin: 0 0 8px; font-size: 32px; letter-spacing: -0.03em; }
+      p { color: #667085; }
+      button { border: 0; border-radius: 10px; padding: 11px 16px; background: #1c64f2; color: white; font-weight: 650; cursor: pointer; }
+      button:disabled { opacity: .5; cursor: default; }
+      .status { font-size: 13px; color: #667085; }
+      .board { background: white; border: 1px solid #e4e7ec; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(16,24,40,.06); }
+      .row { display: grid; grid-template-columns: 120px 110px 1fr 1fr; gap: 16px; padding: 16px 18px; border-bottom: 1px solid #eef0f3; }
+      .row:last-child { border-bottom: 0; }
+      .head { background: #fafafa; color: #667085; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+      .speaker { font-weight: 650; color: #1c64f2; }
+      .empty { padding: 42px 20px; text-align: center; color: #98a2b3; }
+      @media (max-width: 700px) { .row { grid-template-columns: 86px 90px 1fr; } .row > :last-child { grid-column: 3; color: #475467; } .head > :last-child { display: none; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="hero">
+        <div><h1>本地会议实时翻译</h1><p>文字优先 · 中英 / 中日 · 模拟模式</p></div>
+        <div><button id="start">开始演示</button><div id="status" class="status">未连接</div></div>
+      </div>
+      <section class="board">
+        <div class="row head"><div>时间</div><div>说话人</div><div>原文</div><div>翻译</div></div>
+        <div id="captions" class="empty">点击“开始演示”查看流式字幕</div>
+      </section>
+    </main>
+    <script>
+      const start = document.querySelector('#start');
+      const status = document.querySelector('#status');
+      const captions = document.querySelector('#captions');
+      let socket;
+      let timer;
+      function addCaption(event) {
+        if (captions.classList.contains('empty')) { captions.classList.remove('empty'); captions.textContent = ''; }
+        const row = document.createElement('div'); row.className = 'row';
+        const seconds = (event.start_ms / 1000).toFixed(1).padStart(5, '0');
+        row.innerHTML = `<div>${seconds}s</div><div class="speaker">${event.speaker_id}</div><div>${event.original_text}</div><div>${event.translated_text}</div>`;
+        captions.appendChild(row); row.scrollIntoView({ block: 'nearest' });
+      }
+      start.addEventListener('click', () => {
+        start.disabled = true; status.textContent = '连接中…';
+        socket = new WebSocket(`ws://${location.host}/ws`);
+        socket.onopen = () => {
+          status.textContent = '已连接 · 模拟流式输入';
+          timer = setInterval(() => socket.send(JSON.stringify({ type: 'audio', session_id: 'demo', audio_base64: 'AA==', sample_rate: 16000, channels: 1, source: 'microphone' })), 1000);
+        };
+        socket.onmessage = (message) => { const event = JSON.parse(message.data); if (event.type === 'caption') addCaption(event); };
+        socket.onclose = () => { clearInterval(timer); status.textContent = '连接已关闭'; start.disabled = false; };
+        socket.onerror = () => { status.textContent = '连接失败'; start.disabled = false; };
+      });
+    </script>
+  </body>
+</html>
