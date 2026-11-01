@@ -4,6 +4,7 @@ const targetLanguage = document.querySelector('#targetLanguage');
 const speakerMode = document.querySelector('#speakerMode');
 const startBtn = document.querySelector('#startBtn');
 const stopBtn = document.querySelector('#stopBtn');
+const swapLanguagesBtn = document.querySelector('#swapLanguages');
 const exportBtn = document.querySelector('#exportBtn');
 const clearBtn = document.querySelector('#clearBtn');
 const captions = document.querySelector('#captions');
@@ -16,6 +17,8 @@ const directionStatus = document.querySelector('#directionStatus');
 const speakerStatus = document.querySelector('#speakerStatus');
 const modeStatus = document.querySelector('#modeStatus');
 const modeBadge = document.querySelector('#modeBadge');
+const directionPill = document.querySelector('#directionPill');
+const directionButtons = [...document.querySelectorAll('.direction-button')];
 
 let socket;
 let audioContext;
@@ -26,9 +29,25 @@ let captionRows = [];
 function setRuntime(active, text) { runtimeDot.classList.toggle('active', active); runtimeText.textContent = text; }
 function updateSummary() {
   captionCount.textContent = String(captionRows.length);
-  directionStatus.textContent = `${sourceLanguage.options[sourceLanguage.selectedIndex]?.textContent || '自动'} → ${targetLanguage.options[targetLanguage.selectedIndex]?.textContent || '中文'}`;
+  const sourceLabel = sourceLanguage.options[sourceLanguage.selectedIndex]?.textContent || '自动识别';
+  const targetLabel = targetLanguage.options[targetLanguage.selectedIndex]?.textContent || '中文（简体）';
+  const direction = `${sourceLabel} → ${targetLabel}`;
+  directionStatus.textContent = direction;
+  directionPill.textContent = direction;
   speakerStatus.textContent = speakerMode.options[speakerMode.selectedIndex]?.textContent || '稍后区分';
   sourceStatus.textContent = inputDevice.options[inputDevice.selectedIndex]?.textContent || '未选择';
+  directionButtons.forEach((button) => button.classList.toggle('selected', button.dataset.source === sourceLanguage.value && button.dataset.target === targetLanguage.value));
+}
+function ensureDifferentLanguages(changed) {
+  if (sourceLanguage.value === 'auto' || sourceLanguage.value !== targetLanguage.value) return;
+  if (changed === 'source') targetLanguage.value = sourceLanguage.value === 'zh' ? 'ja' : 'zh';
+  else sourceLanguage.value = targetLanguage.value === 'zh' ? 'ja' : 'zh';
+}
+function setDirection(source, target) { sourceLanguage.value = source; targetLanguage.value = target; updateSummary(); }
+function swapLanguages() {
+  if (sourceLanguage.value === 'auto') sourceLanguage.value = targetLanguage.value === 'zh' ? 'ja' : 'zh';
+  else [sourceLanguage.value, targetLanguage.value] = [targetLanguage.value, sourceLanguage.value];
+  updateSummary();
 }
 function formatTime(milliseconds) { const totalSeconds = Math.max(0, Math.round(milliseconds / 1000)); return `${String(Math.floor(totalSeconds / 60)).padStart(2, '0')}:${String(totalSeconds % 60).padStart(2, '0')}`; }
 function escapeHtml(value) { return String(value).replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character])); }
@@ -75,5 +94,5 @@ function cleanupAudio() { if (processor) processor.disconnect(); if (audioContex
 function stopSession() { if (socket && socket.readyState === WebSocket.OPEN) socket.close(); else cleanupAudio(); }
 function exportTranscript() { const text = captionRows.map((row) => `[${formatTime(row.start_ms)}] ${row.speaker_id}\n${row.original_text}\n${row.translated_text || ''}`).join('\n\n'); const blob = new Blob([text || '暂无字幕'], { type: 'text/plain;charset=utf-8' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `meeting-${new Date().toISOString().slice(0, 10)}.txt`; link.click(); URL.revokeObjectURL(link.href); }
 
-startBtn.addEventListener('click', startSession); stopBtn.addEventListener('click', stopSession); clearBtn.addEventListener('click', () => { captionRows = []; renderCaptions(); updateSummary(); }); exportBtn.addEventListener('click', exportTranscript); sourceLanguage.addEventListener('change', updateSummary); targetLanguage.addEventListener('change', updateSummary); speakerMode.addEventListener('change', updateSummary); inputDevice.addEventListener('change', updateSummary); modeStatus.textContent = 'Mock'; modeBadge.textContent = 'MOCK'; renderCaptions(); updateSummary(); loadDevices();
+startBtn.addEventListener('click', startSession); stopBtn.addEventListener('click', stopSession); clearBtn.addEventListener('click', () => { captionRows = []; renderCaptions(); updateSummary(); }); exportBtn.addEventListener('click', exportTranscript); sourceLanguage.addEventListener('change', () => { ensureDifferentLanguages('source'); updateSummary(); }); targetLanguage.addEventListener('change', () => { ensureDifferentLanguages('target'); updateSummary(); }); speakerMode.addEventListener('change', updateSummary); inputDevice.addEventListener('change', updateSummary); swapLanguagesBtn.addEventListener('click', swapLanguages); directionButtons.forEach((button) => button.addEventListener('click', () => setDirection(button.dataset.source, button.dataset.target))); modeStatus.textContent = 'Mock'; modeBadge.textContent = 'MOCK'; renderCaptions(); updateSummary(); loadDevices();
 fetch('/health').then((response) => response.json()).then((health) => { const mode = String(health.mode || 'mock').toUpperCase(); modeStatus.textContent = mode; modeBadge.textContent = mode; }).catch(() => {});
