@@ -23,6 +23,17 @@ pip install -e '.[dev]'
 python -m meeting_interpreter --mock
 ```
 
+在 M3 上安装真实 ASR 适配器：
+
+```bash
+pip install -e '.[apple]'
+export MEETING_INTERPRETER_MODE=local
+export MEETING_INTERPRETER_ASR_MODEL=mlx-community/whisper-small-mlx-8bit
+python -m meeting_interpreter
+```
+
+首次使用会按 `MEETING_INTERPRETER_ASR_MODEL` 下载 MLX Whisper 权重；模型下载完成后，推理在本机执行。M3/16G 默认使用 8-bit small 模型，以便给浏览器、翻译和后续说话人模块保留统一内存。
+
 打开 <http://127.0.0.1:8000>，选择输入设备后点击“开启本地麦克风”。默认后端会产生模拟的中日 / 中英会议字幕事件；接入真实模型后，浏览器协议保持不变。
 
 ## 服务接口

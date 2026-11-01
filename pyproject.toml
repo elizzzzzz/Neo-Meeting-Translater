@@ -19,6 +19,9 @@ dev = [
   "pytest-asyncio>=0.24,<1",
   "httpx>=0.27,<1",
 ]
+apple = [
+  "mlx-whisper>=0.4,<1",
+]
 audio = [
   "sounddevice>=0.5,<1",
   "numpy>=2,<3",

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -14,11 +15,12 @@ WEB_DIR = ROOT / "web"
 
 
 def create_app() -> FastAPI:
+    mode = os.getenv("MEETING_INTERPRETER_MODE", "mock")
     app = FastAPI(title="Local Meeting Interpreter", version="0.1.0")
 
     @app.get("/health")
     async def health() -> dict[str, str]:
-        return {"status": "ok", "mode": "mock"}
+        return {"status": "ok", "mode": mode}
 
     @app.get("/")
     async def index() -> FileResponse:
@@ -27,7 +29,7 @@ def create_app() -> FastAPI:
     @app.websocket("/ws")
     async def websocket_endpoint(websocket: WebSocket) -> None:
         await websocket.accept()
-        pipeline = Pipeline()
+        pipeline = Pipeline(mode=mode)
         try:
             while True:
                 payload = json.loads(await websocket.receive_text())
