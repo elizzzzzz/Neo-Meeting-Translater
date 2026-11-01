@@ -18,6 +18,7 @@ const speakerStatus = document.querySelector('#speakerStatus');
 const modeStatus = document.querySelector('#modeStatus');
 const modeBadge = document.querySelector('#modeBadge');
 const directionPill = document.querySelector('#directionPill');
+const serviceAddress = document.querySelector('#serviceAddress');
 const directionButtons = [...document.querySelectorAll('.direction-button')];
 
 let socket;
@@ -103,4 +104,5 @@ function stopSession() { if (socket && socket.readyState === WebSocket.OPEN) soc
 function exportTranscript() { const text = captionRows.map((row) => `[${formatTime(row.start_ms)}] ${row.speaker_id}\n${row.original_text}\n${row.translated_text || ''}`).join('\n\n'); const blob = new Blob([text || '暂无字幕'], { type: 'text/plain;charset=utf-8' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `meeting-${new Date().toISOString().slice(0, 10)}.txt`; link.click(); URL.revokeObjectURL(link.href); }
 
 startBtn.addEventListener('click', startSession); stopBtn.addEventListener('click', stopSession); clearBtn.addEventListener('click', () => { captionRows = []; renderCaptions(); updateSummary(); }); exportBtn.addEventListener('click', exportTranscript); sourceLanguage.addEventListener('change', () => { ensureDifferentLanguages('source'); updateSummary(); }); targetLanguage.addEventListener('change', () => { ensureDifferentLanguages('target'); updateSummary(); }); speakerMode.addEventListener('change', updateSummary); inputDevice.addEventListener('change', updateSummary); swapLanguagesBtn.addEventListener('click', swapLanguages); directionButtons.forEach((button) => button.addEventListener('click', () => setDirection(button.dataset.source, button.dataset.target))); modeStatus.textContent = 'Mock'; modeBadge.textContent = 'MOCK'; renderCaptions(); updateSummary(); loadDevices();
+if (serviceAddress) serviceAddress.textContent = location.host;
 fetch('/health').then((response) => response.json()).then((health) => { const mode = String(health.mode || 'mock').toUpperCase(); modeStatus.textContent = mode; modeBadge.textContent = mode; }).catch(() => {});

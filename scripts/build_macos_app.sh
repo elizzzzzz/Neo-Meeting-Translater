@@ -12,10 +12,29 @@ rm -rf build dist
 "$PYTHON_BIN" -m PyInstaller --noconfirm --clean --windowed \
   --name "LocalMeetingInterpreter" \
   --add-data "web:web" \
+  --exclude-module "torch" \
+  --exclude-module "transformers" \
+  --exclude-module "pyannote" \
+  --exclude-module "cv2" \
+  --exclude-module "scipy" \
+  --exclude-module "pandas" \
+  --exclude-module "matplotlib" \
+  --exclude-module "PIL" \
+  --exclude-module "numpy" \
+  --exclude-module "datasets" \
+  --exclude-module "spacy" \
+  --exclude-module "thinc" \
+  --exclude-module "numba" \
+  --exclude-module "llvmlite" \
+  --exclude-module "onnxruntime" \
+  --exclude-module "httptools" \
+  --exclude-module "uvloop" \
+  --exclude-module "watchfiles" \
+  --exclude-module "tkinter" \
+  --exclude-module "websockets.speedups" \
   --hidden-import "uvicorn.logging" \
-  --hidden-import "uvicorn.loops.auto" \
-  --hidden-import "uvicorn.protocols.http.auto" \
-  --hidden-import "uvicorn.protocols.websockets.auto" \
+  --hidden-import "uvicorn.protocols.http.h11_impl" \
+  --hidden-import "uvicorn.protocols.websockets.websockets_impl" \
   src/meeting_interpreter/desktop.py
 
 if command -v hdiutil >/dev/null 2>&1; then
