@@ -5,6 +5,7 @@ import pytest
 from meeting_interpreter.models import AudioEvent
 from meeting_interpreter.pipeline import Pipeline
 from meeting_interpreter.translation import nllb_language_code
+from meeting_interpreter.speaker import PendingSpeakerBackend
 
 
 def test_nllb_language_codes() -> None:
@@ -12,6 +13,11 @@ def test_nllb_language_codes() -> None:
     assert nllb_language_code("ja") == "jpn_Jpan"
     assert nllb_language_code("en") == "eng_Latn"
     assert nllb_language_code("ko") is None
+
+
+@pytest.mark.asyncio
+async def test_pending_speaker_backend_is_safe_default() -> None:
+    assert await PendingSpeakerBackend().identify(b"pcm", 16_000, 0) == "SPEAKER_PENDING"
 
 
 @pytest.mark.asyncio

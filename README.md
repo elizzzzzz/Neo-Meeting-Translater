@@ -35,6 +35,18 @@ export MEETING_INTERPRETER_TRANSLATION_MODEL=facebook/nllb-200-distilled-600M
 python -m meeting_interpreter
 ```
 
+启用本地多人区分：
+
+```bash
+pip install -e '.[diarization]'
+export HF_TOKEN=你的_HuggingFace_访问令牌
+export MEETING_INTERPRETER_SPEAKER_MODE=pyannote
+export MEETING_INTERPRETER_MAX_SPEAKERS=4
+python -m meeting_interpreter
+```
+
+首次下载 pyannote 模型时需要在 Hugging Face 接受模型使用条件；下载完成后可以切换为本地模型目录，推理过程不需要联网。M3/16G 建议先使用 CPU 说话人区分，避免和 MLX Whisper、NLLB 同时占用统一内存。
+
 首次使用会按 `MEETING_INTERPRETER_ASR_MODEL` 下载 MLX Whisper 权重；模型下载完成后，推理在本机执行。M3/16G 默认使用 8-bit small 模型，以便给浏览器、翻译和后续说话人模块保留统一内存。
 
 打开 <http://127.0.0.1:8000>，选择输入设备后点击“开启本地麦克风”。默认后端会产生模拟的中日 / 中英会议字幕事件；接入真实模型后，浏览器协议保持不变。
@@ -69,7 +81,7 @@ WebSocket 输入示例：
 ## 后续里程碑
 
 - `M1`：在 M3 上接入 MLX Whisper 或 whisper.cpp 的真实流式 ASR。
-- `M2`：加入轻量在线说话人区分，限制 2–4 位并发说话人。
+- `M2`：已接入可选 pyannote Community-1 说话人区分，默认限制 2–4 位并发说话人。
 - `M3`：接入 NLLB-200 600M 的中英 / 中日翻译。
 - `M4`：接入 BlackHole、WASAPI Loopback 或 PipeWire 音频适配器。
 - `M5`：按需加载 VoxCPM2，输出翻译语音。

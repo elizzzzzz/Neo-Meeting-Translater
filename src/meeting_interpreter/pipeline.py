@@ -8,6 +8,7 @@ import os
 
 from .asr import ASRBackend, MLXWhisperBackend, MockASRBackend
 from .models import AudioEvent, CaptionEvent
+from .speaker import PendingSpeakerBackend, PyannoteSpeakerBackend, SpeakerBackend
 from .translation import NLLBTranslationBackend, TranslationBackend
 
 
@@ -36,9 +37,19 @@ class Pipeline:
                 model_name=os.getenv("MEETING_INTERPRETER_TRANSLATION_MODEL", "facebook/nllb-200-distilled-600M"),
                 device=os.getenv("MEETING_INTERPRETER_TRANSLATION_DEVICE", "auto"),
             )
+            if os.getenv("MEETING_INTERPRETER_SPEAKER_MODE", "none") == "pyannote":
+                self.speaker: SpeakerBackend = PyannoteSpeakerBackend(
+                    model_name=os.getenv("MEETING_INTERPRETER_SPEAKER_MODEL", "pyannote/speaker-diarization-community-1"),
+                    token=os.getenv("HF_TOKEN"),
+                    device=os.getenv("MEETING_INTERPRETER_SPEAKER_DEVICE", "cpu"),
+                    max_speakers=int(os.getenv("MEETING_INTERPRETER_MAX_SPEAKERS", "4")),
+                )
+            else:
+                self.speaker = PendingSpeakerBackend()
         else:
             self.asr = MockASRBackend()
             self.translator = None
+            self.speaker = PendingSpeakerBackend()
 
     async def process_audio(self, event: AudioEvent) -> AsyncIterator[CaptionEvent]:
         # Decode now so malformed input is rejected before real model inference is added.
@@ -90,6 +101,7 @@ class Pipeline:
             del buffer[:-round(event.sample_rate * 2 * 1.0)]
             self._buffer_start_ms[event.session_id] = result.end_ms - 1000
         segment = next(self._sequence)
+        speaker_id = await self.speaker.identify(window, event.sample_rate, result.start_ms)
         translated_text = (
             await self.translator.translate(result.text, result.language, self.target_language)
             if self.translator is not None
@@ -98,7 +110,7 @@ class Pipeline:
         return CaptionEvent(
             session_id=event.session_id,
             segment_id=f"seg-{segment:06d}",
-            speaker_id="SPEAKER_PENDING",
+            speaker_id=speaker_id,
             source_language=result.language,
             target_language=self.target_language,
             original_text=result.text,
