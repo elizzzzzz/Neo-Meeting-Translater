@@ -21,6 +21,12 @@ cd local-meeting-interpreter
 ./scripts/build_macos_app.sh
 ```
 
+在 Apple Silicon 上，脚本会使用当前 Python 架构构建。若系统默认 `python3` 不是 arm64，可指定 Homebrew 的 arm64 Python：
+
+```bash
+MEETING_INTERPRETER_BUILD_PYTHON=/opt/homebrew/bin/python3 ./scripts/build_macos_app.sh
+```
+
 构建产物：
 
 - `dist/LocalMeetingInterpreter.app`

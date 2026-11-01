@@ -8,7 +8,7 @@ import webbrowser
 
 import uvicorn
 
-from .app import app
+from meeting_interpreter.app import app
 
 
 def main() -> None:
