@@ -26,8 +26,8 @@
   <body>
     <main>
       <div class="hero">
-        <div><h1>本地会议实时翻译</h1><p>文字优先 · 中英 / 中日 · 麦克风输入</p></div>
-        <div><button id="start">开启本地麦克风</button><div id="status" class="status">未连接</div></div>
+        <div><h1>本地会议实时翻译</h1><p>文字优先 · 中英 / 中日 · M3 本地模式</p></div>
+        <div><select id="input" aria-label="选择音频输入"><option>正在读取音频设备…</option></select><button id="start">开启音频输入</button><div id="status" class="status">未连接</div></div>
       </div>
       <section class="board">
         <div class="row head"><div>时间</div><div>说话人</div><div>原文</div><div>翻译</div></div>
@@ -42,6 +42,15 @@
       let audioContext;
       let mediaStream;
       let processor;
+      const input = document.querySelector('#input');
+      async function loadDevices() {
+        if (!navigator.mediaDevices?.enumerateDevices) return;
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const inputs = devices.filter(device => device.kind === 'audioinput');
+          input.innerHTML = inputs.length ? inputs.map((device, index) => `<option value="${device.deviceId}">${device.label || `音频输入 ${index + 1}`}</option>`).join('') : '<option value="">默认音频输入</option>';
+        } catch (error) { input.innerHTML = '<option value="">默认音频输入</option>'; status.textContent = `设备读取失败：${error.message}`; }
+      }
       function downsample(buffer, inputRate, outputRate) {
         if (outputRate === inputRate) return buffer;
         const ratio = inputRate / outputRate;
@@ -72,7 +81,7 @@
         start.disabled = true; status.textContent = '连接中…';
         socket = new WebSocket(`ws://${location.host}/ws`);
         socket.onopen = () => {
-          navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } }).then((stream) => {
+          navigator.mediaDevices.getUserMedia({ audio: { deviceId: input.value ? { exact: input.value } : undefined, channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } }).then((stream) => {
             mediaStream = stream;
             audioContext = new AudioContext();
             const source = audioContext.createMediaStreamSource(stream);
@@ -81,7 +90,9 @@
               if (socket.readyState !== WebSocket.OPEN) return;
               const input = audioEvent.inputBuffer.getChannelData(0);
               const pcm = downsample(input, audioContext.sampleRate, 16000);
-              socket.send(JSON.stringify({ type: 'audio', session_id: 'mic', audio_base64: encodePcm(pcm), sample_rate: 16000, channels: 1, source: 'microphone' }));
+              const selected = input.options[input.selectedIndex]?.textContent || '';
+              const source = /blackhole|loopback|virtual/i.test(selected) ? 'meeting_loopback' : 'microphone';
+              socket.send(JSON.stringify({ type: 'audio', session_id: source, audio_base64: encodePcm(pcm), sample_rate: 16000, channels: 1, source }));
             };
             source.connect(processor); processor.connect(audioContext.destination);
             status.textContent = '已连接 · 正在采集麦克风';
@@ -91,6 +102,7 @@
         socket.onclose = () => { if (processor) processor.disconnect(); if (audioContext) audioContext.close(); if (mediaStream) mediaStream.getTracks().forEach(track => track.stop()); status.textContent = '连接已关闭'; start.disabled = false; };
         socket.onerror = () => { status.textContent = '连接失败'; start.disabled = false; };
       });
+      loadDevices();
     </script>
   </body>
 </html>
