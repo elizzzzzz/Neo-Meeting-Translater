@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import itertools
+import math
 from collections.abc import AsyncIterator
 import os
 
@@ -10,6 +11,18 @@ from .asr import ASRBackend, MLXWhisperBackend, MockASRBackend
 from .models import AudioEvent, CaptionEvent
 from .speaker import PendingSpeakerBackend, PyannoteSpeakerBackend, SpeakerBackend
 from .translation import NLLBTranslationBackend, TranslationBackend
+
+
+def is_silent_pcm16(audio: bytes, threshold: float = 0.008) -> bool:
+    """Return whether a PCM16 mono chunk is below the voice activity floor."""
+    if not audio:
+        return True
+    if len(audio) < 2 or len(audio) % 2:
+        return False
+    samples = memoryview(audio).cast("h")
+    mean_square = sum(sample * sample for sample in samples) / len(samples)
+    rms = math.sqrt(mean_square) / 32768.0
+    return rms < threshold
 
 
 class Pipeline:
@@ -57,6 +70,9 @@ class Pipeline:
             raw_audio = base64.b64decode(event.audio_base64, validate=True)
         except ValueError as exc:
             raise ValueError("audio_base64 is not valid base64") from exc
+
+        if is_silent_pcm16(raw_audio):
+            return
 
         if self.mode == "local":
             yield_event = await self._process_local(event, raw_audio)

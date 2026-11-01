@@ -25,6 +25,8 @@ let audioContext;
 let mediaStream;
 let processor;
 let captionRows = [];
+const VOICE_RMS_THRESHOLD = 0.008;
+const VOICE_PEAK_THRESHOLD = 0.03;
 
 function setRuntime(active, text) { runtimeDot.classList.toggle('active', active); runtimeText.textContent = text; }
 function updateSummary() {
@@ -67,6 +69,12 @@ function encodePcm(buffer) {
   for (let index = 0; index < buffer.length; index += 1) { const sample = Math.max(-1, Math.min(1, buffer[index])); pcm[index] = sample < 0 ? sample * 0x8000 : sample * 0x7fff; }
   const bytes = new Uint8Array(pcm.buffer); let binary = ''; for (const byte of bytes) binary += String.fromCharCode(byte); return btoa(binary);
 }
+function containsVoice(buffer) {
+  if (!buffer.length) return false;
+  let sumSquares = 0; let peak = 0;
+  for (const sample of buffer) { const magnitude = Math.abs(sample); sumSquares += magnitude * magnitude; peak = Math.max(peak, magnitude); }
+  return Math.sqrt(sumSquares / buffer.length) >= VOICE_RMS_THRESHOLD || peak >= VOICE_PEAK_THRESHOLD;
+}
 async function loadDevices() {
   if (!navigator.mediaDevices?.enumerateDevices) return;
   try {
@@ -82,7 +90,7 @@ async function startSession() {
       socket.send(JSON.stringify({ type: 'config', source_language: sourceLanguage.value, target_language: targetLanguage.value, speaker_mode: speakerMode.value }));
       mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: inputDevice.value ? { exact: inputDevice.value } : undefined, channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
       audioContext = new AudioContext(); const source = audioContext.createMediaStreamSource(mediaStream); processor = audioContext.createScriptProcessor(4096, 1, 1);
-      processor.onaudioprocess = (event) => { if (socket.readyState !== WebSocket.OPEN) return; const pcm = downsample(event.inputBuffer.getChannelData(0), audioContext.sampleRate, 16000); const label = inputDevice.options[inputDevice.selectedIndex]?.textContent || ''; const sourceType = /blackhole|loopback|virtual/i.test(label) ? 'meeting_loopback' : 'microphone'; socket.send(JSON.stringify({ type: 'audio', session_id: sourceType, audio_base64: encodePcm(pcm), sample_rate: 16000, channels: 1, source: sourceType })); };
+      processor.onaudioprocess = (event) => { if (socket.readyState !== WebSocket.OPEN) return; const pcm = downsample(event.inputBuffer.getChannelData(0), audioContext.sampleRate, 16000); if (!containsVoice(pcm)) return; const label = inputDevice.options[inputDevice.selectedIndex]?.textContent || ''; const sourceType = /blackhole|loopback|virtual/i.test(label) ? 'meeting_loopback' : 'microphone'; socket.send(JSON.stringify({ type: 'audio', session_id: sourceType, audio_base64: encodePcm(pcm), sample_rate: 16000, channels: 1, source: sourceType })); };
       source.connect(processor); processor.connect(audioContext.destination); stopBtn.disabled = false; sessionLabel.textContent = sourceStatus.textContent; setRuntime(true, '运行中');
     } catch (error) { sessionLabel.textContent = `音频输入失败：${error.message}`; socket.close(); }
   };

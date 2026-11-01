@@ -3,7 +3,7 @@ import base64
 import pytest
 
 from meeting_interpreter.models import AudioEvent
-from meeting_interpreter.pipeline import Pipeline
+from meeting_interpreter.pipeline import Pipeline, is_silent_pcm16
 from meeting_interpreter.translation import NLLBTranslationBackend, nllb_language_code
 from meeting_interpreter.speaker import PendingSpeakerBackend
 
@@ -40,6 +40,18 @@ async def test_mock_pipeline_emits_caption() -> None:
     assert len(captions) == 1
     assert captions[0].speaker_id == "SPEAKER_00"
     assert captions[0].is_final is True
+
+
+def test_pcm16_silence_gate() -> None:
+    assert is_silent_pcm16(b"\x00" * 3200) is True
+    assert is_silent_pcm16((b"\x00\x00" * 1599) + b"\xff\x7f") is False
+
+
+@pytest.mark.asyncio
+async def test_mock_pipeline_ignores_silent_audio() -> None:
+    event = AudioEvent(session_id="silent", audio_base64=base64.b64encode(b"\x00" * 3200).decode())
+    captions = [caption async for caption in Pipeline().process_audio(event)]
+    assert captions == []
 
 
 @pytest.mark.asyncio
