@@ -4,6 +4,14 @@ import pytest
 
 from meeting_interpreter.models import AudioEvent
 from meeting_interpreter.pipeline import Pipeline
+from meeting_interpreter.translation import nllb_language_code
+
+
+def test_nllb_language_codes() -> None:
+    assert nllb_language_code("zh") == "zho_Hans"
+    assert nllb_language_code("ja") == "jpn_Jpan"
+    assert nllb_language_code("en") == "eng_Latn"
+    assert nllb_language_code("ko") is None
 
 
 @pytest.mark.asyncio

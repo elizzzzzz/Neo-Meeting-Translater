@@ -14,6 +14,8 @@
 
 真实模型适配器预留给后续迭代：Apple Silicon 优先使用 MLX/whisper.cpp，翻译使用本地 NLLB，VoxCPM2 只在需要语音输出时按需加载。
 
+当前已经接入 MLX Whisper 和 NLLB 适配器；默认仍是 `mock`，设置 `MEETING_INTERPRETER_MODE=local` 后才加载本地模型。
+
 ## 运行
 
 ```bash
@@ -26,9 +28,10 @@ python -m meeting_interpreter --mock
 在 M3 上安装真实 ASR 适配器：
 
 ```bash
-pip install -e '.[apple]'
+pip install -e '.[apple,translation]'
 export MEETING_INTERPRETER_MODE=local
 export MEETING_INTERPRETER_ASR_MODEL=mlx-community/whisper-small-mlx-8bit
+export MEETING_INTERPRETER_TRANSLATION_MODEL=facebook/nllb-200-distilled-600M
 python -m meeting_interpreter
 ```
 

@@ -22,6 +22,11 @@ dev = [
 apple = [
   "mlx-whisper>=0.4,<1",
 ]
+translation = [
+  "torch>=2.2,<3",
+  "transformers>=4.45,<5",
+  "sentencepiece>=0.2,<1",
+]
 audio = [
   "sounddevice>=0.5,<1",
   "numpy>=2,<3",

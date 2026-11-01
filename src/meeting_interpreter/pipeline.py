@@ -8,6 +8,7 @@ import os
 
 from .asr import ASRBackend, MLXWhisperBackend, MockASRBackend
 from .models import AudioEvent, CaptionEvent
+from .translation import NLLBTranslationBackend, TranslationBackend
 
 
 class Pipeline:
@@ -31,8 +32,13 @@ class Pipeline:
                 model=os.getenv("MEETING_INTERPRETER_ASR_MODEL", "mlx-community/whisper-small-mlx-8bit"),
                 language=self.source_language,
             )
+            self.translator: TranslationBackend = NLLBTranslationBackend(
+                model_name=os.getenv("MEETING_INTERPRETER_TRANSLATION_MODEL", "facebook/nllb-200-distilled-600M"),
+                device=os.getenv("MEETING_INTERPRETER_TRANSLATION_DEVICE", "auto"),
+            )
         else:
             self.asr = MockASRBackend()
+            self.translator = None
 
     async def process_audio(self, event: AudioEvent) -> AsyncIterator[CaptionEvent]:
         # Decode now so malformed input is rejected before real model inference is added.
@@ -84,6 +90,11 @@ class Pipeline:
             del buffer[:-round(event.sample_rate * 2 * 1.0)]
             self._buffer_start_ms[event.session_id] = result.end_ms - 1000
         segment = next(self._sequence)
+        translated_text = (
+            await self.translator.translate(result.text, result.language, self.target_language)
+            if self.translator is not None
+            else ""
+        )
         return CaptionEvent(
             session_id=event.session_id,
             segment_id=f"seg-{segment:06d}",
@@ -91,7 +102,7 @@ class Pipeline:
             source_language=result.language,
             target_language=self.target_language,
             original_text=result.text,
-            translated_text="",
+            translated_text=translated_text,
             is_final=False,
             start_ms=result.start_ms,
             end_ms=result.end_ms,
