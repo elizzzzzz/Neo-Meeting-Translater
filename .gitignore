@@ -11,6 +11,9 @@ __pycache__/
 models/
 artifacts/
 recordings/
+build/
+dist/
+*.spec
 *.wav
 *.mp3
 *.m4a

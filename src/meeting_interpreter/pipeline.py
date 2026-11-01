@@ -19,7 +19,7 @@ class Pipeline:
     Real adapters should replace `process_audio` while preserving CaptionEvent semantics.
     """
 
-    def __init__(self, source_language: str = "auto", target_language: str = "zh", mode: str | None = None) -> None:
+    def __init__(self, source_language: str = "auto", target_language: str = "zh", mode: str | None = None, speaker_mode: str | None = None) -> None:
         self.source_language = source_language
         self.target_language = target_language
         self.mode = mode or os.getenv("MEETING_INTERPRETER_MODE", "mock")
@@ -37,7 +37,7 @@ class Pipeline:
                 model_name=os.getenv("MEETING_INTERPRETER_TRANSLATION_MODEL", "facebook/nllb-200-distilled-600M"),
                 device=os.getenv("MEETING_INTERPRETER_TRANSLATION_DEVICE", "auto"),
             )
-            if os.getenv("MEETING_INTERPRETER_SPEAKER_MODE", "none") == "pyannote":
+            if (speaker_mode or os.getenv("MEETING_INTERPRETER_SPEAKER_MODE", "none")) == "pyannote":
                 self.speaker: SpeakerBackend = PyannoteSpeakerBackend(
                     model_name=os.getenv("MEETING_INTERPRETER_SPEAKER_MODEL", "pyannote/speaker-diarization-community-1"),
                     token=os.getenv("HF_TOKEN"),

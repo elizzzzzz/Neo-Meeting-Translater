@@ -30,6 +30,9 @@ translation = [
 diarization = [
   "pyannote.audio>=3.3,<5",
 ]
+installer = [
+  "pyinstaller>=6.10,<7",
+]
 audio = [
   "sounddevice>=0.5,<1",
   "numpy>=2,<3",
@@ -37,6 +40,7 @@ audio = [
 
 [project.scripts]
 meeting-interpreter = "meeting_interpreter.cli:main"
+meeting-interpreter-desktop = "meeting_interpreter.desktop:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
