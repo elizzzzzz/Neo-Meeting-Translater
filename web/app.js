@@ -30,7 +30,7 @@ let runtimeMode = 'MOCK';
 const mockCaptionKeys = new Set();
 const VOICE_RMS_THRESHOLD = 0.02;
 const VOICE_PEAK_THRESHOLD = 0.08;
-const CALIBRATION_FRAMES = 12;
+const CALIBRATION_FRAMES = 4;
 let noiseSamples = [];
 let noiseFloorRms = VOICE_RMS_THRESHOLD;
 let noiseFloorPeak = VOICE_PEAK_THRESHOLD;
@@ -100,8 +100,8 @@ function containsVoice(buffer) {
     }
     return false;
   }
-  const candidate = rms >= Math.max(VOICE_RMS_THRESHOLD, noiseFloorRms * 2.5)
-    && peak >= Math.max(VOICE_PEAK_THRESHOLD, noiseFloorPeak * 2.2);
+  const candidate = rms >= Math.max(VOICE_RMS_THRESHOLD, noiseFloorRms * 2.0)
+    && peak >= Math.max(VOICE_PEAK_THRESHOLD, noiseFloorPeak * 1.8);
   voiceHits = candidate ? voiceHits + 1 : 0;
   return voiceHits >= 2;
 }
@@ -138,7 +138,16 @@ async function startSession() {
       }
       audioContext = new AudioContext(); const source = audioContext.createMediaStreamSource(mediaStream); processor = audioContext.createScriptProcessor(4096, 1, 1);
       await audioContext.resume();
-      processor.onaudioprocess = (event) => { if (socket.readyState !== WebSocket.OPEN) return; const pcm = downsample(event.inputBuffer.getChannelData(0), audioContext.sampleRate, 16000); if (!containsVoice(pcm)) return; const label = inputDevice.options[inputDevice.selectedIndex]?.textContent || ''; const sourceType = /blackhole|loopback|virtual/i.test(label) ? 'meeting_loopback' : 'microphone'; socket.send(JSON.stringify({ type: 'audio', session_id: sourceType, audio_base64: encodePcm(pcm), sample_rate: 16000, channels: 1, source: sourceType })); };
+      processor.onaudioprocess = (event) => {
+        if (socket.readyState !== WebSocket.OPEN) return;
+        const pcm = downsample(event.inputBuffer.getChannelData(0), audioContext.sampleRate, 16000);
+        // Send every short PCM frame and let the server apply the mode-specific
+        // silence gate. Browser-side VAD can mistake quiet speech for noise,
+        // especially during the first frames after microphone permission.
+        const label = inputDevice.options[inputDevice.selectedIndex]?.textContent || '';
+        const sourceType = /blackhole|loopback|virtual/i.test(label) ? 'meeting_loopback' : 'microphone';
+        socket.send(JSON.stringify({ type: 'audio', session_id: sourceType, audio_base64: encodePcm(pcm), sample_rate: 16000, channels: 1, source: sourceType }));
+      };
       const silentOutput = audioContext.createGain(); silentOutput.gain.value = 0;
       source.connect(processor); processor.connect(silentOutput); silentOutput.connect(audioContext.destination); stopBtn.disabled = false; sessionLabel.textContent = sourceStatus.textContent; setRuntime(true, '运行中');
     } catch (error) { cleanupAudio(); sessionLabel.textContent = `音频输入失败：${error.message || '请检查系统麦克风权限'}`; if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) socket.close(); }
@@ -149,7 +158,10 @@ async function startSession() {
       const captionKey = `${event.original_text || ''}\u0000${event.translated_text || ''}`;
       if (runtimeMode === 'MOCK' && mockCaptionKeys.has(captionKey)) return;
       if (runtimeMode === 'MOCK') mockCaptionKeys.add(captionKey);
-      captionRows.push(event); renderCaptions(); updateSummary();
+      const existingIndex = captionRows.findIndex((row) => row.session_id === event.session_id && row.segment_id === event.segment_id);
+      if (existingIndex >= 0) captionRows[existingIndex] = event;
+      else captionRows.push(event);
+      renderCaptions(); updateSummary();
     }
     if (event.type === 'error') sessionLabel.textContent = event.message;
   };

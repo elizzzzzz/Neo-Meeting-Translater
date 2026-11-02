@@ -58,9 +58,15 @@ def create_app() -> FastAPI:
                 try:
                     event = AudioEvent.model_validate(payload)
                     async for caption in pipeline.process_audio(event):
-                        await websocket.send_json(caption.model_dump(mode="json"))
+                        try:
+                            await websocket.send_json(caption.model_dump(mode="json"))
+                        except WebSocketDisconnect:
+                            return
                 except Exception as exc:  # Surface errors to the UI without dropping the session.
-                    await websocket.send_json(ErrorEvent(message=str(exc)).model_dump(mode="json"))
+                    try:
+                        await websocket.send_json(ErrorEvent(message=str(exc)).model_dump(mode="json"))
+                    except WebSocketDisconnect:
+                        return
         except WebSocketDisconnect:
             return
 

@@ -16,16 +16,12 @@ rm -rf build dist
   --exclude-module "transformers" \
   --exclude-module "pyannote" \
   --exclude-module "cv2" \
-  --exclude-module "scipy" \
   --exclude-module "pandas" \
   --exclude-module "matplotlib" \
   --exclude-module "PIL" \
-  --exclude-module "numpy" \
   --exclude-module "datasets" \
   --exclude-module "spacy" \
   --exclude-module "thinc" \
-  --exclude-module "numba" \
-  --exclude-module "llvmlite" \
   --exclude-module "onnxruntime" \
   --exclude-module "httptools" \
   --exclude-module "uvloop" \
@@ -35,6 +31,9 @@ rm -rf build dist
   --hidden-import "uvicorn.logging" \
   --hidden-import "uvicorn.protocols.http.h11_impl" \
   --hidden-import "uvicorn.protocols.websockets.websockets_impl" \
+  --hidden-import "mlx_whisper" \
+  --collect-all "mlx_whisper" \
+  --collect-all "mlx" \
   src/meeting_interpreter/desktop.py
 
 # macOS may attribute browser microphone access to the launching desktop app.

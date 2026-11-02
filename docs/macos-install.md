@@ -16,6 +16,22 @@ python -m meeting_interpreter.desktop
 
 如果之前打开过旧版本，先关闭旧的 `LocalMeetingInterpreter` 窗口，再启动新安装包，避免同时运行多个本地服务实例。
 
+## DMG 本地模型配置
+
+从 Finder 双击安装包时不会读取终端里的 `export` 环境变量。创建配置文件后，DMG 启动会自动使用 Ollama 和本地 ASR：
+
+```bash
+mkdir -p "$HOME/Library/Application Support/LocalMeetingInterpreter"
+cat > "$HOME/Library/Application Support/LocalMeetingInterpreter/.env" <<'EOF'
+MEETING_INTERPRETER_MODE=local
+MEETING_INTERPRETER_TRANSLATION_BACKEND=ollama
+MEETING_INTERPRETER_OLLAMA_MODEL=translategemma:4b
+MEETING_INTERPRETER_ASR_MODEL=mlx-community/whisper-small-mlx-8bit
+EOF
+```
+
+重新打开 DMG 后，页面右上角应显示 `LOCAL`，健康检查地址也会返回 `mode=local`。首次使用 Whisper 模型会下载模型权重；下载完成后，识别和翻译均在本机运行。
+
 ## 构建 DMG
 
 ```bash
