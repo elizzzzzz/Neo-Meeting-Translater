@@ -16,6 +16,17 @@
 
 当前已经接入 MLX Whisper 和 NLLB 适配器；默认仍是 `mock`，设置 `MEETING_INTERPRETER_MODE=local` 后才加载本地模型。
 
+如果已安装 Ollama，推荐使用 `translategemma:4b` 做本地翻译。先执行 `ollama pull translategemma:4b`，再使用以下配置：
+
+```bash
+export MEETING_INTERPRETER_MODE=local
+export MEETING_INTERPRETER_TRANSLATION_BACKEND=ollama
+export MEETING_INTERPRETER_OLLAMA_MODEL=translategemma:4b
+python -m meeting_interpreter.desktop
+```
+
+Ollama 首次加载模型可能需要较长时间；后续翻译会复用已加载模型。若不设置 `MEETING_INTERPRETER_TRANSLATION_BACKEND=ollama`，项目继续使用 NLLB。
+
 ## 运行
 
 ```bash

@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import json
+import re
+import urllib.error
+import urllib.request
 from typing import Protocol
 
 
@@ -12,6 +16,16 @@ LANGUAGE_CODES = {
     "japanese": "jpn_Jpan",
     "en": "eng_Latn",
     "english": "eng_Latn",
+}
+
+LANGUAGE_NAMES = {
+    "zh": "Simplified Chinese",
+    "zh-cn": "Simplified Chinese",
+    "zh-tw": "Traditional Chinese",
+    "ja": "Japanese",
+    "japanese": "Japanese",
+    "en": "English",
+    "english": "English",
 }
 
 
@@ -86,3 +100,79 @@ class NLLBTranslationBackend:
                 num_beams=1,
             )
         return self._tokenizer.batch_decode(generated, skip_special_tokens=True)[0].strip()
+
+
+class OllamaTranslationBackend:
+    """Local Ollama adapter for low-latency text translation.
+
+    The HTTP request is kept dependency-free so the packaged macOS app can use
+    an Ollama installation without bundling another client library.
+    """
+
+    def __init__(
+        self,
+        model: str = "translategemma:4b",
+        base_url: str = "http://127.0.0.1:11434",
+        timeout: float = 180.0,
+        keep_alive: str = "10m",
+    ) -> None:
+        self.model = model
+        self.base_url = base_url.rstrip("/")
+        self.timeout = timeout
+        self.keep_alive = keep_alive
+
+    async def translate(self, text: str, source_language: str, target_language: str) -> str:
+        if not text or not target_language:
+            return text
+        source_key = source_language.strip().lower().replace("_", "-") if source_language else ""
+        target_key = target_language.strip().lower().replace("_", "-")
+        source_name = LANGUAGE_NAMES.get(source_key)
+        target_name = LANGUAGE_NAMES.get(target_key)
+        if not target_name or not source_name or source_key == target_key:
+            return text
+        return await asyncio.to_thread(self._translate_sync, text, source_name, target_name)
+
+    def _translate_sync(self, text: str, source_name: str, target_name: str) -> str:
+        prompt = (
+            f"Translate the following meeting utterance from {source_name} to {target_name}. "
+            "Output only the translation. Preserve names, numbers, and punctuation.\n\n"
+            f"{text}"
+        )
+        payload = {
+            "model": self.model,
+            "prompt": prompt,
+            "stream": False,
+            "keep_alive": self.keep_alive,
+            "options": {
+                "temperature": 0,
+                "num_ctx": 2048,
+                "num_predict": 256,
+            },
+        }
+        request = urllib.request.Request(
+            f"{self.base_url}/api/generate",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                body = json.loads(response.read().decode("utf-8"))
+        except urllib.error.URLError as exc:
+            raise RuntimeError(
+                f"无法连接 Ollama（{self.base_url}）。请确认 Ollama 正在运行。"
+            ) from exc
+        except TimeoutError as exc:
+            raise RuntimeError(
+                f"Ollama 模型 {self.model} 加载或翻译超时（{self.timeout:.0f}s）。"
+            ) from exc
+
+        if body.get("error"):
+            raise RuntimeError(f"Ollama 翻译失败：{body['error']}")
+        result = str(body.get("response", "")).strip()
+        result = re.sub(r"<think>.*?</think>", "", result, flags=re.DOTALL).strip()
+        if result.startswith("```") and result.endswith("```"):
+            result = result[3:-3].strip()
+        if not result:
+            raise RuntimeError(f"Ollama 模型 {self.model} 返回了空翻译。")
+        return result

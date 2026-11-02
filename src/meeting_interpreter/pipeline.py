@@ -11,7 +11,7 @@ import os
 from .asr import ASRBackend, MLXWhisperBackend, MockASRBackend
 from .models import AudioEvent, CaptionEvent
 from .speaker import PendingSpeakerBackend, PyannoteSpeakerBackend, SpeakerBackend
-from .translation import NLLBTranslationBackend, TranslationBackend
+from .translation import NLLBTranslationBackend, OllamaTranslationBackend, TranslationBackend
 
 
 def is_silent_pcm16(audio: bytes, threshold: float = 0.015) -> bool:
@@ -49,10 +49,19 @@ class Pipeline:
                 model=os.getenv("MEETING_INTERPRETER_ASR_MODEL", "mlx-community/whisper-small-mlx-8bit"),
                 language=self.source_language,
             )
-            self.translator: TranslationBackend = NLLBTranslationBackend(
-                model_name=os.getenv("MEETING_INTERPRETER_TRANSLATION_MODEL", "facebook/nllb-200-distilled-600M"),
-                device=os.getenv("MEETING_INTERPRETER_TRANSLATION_DEVICE", "auto"),
-            )
+            translation_backend = os.getenv("MEETING_INTERPRETER_TRANSLATION_BACKEND", "nllb").lower()
+            if translation_backend == "ollama":
+                self.translator = OllamaTranslationBackend(
+                    model=os.getenv("MEETING_INTERPRETER_OLLAMA_MODEL", "translategemma:4b"),
+                    base_url=os.getenv("MEETING_INTERPRETER_OLLAMA_URL", "http://127.0.0.1:11434"),
+                    timeout=float(os.getenv("MEETING_INTERPRETER_OLLAMA_TIMEOUT", "180")),
+                    keep_alive=os.getenv("MEETING_INTERPRETER_OLLAMA_KEEP_ALIVE", "10m"),
+                )
+            else:
+                self.translator = NLLBTranslationBackend(
+                    model_name=os.getenv("MEETING_INTERPRETER_TRANSLATION_MODEL", "facebook/nllb-200-distilled-600M"),
+                    device=os.getenv("MEETING_INTERPRETER_TRANSLATION_DEVICE", "auto"),
+                )
             if (speaker_mode or os.getenv("MEETING_INTERPRETER_SPEAKER_MODE", "none")) == "pyannote":
                 self.speaker: SpeakerBackend = PyannoteSpeakerBackend(
                     model_name=os.getenv("MEETING_INTERPRETER_SPEAKER_MODEL", "pyannote/speaker-diarization-community-1"),

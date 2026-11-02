@@ -1,10 +1,11 @@
 import base64
+import json
 
 import pytest
 
 from meeting_interpreter.models import AudioEvent
 from meeting_interpreter.pipeline import Pipeline, is_silent_pcm16
-from meeting_interpreter.translation import NLLBTranslationBackend, nllb_language_code
+from meeting_interpreter.translation import NLLBTranslationBackend, OllamaTranslationBackend, nllb_language_code
 from meeting_interpreter.speaker import PendingSpeakerBackend
 
 
@@ -26,6 +27,36 @@ async def test_nllb_translation_pairs_are_supported(monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(backend, "_translate_sync", fake_translate)
     result = await backend.translate("hello", source, target)
     assert result == f"{nllb_language_code(source)}>{nllb_language_code(target)}:hello"
+
+
+@pytest.mark.asyncio
+async def test_ollama_translation_uses_local_generate_api(monkeypatch: pytest.MonkeyPatch) -> None:
+    backend = OllamaTranslationBackend(model="translategemma:4b")
+    captured: dict[str, object] = {}
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self) -> bytes:
+            return '{"response":"これはテストです。"}'.encode("utf-8")
+
+    def fake_urlopen(request, timeout):
+        captured["url"] = request.full_url
+        captured["body"] = json.loads(request.data.decode("utf-8"))
+        captured["timeout"] = timeout
+        return FakeResponse()
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+    result = await backend.translate("这是测试。", "zh", "ja")
+    assert result == "これはテストです。"
+    assert captured["url"] == "http://127.0.0.1:11434/api/generate"
+    assert captured["body"]["model"] == "translategemma:4b"
+    assert "Simplified Chinese" in captured["body"]["prompt"]
+    assert "Japanese" in captured["body"]["prompt"]
 
 
 @pytest.mark.asyncio
