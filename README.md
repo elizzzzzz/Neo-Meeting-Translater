@@ -41,7 +41,7 @@ python -m meeting_interpreter --mock
 ```bash
 pip install -e '.[apple,translation]'
 export MEETING_INTERPRETER_MODE=local
-export MEETING_INTERPRETER_ASR_MODEL=mlx-community/whisper-small-mlx-8bit
+export MEETING_INTERPRETER_ASR_MODEL=mlx-community/whisper-medium-mlx-8bit
 export MEETING_INTERPRETER_TRANSLATION_MODEL=facebook/nllb-200-distilled-600M
 python -m meeting_interpreter
 ```
@@ -60,7 +60,7 @@ python -m meeting_interpreter
 
 首次下载 pyannote 模型时需要在 Hugging Face 接受模型使用条件；下载完成后可以切换为本地模型目录，推理过程不需要联网。M3/16G 建议先使用 CPU 说话人区分，避免和 MLX Whisper、NLLB 同时占用统一内存。
 
-首次使用会按 `MEETING_INTERPRETER_ASR_MODEL` 下载 MLX Whisper 权重；模型下载完成后，推理在本机执行。M3/16G 默认使用 8-bit small 模型，以便给浏览器、翻译和后续说话人模块保留统一内存。
+首次使用会按 `MEETING_INTERPRETER_ASR_MODEL` 下载 MLX Whisper 权重；模型下载完成后，推理在本机执行。M3/16G 默认使用 8-bit medium 模型，在保留本地翻译和浏览器运行空间的同时提高中文、日文和英文会议识别准确率。若设备内存紧张，可手动切换为 `mlx-community/whisper-small-mlx-8bit`。
 
 打开 <http://127.0.0.1:8000>，选择输入设备后点击“开启音频输入”。界面支持中文 ↔ 日本語、中文 ↔ English 两组双向方向，可用快捷按钮或交换按钮切换；源语言也可以保留为“自动识别”。默认后端会产生模拟的中日 / 中英会议字幕事件；接入真实模型后，浏览器协议保持不变。
 

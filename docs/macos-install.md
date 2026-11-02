@@ -26,7 +26,7 @@ cat > "$HOME/Library/Application Support/LocalMeetingInterpreter/.env" <<'EOF'
 MEETING_INTERPRETER_MODE=local
 MEETING_INTERPRETER_TRANSLATION_BACKEND=ollama
 MEETING_INTERPRETER_OLLAMA_MODEL=translategemma:4b
-MEETING_INTERPRETER_ASR_MODEL=mlx-community/whisper-small-mlx-8bit
+MEETING_INTERPRETER_ASR_MODEL=mlx-community/whisper-medium-mlx-8bit
 EOF
 ```
 

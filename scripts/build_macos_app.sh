@@ -10,6 +10,7 @@ trap 'rm -rf "$STAGING_DIR"' EXIT
 "$PYTHON_BIN" -m pip install -e '.[installer]'
 rm -rf build dist
 "$PYTHON_BIN" -m PyInstaller --noconfirm --clean --windowed \
+  --target-architecture arm64 \
   --name "LocalMeetingInterpreter" \
   --add-data "web:web" \
   --exclude-module "torch" \

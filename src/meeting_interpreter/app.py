@@ -24,7 +24,7 @@ WEB_DIR = ROOT / "web"
 def create_app() -> FastAPI:
     mode = os.getenv("MEETING_INTERPRETER_MODE", "mock")
     translation_backend = os.getenv("MEETING_INTERPRETER_TRANSLATION_BACKEND", "nllb").lower()
-    asr_model = os.getenv("MEETING_INTERPRETER_ASR_MODEL", "mlx-community/whisper-small-mlx-8bit")
+    asr_model = os.getenv("MEETING_INTERPRETER_ASR_MODEL", "mlx-community/whisper-medium-mlx-8bit")
     translation_model = os.getenv("MEETING_INTERPRETER_OLLAMA_MODEL", "translategemma:4b") if translation_backend == "ollama" else os.getenv("MEETING_INTERPRETER_TRANSLATION_MODEL", "facebook/nllb-200-distilled-600M")
     runtime = {
         "asr_status": "configured" if mode == "local" else "mock",

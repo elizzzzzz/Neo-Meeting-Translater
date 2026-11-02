@@ -51,7 +51,7 @@ class Pipeline:
         self._mock_phrase_emitted: dict[str, bool] = {}
         if self.mode == "local":
             self.asr: ASRBackend = MLXWhisperBackend(
-                model=os.getenv("MEETING_INTERPRETER_ASR_MODEL", "mlx-community/whisper-small-mlx-8bit"),
+                model=os.getenv("MEETING_INTERPRETER_ASR_MODEL", "mlx-community/whisper-medium-mlx-8bit"),
                 language=self.source_language,
             )
             translation_backend = os.getenv("MEETING_INTERPRETER_TRANSLATION_BACKEND", "nllb").lower()
