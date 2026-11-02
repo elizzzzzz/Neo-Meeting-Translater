@@ -35,24 +35,43 @@ def create_app() -> FastAPI:
         "audio_frames": 0,
         "last_audio_at": None,
         "last_error": "",
+        "last_translation_ms": None,
+        "last_health_at": None,
     }
     app = FastAPI(title="Local Meeting Interpreter", version="0.1.0")
     app.mount("/web", StaticFiles(directory=WEB_DIR), name="web")
 
     @app.get("/health")
     async def health() -> dict[str, object]:
-        ollama = {"configured": translation_backend == "ollama", "reachable": False, "model_present": None}
+        ollama = {"configured": translation_backend == "ollama", "reachable": False, "model_present": None, "model_loaded": False, "loaded_models": []}
         if translation_backend == "ollama":
             try:
-                def probe_ollama() -> tuple[bool, bool]:
+                def probe_ollama() -> tuple[bool, bool, bool, list[str]]:
                     with urllib.request.urlopen("http://127.0.0.1:11434/api/tags", timeout=0.8) as response:
                         payload = json.loads(response.read().decode("utf-8"))
                     names = {str(item.get("name", "")) for item in payload.get("models", [])}
-                    return True, translation_model in names
-                ollama["reachable"], ollama["model_present"] = await asyncio.to_thread(probe_ollama)
+                    loaded: list[str] = []
+                    try:
+                        with urllib.request.urlopen("http://127.0.0.1:11434/api/ps", timeout=0.8) as response:
+                            running = json.loads(response.read().decode("utf-8"))
+                        loaded = [str(item.get("name") or item.get("model") or "") for item in running.get("models", [])]
+                    except (OSError, urllib.error.URLError, TimeoutError, ValueError):
+                        pass
+                    return True, translation_model in names, translation_model in loaded, loaded
+                ollama["reachable"], ollama["model_present"], ollama["model_loaded"], ollama["loaded_models"] = await asyncio.to_thread(probe_ollama)
             except (OSError, urllib.error.URLError, TimeoutError, ValueError):
                 pass
-        return {"status": "ok", "mode": mode, "asr": {"status": runtime["asr_status"], "model": asr_model}, "translation": {"status": runtime["translation_status"], "backend": translation_backend, "model": translation_model}, "ollama": ollama, "audio": {"frames": runtime["audio_frames"], "last_audio_at": runtime["last_audio_at"]}, "last_error": runtime["last_error"]}
+        runtime["last_health_at"] = time.time()
+        if translation_backend == "ollama":
+            if not ollama["reachable"]:
+                runtime["translation_status"] = "offline"
+            elif not ollama["model_present"]:
+                runtime["translation_status"] = "missing"
+            elif ollama["model_loaded"] and runtime["translation_status"] != "processing":
+                runtime["translation_status"] = "running"
+            elif runtime["translation_status"] not in {"processing", "loading"}:
+                runtime["translation_status"] = "ready"
+        return {"status": "ok", "mode": mode, "asr": {"status": runtime["asr_status"], "model": asr_model}, "translation": {"status": runtime["translation_status"], "backend": translation_backend, "model": translation_model, "last_response_ms": runtime["last_translation_ms"]}, "ollama": ollama, "audio": {"frames": runtime["audio_frames"], "last_audio_at": runtime["last_audio_at"]}, "last_error": runtime["last_error"], "checked_at": runtime["last_health_at"]}
 
     @app.on_event("startup")
     async def warm_models() -> None:
@@ -108,12 +127,18 @@ def create_app() -> FastAPI:
                     runtime["last_audio_at"] = time.time()
                     if int(runtime["audio_frames"]) == 1 or int(runtime["audio_frames"]) % 20 == 0:
                         await websocket.send_json({"type": "status", "stage": "audio", "message": f"已收到音频帧：{runtime['audio_frames']}"})
+                    translation_started_at = time.perf_counter()
+                    if translation_backend == "ollama":
+                        runtime["translation_status"] = "processing"
                     async for caption in pipeline.process_audio(event):
                         runtime["asr_status"] = "ready"
+                        runtime["last_translation_ms"] = round((time.perf_counter() - translation_started_at) * 1000)
                         try:
                             await websocket.send_json(caption.model_dump(mode="json"))
                         except WebSocketDisconnect:
                             return
+                    if translation_backend == "ollama" and runtime["translation_status"] == "processing":
+                        runtime["translation_status"] = "running"
                 except Exception as exc:  # Surface errors to the UI without dropping the session.
                     runtime["last_error"] = str(exc)
                     if "Ollama" in str(exc) or "翻译" in str(exc):

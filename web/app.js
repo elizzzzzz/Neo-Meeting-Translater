@@ -18,6 +18,8 @@ const speakerStatus = document.querySelector('#speakerStatus');
 const modeStatus = document.querySelector('#modeStatus');
 const modeBadge = document.querySelector('#modeBadge');
 const asrStatus = document.querySelector('#asrStatus');
+const ollamaStatus = document.querySelector('#ollamaStatus');
+const ollamaModelStatus = document.querySelector('#ollamaModelStatus');
 const translationStatus = document.querySelector('#translationStatus');
 const audioStatus = document.querySelector('#audioStatus');
 const diagnosticStatus = document.querySelector('#diagnosticStatus');
@@ -56,8 +58,27 @@ function updateHealth(health) {
   modeStatus.textContent = runtimeMode;
   modeBadge.textContent = runtimeMode;
   asrStatus.textContent = `${health.asr?.status || '未知'} · ${formatModel(health.asr?.model)}`;
-  const ollama = health.ollama?.configured ? (health.ollama.reachable ? (health.ollama.model_present ? 'Ollama 就绪' : '缺少模型') : 'Ollama 未连接') : '';
-  translationStatus.textContent = `${health.translation?.status || '未知'} · ${formatModel(health.translation?.model)}${ollama ? ` · ${ollama}` : ''}`;
+  if (!health.ollama?.configured) {
+    ollamaStatus.textContent = '未启用';
+    ollamaModelStatus.textContent = '当前使用其他翻译后端';
+  } else if (!health.ollama.reachable) {
+    ollamaStatus.textContent = '未启动 / 无法连接';
+    ollamaModelStatus.textContent = formatModel(health.translation?.model);
+  } else if (!health.ollama.model_present) {
+    ollamaStatus.textContent = '已启动';
+    ollamaModelStatus.textContent = `缺少模型 · ${formatModel(health.translation?.model)}`;
+  } else if (health.translation?.status === 'processing') {
+    ollamaStatus.textContent = '已启动 · 模型推理中';
+    ollamaModelStatus.textContent = `推理中 · ${formatModel(health.translation?.model)}`;
+  } else if (health.ollama.model_loaded) {
+    ollamaStatus.textContent = '已启动 · 模型运行中';
+    ollamaModelStatus.textContent = `运行中 · ${formatModel(health.translation?.model)}`;
+  } else {
+    ollamaStatus.textContent = '已启动 · 等待调用';
+    ollamaModelStatus.textContent = `已安装，尚未加载 · ${formatModel(health.translation?.model)}`;
+  }
+  const responseMs = health.translation?.last_response_ms ? ` · 最近响应 ${health.translation.last_response_ms} ms` : '';
+  translationStatus.textContent = `${health.translation?.status || '未知'}${responseMs}`;
   const frames = Number(health.audio?.frames || 0);
   if (frames > audioFrames) audioStatus.textContent = `已收到 ${frames} 帧`;
   if (health.last_error) diagnosticStatus.textContent = health.last_error;
