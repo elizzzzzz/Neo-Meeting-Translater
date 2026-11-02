@@ -85,15 +85,33 @@ async function loadDevices() {
   } catch { inputDevice.innerHTML = '<option value="">默认音频输入</option>'; sourceStatus.textContent = '设备读取失败'; }
 }
 async function startSession() {
-  startBtn.disabled = true; setRuntime(false, '连接中…'); socket = new WebSocket(`ws://${location.host}/ws`);
+  startBtn.disabled = true; setRuntime(false, '连接中…');
+  if (!navigator.mediaDevices?.getUserMedia) {
+    sessionLabel.textContent = '当前浏览器不支持麦克风输入，请使用最新 Chrome 或 Edge。';
+    startBtn.disabled = false;
+    setRuntime(false, '不可用');
+    return;
+  }
+  socket = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
   socket.onopen = async () => {
     try {
       socket.send(JSON.stringify({ type: 'config', source_language: sourceLanguage.value, target_language: targetLanguage.value, speaker_mode: speakerMode.value }));
-      mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: inputDevice.value ? { exact: inputDevice.value } : undefined, channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+      const audio = { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+      if (inputDevice.value) audio.deviceId = { exact: inputDevice.value };
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({ audio });
+      } catch (error) {
+        // Device IDs can change when macOS grants microphone permission. Retry
+        // with the default input instead of ending the whole session.
+        if (error.name !== 'OverconstrainedError' && error.name !== 'NotFoundError') throw error;
+        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+      }
       audioContext = new AudioContext(); const source = audioContext.createMediaStreamSource(mediaStream); processor = audioContext.createScriptProcessor(4096, 1, 1);
+      await audioContext.resume();
       processor.onaudioprocess = (event) => { if (socket.readyState !== WebSocket.OPEN) return; const pcm = downsample(event.inputBuffer.getChannelData(0), audioContext.sampleRate, 16000); if (!containsVoice(pcm)) return; const label = inputDevice.options[inputDevice.selectedIndex]?.textContent || ''; const sourceType = /blackhole|loopback|virtual/i.test(label) ? 'meeting_loopback' : 'microphone'; socket.send(JSON.stringify({ type: 'audio', session_id: sourceType, audio_base64: encodePcm(pcm), sample_rate: 16000, channels: 1, source: sourceType })); };
-      source.connect(processor); processor.connect(audioContext.destination); stopBtn.disabled = false; sessionLabel.textContent = sourceStatus.textContent; setRuntime(true, '运行中');
-    } catch (error) { sessionLabel.textContent = `音频输入失败：${error.message}`; socket.close(); }
+      const silentOutput = audioContext.createGain(); silentOutput.gain.value = 0;
+      source.connect(processor); processor.connect(silentOutput); silentOutput.connect(audioContext.destination); stopBtn.disabled = false; sessionLabel.textContent = sourceStatus.textContent; setRuntime(true, '运行中');
+    } catch (error) { cleanupAudio(); sessionLabel.textContent = `音频输入失败：${error.message || '请检查系统麦克风权限'}`; if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) socket.close(); }
   };
   socket.onmessage = (message) => { const event = JSON.parse(message.data); if (event.type === 'caption') { captionRows.push(event); renderCaptions(); updateSummary(); } if (event.type === 'error') sessionLabel.textContent = event.message; };
   socket.onclose = () => { cleanupAudio(); startBtn.disabled = false; stopBtn.disabled = true; setRuntime(false, '已停止'); };

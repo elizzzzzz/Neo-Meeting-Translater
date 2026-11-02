@@ -45,19 +45,19 @@ def _open_meeting_window(url: str) -> None:
     for browser_path in browser_paths:
         if not browser_path.exists():
             continue
-        executable = browser_path / "Contents" / "MacOS" / browser_path.stem
-        if not executable.exists():
-            continue
-        profile_dir = Path.home() / "Library" / "Application Support" / "LocalMeetingInterpreter" / "browser-profile"
-        profile_dir.mkdir(parents=True, exist_ok=True)
+        # Launch through LaunchServices instead of executing the browser binary
+        # directly. macOS associates microphone TCC permissions with the
+        # LaunchServices app identity; direct execution can make Chrome abort
+        # with a missing NSMicrophoneUsageDescription error.
         subprocess.Popen(
             [
-                str(executable),
+                "/usr/bin/open",
+                "-na",
+                str(browser_path),
+                "--args",
                 f"--app={url}",
-                f"--user-data-dir={profile_dir}",
+                "--new-window",
                 "--window-size=1440,980",
-                "--no-first-run",
-                "--no-default-browser-check",
             ],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,

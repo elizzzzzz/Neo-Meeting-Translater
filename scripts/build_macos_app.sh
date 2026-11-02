@@ -37,6 +37,13 @@ rm -rf build dist
   --hidden-import "uvicorn.protocols.websockets.websockets_impl" \
   src/meeting_interpreter/desktop.py
 
+# macOS may attribute browser microphone access to the launching desktop app.
+# Keep an explicit purpose string in the bundle so TCC never treats the app as
+# a privacy-sensitive caller without a usage description.
+plutil -replace NSMicrophoneUsageDescription \
+  -string "用于采集本地麦克风或会议回环音频，并在本机生成实时字幕。" \
+  "dist/LocalMeetingInterpreter.app/Contents/Info.plist"
+
 if command -v hdiutil >/dev/null 2>&1; then
   ditto --noextattr --norsrc "dist/LocalMeetingInterpreter.app" "$STAGING_DIR/LocalMeetingInterpreter.app"
   codesign --force --deep --sign - "$STAGING_DIR/LocalMeetingInterpreter.app"
