@@ -1,15 +1,26 @@
 from __future__ import annotations
 
 import os
-import platform
 import socket
-import subprocess
 import threading
 import time
 import urllib.request
-import webbrowser
 from pathlib import Path
 
+import objc
+from AppKit import (
+    NSApplication,
+    NSApplicationActivationPolicyRegular,
+    NSBackingStoreBuffered,
+    NSMakeRect,
+    NSWindow,
+    NSWindowStyleMaskClosable,
+    NSWindowStyleMaskMiniaturizable,
+    NSWindowStyleMaskResizable,
+    NSWindowStyleMaskTitled,
+)
+from Foundation import NSObject, NSURL, NSURLRequest
+from WebKit import WKWebView, WKWebViewConfiguration
 import uvicorn
 
 
@@ -53,40 +64,52 @@ def _select_port(host: str, requested_port: int) -> int:
         return int(probe.getsockname()[1])
 
 
-def _open_meeting_window(url: str) -> None:
-    """Open the workbench as a standalone browser app when available."""
-    if platform.system() != "Darwin" or os.getenv("MEETING_INTERPRETER_WINDOW_MODE", "app") == "browser":
-        webbrowser.open(url)
-        return
+class _NativeAppDelegate(NSObject):
+    """Small native macOS shell around the local FastAPI workbench."""
 
-    requested_browser = os.getenv("MEETING_INTERPRETER_BROWSER", "auto").lower()
-    browser_paths = {
-        "chrome": [Path("/Applications/Google Chrome.app")],
-        "edge": [Path("/Applications/Microsoft Edge.app")],
-        "auto": [Path("/Applications/Google Chrome.app"), Path("/Applications/Microsoft Edge.app")],
-    }.get(requested_browser, [])
-    for browser_path in browser_paths:
-        if not browser_path.exists():
-            continue
-        # Launch through LaunchServices instead of executing the browser binary
-        # directly. macOS associates microphone TCC permissions with the
-        # LaunchServices app identity; direct execution can make Chrome abort
-        # with a missing NSMicrophoneUsageDescription error.
-        subprocess.Popen(
-            [
-                "/usr/bin/open",
-                "-na",
-                str(browser_path),
-                "--args",
-                f"--app={url}",
-                "--new-window",
-                "--window-size=1440,980",
-            ],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+    def initWithURL_(self, url: str):
+        self = objc.super(_NativeAppDelegate, self).init()
+        if self is not None:
+            self.url = url
+            self.window = None
+            self.web_view = None
+        return self
+
+    def applicationDidFinishLaunching_(self, _notification):
+        app = NSApplication.sharedApplication()
+        app.setActivationPolicy_(NSApplicationActivationPolicyRegular)
+
+        frame = NSMakeRect(0, 0, 1440, 980)
+        style = (
+            NSWindowStyleMaskTitled
+            | NSWindowStyleMaskClosable
+            | NSWindowStyleMaskMiniaturizable
+            | NSWindowStyleMaskResizable
         )
-        return
-    webbrowser.open(url)
+        self.window = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
+            frame, style, NSBackingStoreBuffered, False
+        )
+        self.window.setTitle_("Local Meeting Interpreter")
+        self.window.center()
+
+        configuration = WKWebViewConfiguration.alloc().init()
+        self.web_view = WKWebView.alloc().initWithFrame_configuration_(frame, configuration)
+        self.web_view.setAutoresizingMask_(18)  # width + height
+        self.window.setContentView_(self.web_view)
+        self.web_view.loadRequest_(NSURLRequest.requestWithURL_(NSURL.URLWithString_(self.url)))
+        self.window.makeKeyAndOrderFront_(None)
+        app.activateIgnoringOtherApps_(True)
+
+    def applicationShouldTerminateAfterLastWindowClosed_(self, _application):
+        return True
+
+
+def _open_native_window(url: str) -> None:
+    """Run the workbench in an embedded WKWebView, without launching a browser."""
+    app = NSApplication.sharedApplication()
+    delegate = _NativeAppDelegate.alloc().initWithURL_(url)
+    app.setDelegate_(delegate)
+    app.run()
 
 
 def main() -> None:
@@ -113,12 +136,7 @@ def main() -> None:
     app_url = f"http://{host}:{port}/?v=0.1.1"
     if not ready:
         print(f"Local Meeting Interpreter server did not become ready: {health_url}")
-    _open_meeting_window(app_url)
-    try:
-        while server.is_alive():
-            time.sleep(1)
-    except KeyboardInterrupt:
-        return
+    _open_native_window(app_url)
 
 
 if __name__ == "__main__":

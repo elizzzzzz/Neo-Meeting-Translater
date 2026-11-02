@@ -21,6 +21,8 @@ dev = [
 ]
 apple = [
   "mlx-whisper>=0.4,<1",
+  "pyobjc-framework-Cocoa>=12,<13; sys_platform == 'darwin'",
+  "pyobjc-framework-WebKit>=12,<13; sys_platform == 'darwin'",
 ]
 translation = [
   "torch>=2.2,<3",

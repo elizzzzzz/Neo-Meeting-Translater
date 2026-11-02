@@ -46,7 +46,7 @@ export MEETING_INTERPRETER_TRANSLATION_MODEL=facebook/nllb-200-distilled-600M
 python -m meeting_interpreter
 ```
 
-安装包和界面说明见 [macOS 安装包](docs/macos-install.md)。界面使用本地浏览器工作台，安装包会自动启动本地服务并打开页面。
+安装包和界面说明见 [macOS 安装包](docs/macos-install.md)。安装包是独立的 macOS App，内部使用原生窗口嵌入本地工作台，不会启动 Chrome、Edge 或其他浏览器。
 
 启用本地多人区分：
 

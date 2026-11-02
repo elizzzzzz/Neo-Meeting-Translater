@@ -12,7 +12,7 @@ pip install -e '.[apple,translation]'
 python -m meeting_interpreter.desktop
 ```
 
-程序启动后会自动打开一个独立的 Chrome/Edge App 窗口，不显示地址栏。默认服务地址是 `http://127.0.0.1:8000`；如果 8000 已被旧实例或其他程序占用，程序会自动选择可用端口，并在页面底部显示本次实际地址。
+程序启动后会打开一个原生 macOS 窗口，页面嵌入在 App 内部，不会启动 Chrome、Edge 或其他浏览器。默认本地服务地址是 `http://127.0.0.1:8000`；如果 8000 已被旧实例或其他程序占用，程序会自动选择可用端口，并在页面底部显示本次实际地址。
 
 如果之前打开过旧版本，先关闭旧的 `LocalMeetingInterpreter` 窗口，再启动新安装包，避免同时运行多个本地服务实例。
 
@@ -54,4 +54,4 @@ MEETING_INTERPRETER_BUILD_PYTHON=/opt/homebrew/bin/python3 ./scripts/build_macos
 
 ## macOS 权限
 
-首次打开浏览器工作台时允许麦克风权限。使用腾讯会议或 Teams 的 BlackHole 回环设备时，先在会议软件中选择对应的扬声器输出，再在工作台中选择 BlackHole 输入。
+首次打开 App 并点击开启音频输入时允许麦克风权限。使用腾讯会议或 Teams 的 BlackHole 回环设备时，先在会议软件中选择对应的扬声器输出，再在 App 中选择 BlackHole 输入。

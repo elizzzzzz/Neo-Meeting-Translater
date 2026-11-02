@@ -32,6 +32,10 @@ rm -rf build dist
   --hidden-import "uvicorn.logging" \
   --hidden-import "uvicorn.protocols.http.h11_impl" \
   --hidden-import "uvicorn.protocols.websockets.websockets_impl" \
+  --hidden-import "AppKit" \
+  --hidden-import "WebKit" \
+  --hidden-import "Foundation" \
+  --hidden-import "objc" \
   --hidden-import "mlx_whisper" \
   --collect-all "mlx_whisper" \
   --collect-all "mlx" \
