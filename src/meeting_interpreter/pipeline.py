@@ -4,6 +4,7 @@ import asyncio
 import base64
 import itertools
 import math
+import time
 from collections.abc import AsyncIterator
 import os
 
@@ -13,7 +14,7 @@ from .speaker import PendingSpeakerBackend, PyannoteSpeakerBackend, SpeakerBacke
 from .translation import NLLBTranslationBackend, TranslationBackend
 
 
-def is_silent_pcm16(audio: bytes, threshold: float = 0.008) -> bool:
+def is_silent_pcm16(audio: bytes, threshold: float = 0.015) -> bool:
     """Return whether a PCM16 mono chunk is below the voice activity floor."""
     if not audio:
         return True
@@ -41,6 +42,8 @@ class Pipeline:
         self._buffers: dict[str, bytearray] = {}
         self._buffer_start_ms: dict[str, int] = {}
         self._last_text: dict[str, str] = {}
+        self._mock_last_audio_at: dict[str, float] = {}
+        self._mock_phrase_emitted: dict[str, bool] = {}
         if self.mode == "local":
             self.asr: ASRBackend = MLXWhisperBackend(
                 model=os.getenv("MEETING_INTERPRETER_ASR_MODEL", "mlx-community/whisper-small-mlx-8bit"),
@@ -79,6 +82,19 @@ class Pipeline:
             if yield_event is not None:
                 yield yield_event
             return
+
+        # Mock mode is only a transport/demo fallback. Treat a continuous stream
+        # of chunks as one utterance so microphone noise cannot create an endless
+        # list of identical demo captions. A new caption is allowed after an
+        # actual pause in the incoming audio.
+        now = time.monotonic()
+        last_audio_at = self._mock_last_audio_at.get(event.session_id)
+        if last_audio_at is not None and now - last_audio_at >= 1.2:
+            self._mock_phrase_emitted[event.session_id] = False
+        self._mock_last_audio_at[event.session_id] = now
+        if self._mock_phrase_emitted.get(event.session_id, False):
+            return
+        self._mock_phrase_emitted[event.session_id] = True
 
         # This delay simulates a small streaming chunk and keeps the demo responsive.
         await asyncio.sleep(0.03)

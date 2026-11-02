@@ -26,8 +26,22 @@ let audioContext;
 let mediaStream;
 let processor;
 let captionRows = [];
-const VOICE_RMS_THRESHOLD = 0.008;
-const VOICE_PEAK_THRESHOLD = 0.03;
+let runtimeMode = 'MOCK';
+const mockCaptionKeys = new Set();
+const VOICE_RMS_THRESHOLD = 0.02;
+const VOICE_PEAK_THRESHOLD = 0.08;
+const CALIBRATION_FRAMES = 12;
+let noiseSamples = [];
+let noiseFloorRms = VOICE_RMS_THRESHOLD;
+let noiseFloorPeak = VOICE_PEAK_THRESHOLD;
+let voiceHits = 0;
+
+function resetVoiceDetection() {
+  noiseSamples = [];
+  noiseFloorRms = VOICE_RMS_THRESHOLD;
+  noiseFloorPeak = VOICE_PEAK_THRESHOLD;
+  voiceHits = 0;
+}
 
 function setRuntime(active, text) { runtimeDot.classList.toggle('active', active); runtimeText.textContent = text; }
 function updateSummary() {
@@ -74,7 +88,22 @@ function containsVoice(buffer) {
   if (!buffer.length) return false;
   let sumSquares = 0; let peak = 0;
   for (const sample of buffer) { const magnitude = Math.abs(sample); sumSquares += magnitude * magnitude; peak = Math.max(peak, magnitude); }
-  return Math.sqrt(sumSquares / buffer.length) >= VOICE_RMS_THRESHOLD || peak >= VOICE_PEAK_THRESHOLD;
+  const rms = Math.sqrt(sumSquares / buffer.length);
+  if (noiseSamples.length < CALIBRATION_FRAMES) {
+    noiseSamples.push({ rms, peak });
+    if (noiseSamples.length === CALIBRATION_FRAMES) {
+      const rmsValues = noiseSamples.map((sample) => sample.rms).sort((a, b) => a - b);
+      const peakValues = noiseSamples.map((sample) => sample.peak).sort((a, b) => a - b);
+      const midpoint = Math.floor(noiseSamples.length / 2);
+      noiseFloorRms = Math.max(VOICE_RMS_THRESHOLD * 0.75, rmsValues[midpoint]);
+      noiseFloorPeak = Math.max(VOICE_PEAK_THRESHOLD * 0.75, peakValues[midpoint]);
+    }
+    return false;
+  }
+  const candidate = rms >= Math.max(VOICE_RMS_THRESHOLD, noiseFloorRms * 2.5)
+    && peak >= Math.max(VOICE_PEAK_THRESHOLD, noiseFloorPeak * 2.2);
+  voiceHits = candidate ? voiceHits + 1 : 0;
+  return voiceHits >= 2;
 }
 async function loadDevices() {
   if (!navigator.mediaDevices?.enumerateDevices) return;
@@ -86,6 +115,7 @@ async function loadDevices() {
 }
 async function startSession() {
   startBtn.disabled = true; setRuntime(false, '连接中…');
+  resetVoiceDetection();
   if (!navigator.mediaDevices?.getUserMedia) {
     sessionLabel.textContent = '当前浏览器不支持麦克风输入，请使用最新 Chrome 或 Edge。';
     startBtn.disabled = false;
@@ -113,7 +143,16 @@ async function startSession() {
       source.connect(processor); processor.connect(silentOutput); silentOutput.connect(audioContext.destination); stopBtn.disabled = false; sessionLabel.textContent = sourceStatus.textContent; setRuntime(true, '运行中');
     } catch (error) { cleanupAudio(); sessionLabel.textContent = `音频输入失败：${error.message || '请检查系统麦克风权限'}`; if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) socket.close(); }
   };
-  socket.onmessage = (message) => { const event = JSON.parse(message.data); if (event.type === 'caption') { captionRows.push(event); renderCaptions(); updateSummary(); } if (event.type === 'error') sessionLabel.textContent = event.message; };
+  socket.onmessage = (message) => {
+    const event = JSON.parse(message.data);
+    if (event.type === 'caption') {
+      const captionKey = `${event.original_text || ''}\u0000${event.translated_text || ''}`;
+      if (runtimeMode === 'MOCK' && mockCaptionKeys.has(captionKey)) return;
+      if (runtimeMode === 'MOCK') mockCaptionKeys.add(captionKey);
+      captionRows.push(event); renderCaptions(); updateSummary();
+    }
+    if (event.type === 'error') sessionLabel.textContent = event.message;
+  };
   socket.onclose = () => { cleanupAudio(); startBtn.disabled = false; stopBtn.disabled = true; setRuntime(false, '已停止'); };
   socket.onerror = () => { sessionLabel.textContent = '本地服务连接失败'; setRuntime(false, '连接失败'); };
 }
@@ -123,4 +162,4 @@ function exportTranscript() { const text = captionRows.map((row) => `[${formatTi
 
 startBtn.addEventListener('click', startSession); stopBtn.addEventListener('click', stopSession); clearBtn.addEventListener('click', () => { captionRows = []; renderCaptions(); updateSummary(); }); exportBtn.addEventListener('click', exportTranscript); sourceLanguage.addEventListener('change', () => { ensureDifferentLanguages('source'); updateSummary(); }); targetLanguage.addEventListener('change', () => { ensureDifferentLanguages('target'); updateSummary(); }); speakerMode.addEventListener('change', updateSummary); inputDevice.addEventListener('change', updateSummary); swapLanguagesBtn.addEventListener('click', swapLanguages); directionButtons.forEach((button) => button.addEventListener('click', () => setDirection(button.dataset.source, button.dataset.target))); modeStatus.textContent = 'Mock'; modeBadge.textContent = 'MOCK'; renderCaptions(); updateSummary(); loadDevices();
 if (serviceAddress) serviceAddress.textContent = location.host;
-fetch('/health').then((response) => response.json()).then((health) => { const mode = String(health.mode || 'mock').toUpperCase(); modeStatus.textContent = mode; modeBadge.textContent = mode; }).catch(() => {});
+fetch('/health').then((response) => response.json()).then((health) => { runtimeMode = String(health.mode || 'mock').toUpperCase(); modeStatus.textContent = runtimeMode; modeBadge.textContent = runtimeMode; }).catch(() => {});

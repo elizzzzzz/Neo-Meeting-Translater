@@ -55,6 +55,16 @@ async def test_mock_pipeline_ignores_silent_audio() -> None:
 
 
 @pytest.mark.asyncio
+async def test_mock_pipeline_does_not_repeat_for_continuous_audio() -> None:
+    pipeline = Pipeline()
+    event = AudioEvent(session_id="continuous", audio_base64=base64.b64encode(b"pcm").decode())
+    first = [caption async for caption in pipeline.process_audio(event)]
+    second = [caption async for caption in pipeline.process_audio(event)]
+    assert len(first) == 1
+    assert second == []
+
+
+@pytest.mark.asyncio
 async def test_pipeline_rejects_invalid_audio() -> None:
     event = AudioEvent(session_id="test", audio_base64="not-base64")
     with pytest.raises(ValueError, match="valid base64"):
