@@ -119,7 +119,7 @@ function escapeHtml(value) { return String(value).replace(/[&<>'"]/g, (character
 function renderCaptions() {
   if (!captionRows.length) { captions.innerHTML = '<div class="empty-state"><strong>还没有字幕</strong><span>选择麦克风或 BlackHole 回环设备后开始会议。</span></div>'; return; }
   captions.innerHTML = captionRows.map((event) => `<div class="caption-row"><span class="caption-time">${formatTime(event.start_ms)}</span><span><span class="speaker-chip">${escapeHtml(event.speaker_id)}</span></span><span class="caption-copy">${escapeHtml(event.original_text)}${event.is_final ? '' : '<span class="draft">临时</span>'}</span><span class="caption-copy caption-translation">${escapeHtml(event.translated_text || '翻译处理中…')}</span></div>`).join('');
-  captions.lastElementChild?.scrollIntoView({ block: 'nearest' });
+  captions.scrollTop = captions.scrollHeight;
 }
 function downsample(buffer, inputRate, outputRate) {
   if (outputRate === inputRate) return buffer;

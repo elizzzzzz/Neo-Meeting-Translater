@@ -44,6 +44,9 @@ class Pipeline:
         self._audio_ms: dict[str, int] = {}
         self._last_infer_ms: dict[str, int] = {}
         self._last_text: dict[str, str] = {}
+        self._last_voice_ms: dict[str, int] = {}
+        self._active_segment_id: dict[str, str] = {}
+        self._active_start_ms: dict[str, int] = {}
         self._mock_last_audio_at: dict[str, float] = {}
         self._mock_phrase_emitted: dict[str, bool] = {}
         if self.mode == "local":
@@ -85,15 +88,12 @@ class Pipeline:
         except ValueError as exc:
             raise ValueError("audio_base64 is not valid base64") from exc
 
-        # Browser-side VAD filters most background noise. Keep a lower floor in
-        # local mode so quiet speech is still handed to Whisper.
-        silence_threshold = 0.003 if self.mode == "local" else 0.015
-        if is_silent_pcm16(raw_audio, threshold=silence_threshold):
-            return
-
         if self.mode == "local":
             async for yield_event in self._process_local(event, raw_audio):
                 yield yield_event
+            return
+
+        if is_silent_pcm16(raw_audio, threshold=0.015):
             return
 
         # Mock mode is only a transport/demo fallback. Treat a continuous stream
@@ -134,17 +134,33 @@ class Pipeline:
         chunk_ms = round(len(raw_audio) / 2 / event.sample_rate * 1000)
         audio_ms = self._audio_ms.get(event.session_id, 0) + chunk_ms
         self._audio_ms[event.session_id] = audio_ms
-        # Whisper needs context, but waiting 1.2 seconds loses short meeting turns.
-        # Infer at most once per 0.8 seconds while keeping a rolling 3-second window.
+        # Keep silence in the rolling buffer so the next utterance has a clean
+        # boundary and can be separated from the preceding speaker turn.
+        silence_threshold = 0.003
+        if is_silent_pcm16(raw_audio, threshold=silence_threshold):
+            return
+        previous_voice_ms = self._last_voice_ms.get(event.session_id)
+        new_turn = previous_voice_ms is None or audio_ms - previous_voice_ms >= 1200
+        self._last_voice_ms[event.session_id] = audio_ms
+        if new_turn:
+            self._active_segment_id[event.session_id] = f"seg-{next(self._sequence):06d}"
+            self._active_start_ms[event.session_id] = max(0, audio_ms - chunk_ms)
+            self._last_text[event.session_id] = ""
+
+        # A larger context window improves names, particles, and sentence
+        # boundaries while still emitting revisions roughly once per second.
         min_bytes = round(event.sample_rate * 2 * 0.6)
-        window_bytes = round(event.sample_rate * 2 * 3.0)
+        window_bytes = round(event.sample_rate * 2 * 4.0)
         if len(buffer) < min_bytes:
             return
         last_infer_ms = self._last_infer_ms.get(event.session_id)
-        if last_infer_ms is not None and audio_ms - last_infer_ms < 800:
+        if last_infer_ms is not None and audio_ms - last_infer_ms < 900:
             return
         self._last_infer_ms[event.session_id] = audio_ms
         window = bytes(buffer[-window_bytes:])
+        context = self._last_text.get(event.session_id, "")
+        if hasattr(self.asr, "set_context"):
+            self.asr.set_context(context)
         result = await self.asr.transcribe(window, event.sample_rate, start_ms)
         if result is None or result.text == self._last_text.get(event.session_id):
             return
@@ -152,19 +168,18 @@ class Pipeline:
         if len(buffer) > window_bytes:
             del buffer[:-round(event.sample_rate * 2 * 1.0)]
             self._buffer_start_ms[event.session_id] = result.end_ms - 1000
-        segment = next(self._sequence)
         speaker_id = await self.speaker.identify(window, event.sample_rate, result.start_ms)
         translated_text = result.text if self.translator is None or result.language == self.target_language else ""
         caption = CaptionEvent(
             session_id=event.session_id,
-            segment_id=f"seg-{segment:06d}",
+            segment_id=self._active_segment_id[event.session_id],
             speaker_id=speaker_id,
             source_language=result.language,
             target_language=self.target_language,
             original_text=result.text,
             translated_text=translated_text,
             is_final=bool(translated_text),
-            start_ms=result.start_ms,
+            start_ms=self._active_start_ms.get(event.session_id, result.start_ms),
             end_ms=result.end_ms,
         )
         # Emit the recognized source text immediately. This keeps the live

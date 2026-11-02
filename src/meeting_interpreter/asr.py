@@ -42,6 +42,11 @@ class MLXWhisperBackend:
         self.model = model
         self.language = None if language in (None, "", "auto") else language
         self._mlx_whisper = None
+        self._context_prompt = ""
+
+    def set_context(self, text: str) -> None:
+        """Provide the latest committed text as a decoding hint."""
+        self._context_prompt = text[-240:].strip()
 
     def _load(self):
         if self._mlx_whisper is None:
@@ -70,7 +75,9 @@ class MLXWhisperBackend:
             language=self.language,
             task="transcribe",
             word_timestamps=False,
-            condition_on_previous_text=False,
+            condition_on_previous_text=True,
+            initial_prompt=self._context_prompt or None,
+            temperature=0.0,
             verbose=False,
         )
         text = result.get("text", "").strip()

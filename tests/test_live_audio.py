@@ -26,6 +26,16 @@ class Translator:
         return "これはテストです。"
 
 
+class RevisingRecognizer:
+    def __init__(self):
+        self.calls = 0
+
+    async def transcribe(self, pcm, sample_rate, start_ms):
+        self.calls += 1
+        text = "これは" if self.calls == 1 else "これはテストです。"
+        return ASRResult(text, "ja", start_ms, start_ms + round(len(pcm) / 32))
+
+
 @pytest.mark.asyncio
 async def test_quiet_short_utterance_is_flushed_after_silence():
     pipeline = Pipeline(mode="local", target_language="ja")
@@ -59,3 +69,17 @@ async def test_continuous_audio_does_not_infer_on_every_packet():
     for _ in range(50):
         _ = [c async for c in pipeline.process_audio(audio([2000, -2000] * 800))]
     assert 1 <= len(pipeline.asr.windows) <= 7
+
+
+@pytest.mark.asyncio
+async def test_live_caption_is_revised_with_same_segment_id():
+    pipeline = Pipeline(mode="local", target_language="zh")
+    pipeline.asr = RevisingRecognizer()
+    pipeline.translator = Translator()
+    results = []
+    for _ in range(2):
+        results.extend([c async for c in pipeline.process_audio(audio([2000, -2000] * 8000))])
+    source_updates = [event for event in results if event.original_text]
+    assert len(source_updates) >= 2
+    assert source_updates[0].segment_id == source_updates[-1].segment_id
+    assert source_updates[-1].original_text == "これはテストです。"
