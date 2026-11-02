@@ -17,6 +17,10 @@ const directionStatus = document.querySelector('#directionStatus');
 const speakerStatus = document.querySelector('#speakerStatus');
 const modeStatus = document.querySelector('#modeStatus');
 const modeBadge = document.querySelector('#modeBadge');
+const asrStatus = document.querySelector('#asrStatus');
+const translationStatus = document.querySelector('#translationStatus');
+const audioStatus = document.querySelector('#audioStatus');
+const diagnosticStatus = document.querySelector('#diagnosticStatus');
 const directionPill = document.querySelector('#directionPill');
 const serviceAddress = document.querySelector('#serviceAddress');
 const directionButtons = [...document.querySelectorAll('.direction-button')];
@@ -35,6 +39,29 @@ let noiseSamples = [];
 let noiseFloorRms = VOICE_RMS_THRESHOLD;
 let noiseFloorPeak = VOICE_PEAK_THRESHOLD;
 let voiceHits = 0;
+let audioFrames = 0;
+let lastCaptionAt = 0;
+let sessionStartedAt = 0;
+
+function setDiagnostic(message) {
+  diagnosticStatus.textContent = message;
+  sessionLabel.textContent = message;
+}
+function formatModel(value) {
+  const text = String(value || '未配置');
+  return text.length > 28 ? `${text.slice(0, 25)}…` : text;
+}
+function updateHealth(health) {
+  runtimeMode = String(health.mode || 'mock').toUpperCase();
+  modeStatus.textContent = runtimeMode;
+  modeBadge.textContent = runtimeMode;
+  asrStatus.textContent = `${health.asr?.status || '未知'} · ${formatModel(health.asr?.model)}`;
+  const ollama = health.ollama?.configured ? (health.ollama.reachable ? (health.ollama.model_present ? 'Ollama 就绪' : '缺少模型') : 'Ollama 未连接') : '';
+  translationStatus.textContent = `${health.translation?.status || '未知'} · ${formatModel(health.translation?.model)}${ollama ? ` · ${ollama}` : ''}`;
+  const frames = Number(health.audio?.frames || 0);
+  if (frames > audioFrames) audioStatus.textContent = `已收到 ${frames} 帧`;
+  if (health.last_error) diagnosticStatus.textContent = health.last_error;
+}
 
 function resetVoiceDetection() {
   noiseSamples = [];
@@ -116,6 +143,8 @@ async function loadDevices() {
 async function startSession() {
   startBtn.disabled = true; setRuntime(false, '连接中…');
   resetVoiceDetection();
+  audioFrames = 0; audioStatus.textContent = '连接中…'; setDiagnostic('正在连接本地服务');
+  sessionStartedAt = Date.now();
   if (!navigator.mediaDevices?.getUserMedia) {
     sessionLabel.textContent = '当前浏览器不支持麦克风输入，请使用最新 Chrome 或 Edge。';
     startBtn.disabled = false;
@@ -140,6 +169,11 @@ async function startSession() {
       await audioContext.resume();
       processor.onaudioprocess = (event) => {
         if (socket.readyState !== WebSocket.OPEN) return;
+        audioFrames += 1;
+        if (audioFrames === 1 || audioFrames % 20 === 0) {
+          audioStatus.textContent = `已发送 ${audioFrames} 帧`;
+          if (!lastCaptionAt) setDiagnostic('已收到音频，正在等待语音识别');
+        }
         const pcm = downsample(event.inputBuffer.getChannelData(0), audioContext.sampleRate, 16000);
         // Send every short PCM frame and let the server apply the mode-specific
         // silence gate. Browser-side VAD can mistake quiet speech for noise,
@@ -149,8 +183,8 @@ async function startSession() {
         socket.send(JSON.stringify({ type: 'audio', session_id: sourceType, audio_base64: encodePcm(pcm), sample_rate: 16000, channels: 1, source: sourceType }));
       };
       const silentOutput = audioContext.createGain(); silentOutput.gain.value = 0;
-      source.connect(processor); processor.connect(silentOutput); silentOutput.connect(audioContext.destination); stopBtn.disabled = false; sessionLabel.textContent = sourceStatus.textContent; setRuntime(true, '运行中');
-    } catch (error) { cleanupAudio(); sessionLabel.textContent = `音频输入失败：${error.message || '请检查系统麦克风权限'}`; if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) socket.close(); }
+      source.connect(processor); processor.connect(silentOutput); silentOutput.connect(audioContext.destination); stopBtn.disabled = false; setDiagnostic(`音频已开启：${sourceStatus.textContent}`); setRuntime(true, '运行中');
+    } catch (error) { cleanupAudio(); audioStatus.textContent = '失败'; setDiagnostic(`音频输入失败：${error.message || '请检查系统麦克风权限'}`); if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) socket.close(); }
   };
   socket.onmessage = (message) => {
     const event = JSON.parse(message.data);
@@ -161,12 +195,15 @@ async function startSession() {
       const existingIndex = captionRows.findIndex((row) => row.session_id === event.session_id && row.segment_id === event.segment_id);
       if (existingIndex >= 0) captionRows[existingIndex] = event;
       else captionRows.push(event);
+      lastCaptionAt = Date.now();
+      setDiagnostic(event.is_final ? '已识别并翻译字幕' : '已识别原文，翻译处理中');
       renderCaptions(); updateSummary();
     }
-    if (event.type === 'error') sessionLabel.textContent = event.message;
+    if (event.type === 'status') setDiagnostic(event.message);
+    if (event.type === 'error') setDiagnostic(`错误：${event.message}`);
   };
   socket.onclose = () => { cleanupAudio(); startBtn.disabled = false; stopBtn.disabled = true; setRuntime(false, '已停止'); };
-  socket.onerror = () => { sessionLabel.textContent = '本地服务连接失败'; setRuntime(false, '连接失败'); };
+  socket.onerror = () => { setDiagnostic('本地服务连接失败'); setRuntime(false, '连接失败'); };
 }
 function cleanupAudio() { if (processor) processor.disconnect(); if (audioContext) audioContext.close(); if (mediaStream) mediaStream.getTracks().forEach((track) => track.stop()); processor = null; audioContext = null; mediaStream = null; }
 function stopSession() { if (socket && socket.readyState === WebSocket.OPEN) socket.close(); else cleanupAudio(); }
@@ -174,4 +211,9 @@ function exportTranscript() { const text = captionRows.map((row) => `[${formatTi
 
 startBtn.addEventListener('click', startSession); stopBtn.addEventListener('click', stopSession); clearBtn.addEventListener('click', () => { captionRows = []; renderCaptions(); updateSummary(); }); exportBtn.addEventListener('click', exportTranscript); sourceLanguage.addEventListener('change', () => { ensureDifferentLanguages('source'); updateSummary(); }); targetLanguage.addEventListener('change', () => { ensureDifferentLanguages('target'); updateSummary(); }); speakerMode.addEventListener('change', updateSummary); inputDevice.addEventListener('change', updateSummary); swapLanguagesBtn.addEventListener('click', swapLanguages); directionButtons.forEach((button) => button.addEventListener('click', () => setDirection(button.dataset.source, button.dataset.target))); modeStatus.textContent = 'Mock'; modeBadge.textContent = 'MOCK'; renderCaptions(); updateSummary(); loadDevices();
 if (serviceAddress) serviceAddress.textContent = location.host;
-fetch('/health').then((response) => response.json()).then((health) => { runtimeMode = String(health.mode || 'mock').toUpperCase(); modeStatus.textContent = runtimeMode; modeBadge.textContent = runtimeMode; }).catch(() => {});
+fetch('/health').then((response) => response.json()).then(updateHealth).catch(() => { diagnosticStatus.textContent = '无法读取服务状态'; });
+setInterval(() => { fetch('/health').then((response) => response.json()).then(updateHealth).catch(() => {}); }, 3000);
+setInterval(() => {
+  if (!socket || socket.readyState !== WebSocket.OPEN || !audioFrames || lastCaptionAt) return;
+  if (sessionStartedAt && Date.now() - sessionStartedAt > 7000) setDiagnostic('已收到音频，但暂未检测到语音；请提高音量或检查输入设备');
+}, 2000);

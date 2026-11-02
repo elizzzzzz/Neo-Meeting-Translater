@@ -110,7 +110,7 @@ def main() -> None:
             break
         except Exception:
             time.sleep(0.1)
-    app_url = f"http://{host}:{port}/?v=0.1.0"
+    app_url = f"http://{host}:{port}/?v=0.1.1"
     if not ready:
         print(f"Local Meeting Interpreter server did not become ready: {health_url}")
     _open_meeting_window(app_url)

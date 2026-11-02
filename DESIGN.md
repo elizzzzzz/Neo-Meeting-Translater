@@ -1,33 +1,7 @@
-# Local Meeting Interpreter Design
+# Local Meeting Interpreter UI
 
-Source reference: `apple` from the installed awesome-design-md library.
+Visual reference: the local Apple design reference (`awesome-design-md/design-md/apple`).
 
-This project adapts the reference into a focused meeting workbench rather than a marketing page. The interface prioritizes readable live captions, device routing, target-language control and clear session state.
+The app keeps the existing Apple inspired language: SF Pro system fallbacks, white surfaces on a pearl canvas, Action Blue `#0066cc`, 11px panel corners, fine `#e0e0e0` dividers, and restrained status chips. Runtime diagnostics are intentionally compact and use the same caption scale so they support troubleshooting without competing with the live transcript.
 
-The current direction controls use Apple-style pill chips and a circular swap control so the four supported translation paths remain visible and quick to change: Chinese ↔ Japanese and Chinese ↔ English.
-
-## Visual Rules
-
-- Surfaces: `#ffffff`, `#f5f5f7`, `#1d1d1f`, with no decorative gradients.
-- Action color: `#0066cc`; use it for primary controls, links and focus states.
-- Text: `SF Pro Text, system-ui, -apple-system, sans-serif`; display headings use `SF Pro Display` when available.
-- Structural radii: 8px for controls, 11px for utility panels, 18px only for large workspace surfaces.
-- Elevation: hairline borders and surface changes; no card shadows.
-- Touch targets: minimum 44px for primary controls and device selectors.
-
-## Layout
-
-- Black 44px global bar with product name and runtime state.
-- Light sub-navigation row with the current workflow and session action.
-- Two-column desktop workspace: transcript first, session controls second.
-- One-column mobile layout below 760px.
-- Transcript rows use stable columns for time, speaker, source and translation.
-
-## Interaction
-
-- The primary action is always starting or stopping an audio session.
-- Temporary captions are visibly marked as drafts; stable captions have normal contrast.
-- Source and target languages remain visible while a session is active.
-- Direction presets and a swap action make the supported bilingual pairs discoverable without opening a menu.
-- Device routing is explicit: microphone and meeting loopback are separate choices.
-- Export and clear actions stay secondary and never compete with the session control.
+Status values use plain language and explicit stages: configured, loading, ready, receiving audio, and error. Model names remain visible in the session panel so a user can distinguish microphone, ASR, Ollama, and translation failures.
