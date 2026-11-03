@@ -11,11 +11,13 @@ from pathlib import Path
 import objc
 from AppKit import (
     NSApplication,
+    NSApplicationActivateIgnoringOtherApps,
     NSApplicationActivationPolicyRegular,
     NSBackingStoreBuffered,
     NSMakeRect,
     NSColor,
     NSScreen,
+    NSRunningApplication,
     NSFloatingWindowLevel,
     NSWindowCollectionBehaviorCanJoinAllSpaces,
     NSWindowCollectionBehaviorFullScreenAuxiliary,
@@ -68,6 +70,9 @@ def _acquire_instance_lock() -> bool:
         fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
         handle.close()
+        running = NSRunningApplication.runningApplicationsWithBundleIdentifier_("com.localmeetinginterpreter.app")
+        if running:
+            running[0].activateWithOptions_(NSApplicationActivateIgnoringOtherApps)
         return False
     _INSTANCE_LOCK = handle
     return True

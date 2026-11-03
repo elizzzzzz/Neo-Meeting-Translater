@@ -42,6 +42,8 @@ def create_app() -> FastAPI:
         "warmup_message": "模型尚未预热" if mode == "local" else "可直接使用模拟字幕",
         "warmup_progress": 0 if mode == "local" else 100,
         "startup_ready": mode != "local",
+        "asr_backend": None,
+        "translator_backend_instance": None,
     }
     app = FastAPI(title="Local Meeting Interpreter", version="0.1.0")
     app.mount("/web", StaticFiles(directory=WEB_DIR), name="web")
@@ -94,6 +96,7 @@ def create_app() -> FastAPI:
                 runtime["warmup_progress"] = 35
                 await asyncio.sleep(0)
                 await backend.transcribe(b"\x00" * (16_000 * 2), 16_000, 0)
+                runtime["asr_backend"] = backend
                 runtime["asr_status"] = "ready"
                 runtime["warmup_progress"] = 60
                 runtime["warmup_message"] = "语音识别模型已就绪"
@@ -119,6 +122,7 @@ def create_app() -> FastAPI:
             try:
                 backend = OllamaTranslationBackend(model=translation_model, timeout=float(os.getenv("MEETING_INTERPRETER_OLLAMA_TIMEOUT", "300")), keep_alive=os.getenv("MEETING_INTERPRETER_OLLAMA_KEEP_ALIVE", "24h"))
                 await backend.translate("测试", "zh", "ja")
+                runtime["translator_backend_instance"] = backend
                 runtime["translation_status"] = "ready"
                 runtime["warmup_progress"] = 100
                 runtime["warmup_stage"] = "ready"
@@ -153,7 +157,7 @@ def create_app() -> FastAPI:
     async def websocket_endpoint(websocket: WebSocket) -> None:
         await websocket.accept()
         await websocket.send_json({"type": "status", "stage": "service", "message": f"本地服务已连接；ASR：{asr_model}；翻译：{translation_model}"})
-        pipeline = Pipeline(mode=mode)
+        pipeline = Pipeline(mode=mode, asr_backend=runtime.get("asr_backend"), translator_backend=runtime.get("translator_backend_instance"))
         try:
             while True:
                 payload = json.loads(await websocket.receive_text())
@@ -167,6 +171,8 @@ def create_app() -> FastAPI:
                         target_language=config.target_language,
                         mode=mode,
                         speaker_mode=config.speaker_mode,
+                        asr_backend=runtime.get("asr_backend"),
+                        translator_backend=runtime.get("translator_backend_instance"),
                     )
                     await websocket.send_json({"type": "configured", "target_language": config.target_language})
                     await websocket.send_json({"type": "status", "stage": "models", "message": f"ASR 已配置：{asr_model}；翻译模型状态：{runtime['translation_status']}"})

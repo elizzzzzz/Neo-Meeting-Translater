@@ -33,7 +33,7 @@ class Pipeline:
     Real adapters should replace `process_audio` while preserving CaptionEvent semantics.
     """
 
-    def __init__(self, source_language: str = "auto", target_language: str = "zh", mode: str | None = None, speaker_mode: str | None = None) -> None:
+    def __init__(self, source_language: str = "auto", target_language: str = "zh", mode: str | None = None, speaker_mode: str | None = None, asr_backend: ASRBackend | None = None, translator_backend: TranslationBackend | None = None) -> None:
         self.source_language = source_language
         self.target_language = target_language
         self.mode = mode or os.getenv("MEETING_INTERPRETER_MODE", "mock")
@@ -50,12 +50,14 @@ class Pipeline:
         self._mock_last_audio_at: dict[str, float] = {}
         self._mock_phrase_emitted: dict[str, bool] = {}
         if self.mode == "local":
-            self.asr: ASRBackend = MLXWhisperBackend(
+            self.asr: ASRBackend = asr_backend or MLXWhisperBackend(
                 model=os.getenv("MEETING_INTERPRETER_ASR_MODEL", "mlx-community/whisper-medium-mlx-8bit"),
                 language=self.source_language,
             )
             translation_backend = os.getenv("MEETING_INTERPRETER_TRANSLATION_BACKEND", "nllb").lower()
-            if translation_backend == "ollama":
+            if translator_backend is not None:
+                self.translator = translator_backend
+            elif translation_backend == "ollama":
                 self.translator = OllamaTranslationBackend(
                     model=os.getenv("MEETING_INTERPRETER_OLLAMA_MODEL", "translategemma:4b"),
                     base_url=os.getenv("MEETING_INTERPRETER_OLLAMA_URL", "http://127.0.0.1:11434"),
