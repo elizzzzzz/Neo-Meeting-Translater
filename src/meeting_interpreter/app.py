@@ -13,6 +13,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from .asr import MLXWhisperBackend
 from .models import AudioEvent, ErrorEvent, SessionConfig
 from .pipeline import Pipeline
 from .translation import OllamaTranslationBackend
@@ -27,7 +28,7 @@ def create_app() -> FastAPI:
     asr_model = os.getenv("MEETING_INTERPRETER_ASR_MODEL", "mlx-community/whisper-medium-mlx-8bit")
     translation_model = os.getenv("MEETING_INTERPRETER_OLLAMA_MODEL", "translategemma:4b") if translation_backend == "ollama" else os.getenv("MEETING_INTERPRETER_TRANSLATION_MODEL", "facebook/nllb-200-distilled-600M")
     runtime = {
-        "asr_status": "configured" if mode == "local" else "mock",
+        "asr_status": "loading" if mode == "local" else "mock",
         "translation_status": "loading" if mode == "local" and translation_backend == "ollama" else ("configured" if mode == "local" else "mock"),
         "asr_model": asr_model,
         "translation_backend": translation_backend,
@@ -37,6 +38,10 @@ def create_app() -> FastAPI:
         "last_error": "",
         "last_translation_ms": None,
         "last_health_at": None,
+        "warmup_stage": "等待启动" if mode == "local" else "演示模式",
+        "warmup_message": "模型尚未预热" if mode == "local" else "可直接使用模拟字幕",
+        "warmup_progress": 0 if mode == "local" else 100,
+        "startup_ready": mode != "local",
     }
     app = FastAPI(title="Local Meeting Interpreter", version="0.1.0")
     app.mount("/web", StaticFiles(directory=WEB_DIR), name="web")
@@ -71,23 +76,68 @@ def create_app() -> FastAPI:
                 runtime["translation_status"] = "running"
             elif runtime["translation_status"] not in {"processing", "loading"}:
                 runtime["translation_status"] = "ready"
-        return {"status": "ok", "mode": mode, "asr": {"status": runtime["asr_status"], "model": asr_model}, "translation": {"status": runtime["translation_status"], "backend": translation_backend, "model": translation_model, "last_response_ms": runtime["last_translation_ms"]}, "ollama": ollama, "audio": {"frames": runtime["audio_frames"], "last_audio_at": runtime["last_audio_at"]}, "last_error": runtime["last_error"], "checked_at": runtime["last_health_at"]}
+        return {"status": "ok", "mode": mode, "asr": {"status": runtime["asr_status"], "model": asr_model}, "translation": {"status": runtime["translation_status"], "backend": translation_backend, "model": translation_model, "last_response_ms": runtime["last_translation_ms"]}, "ollama": ollama, "audio": {"frames": runtime["audio_frames"], "last_audio_at": runtime["last_audio_at"]}, "models": {"stage": runtime["warmup_stage"], "message": runtime["warmup_message"], "progress": runtime["warmup_progress"], "ready": runtime["startup_ready"]}, "last_error": runtime["last_error"], "checked_at": runtime["last_health_at"]}
 
     @app.on_event("startup")
     async def warm_models() -> None:
-        if mode != "local" or translation_backend != "ollama":
+        if mode != "local":
             return
 
-        async def warm_translation() -> None:
+        async def warm_asr() -> None:
+            runtime["warmup_stage"] = "asr"
+            runtime["warmup_message"] = f"正在加载语音识别模型：{asr_model}"
+            runtime["warmup_progress"] = 10
+            await asyncio.sleep(0)
             try:
-                backend = OllamaTranslationBackend(model=translation_model, timeout=float(os.getenv("MEETING_INTERPRETER_OLLAMA_TIMEOUT", "300")), keep_alive=os.getenv("MEETING_INTERPRETER_OLLAMA_KEEP_ALIVE", "30m"))
+                backend = MLXWhisperBackend(model=asr_model, language=None)
+                runtime["warmup_message"] = "正在执行首次本地识别，建立热缓存…"
+                runtime["warmup_progress"] = 35
+                await asyncio.sleep(0)
+                await backend.transcribe(b"\x00" * (16_000 * 2), 16_000, 0)
+                runtime["asr_status"] = "ready"
+                runtime["warmup_progress"] = 60
+                runtime["warmup_message"] = "语音识别模型已就绪"
+            except Exception as exc:
+                runtime["asr_status"] = "error"
+                runtime["warmup_stage"] = "error"
+                runtime["warmup_message"] = f"语音识别模型加载失败：{exc}"
+                runtime["last_error"] = str(exc)
+                raise
+
+        async def warm_translation() -> None:
+            if translation_backend != "ollama":
+                runtime["translation_status"] = "ready"
+                runtime["warmup_progress"] = 100
+                runtime["warmup_stage"] = "ready"
+                runtime["warmup_message"] = "本地模型已就绪，可开始实时翻译"
+                runtime["startup_ready"] = True
+                return
+            runtime["warmup_stage"] = "translation"
+            runtime["warmup_message"] = f"正在启动 Ollama 模型：{translation_model}"
+            runtime["warmup_progress"] = 70
+            await asyncio.sleep(0)
+            try:
+                backend = OllamaTranslationBackend(model=translation_model, timeout=float(os.getenv("MEETING_INTERPRETER_OLLAMA_TIMEOUT", "300")), keep_alive=os.getenv("MEETING_INTERPRETER_OLLAMA_KEEP_ALIVE", "24h"))
                 await backend.translate("测试", "zh", "ja")
                 runtime["translation_status"] = "ready"
+                runtime["warmup_progress"] = 100
+                runtime["warmup_stage"] = "ready"
+                runtime["warmup_message"] = "模型已就绪，保持热启动，可开始实时翻译"
+                runtime["startup_ready"] = True
             except Exception as exc:  # Surface the exact failure in the UI health panel.
                 runtime["translation_status"] = "error"
                 runtime["last_error"] = str(exc)
+                runtime["warmup_stage"] = "error"
+                runtime["warmup_message"] = f"翻译模型加载失败：{exc}"
 
-        asyncio.create_task(warm_translation())
+        async def warm_all() -> None:
+            try:
+                await warm_asr()
+                await warm_translation()
+            except Exception:
+                return
+
+        asyncio.create_task(warm_all())
 
     @app.get("/")
     async def index() -> FileResponse:

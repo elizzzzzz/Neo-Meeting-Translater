@@ -60,7 +60,7 @@ class Pipeline:
                     model=os.getenv("MEETING_INTERPRETER_OLLAMA_MODEL", "translategemma:4b"),
                     base_url=os.getenv("MEETING_INTERPRETER_OLLAMA_URL", "http://127.0.0.1:11434"),
                     timeout=float(os.getenv("MEETING_INTERPRETER_OLLAMA_TIMEOUT", "180")),
-                    keep_alive=os.getenv("MEETING_INTERPRETER_OLLAMA_KEEP_ALIVE", "10m"),
+                    keep_alive=os.getenv("MEETING_INTERPRETER_OLLAMA_KEEP_ALIVE", "24h"),
                 )
             else:
                 self.translator = NLLBTranslationBackend(

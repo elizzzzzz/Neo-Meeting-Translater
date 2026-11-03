@@ -14,6 +14,8 @@ python -m meeting_interpreter.desktop
 
 程序启动后会打开一个原生 macOS 窗口，页面嵌入在 App 内部，不会启动 Chrome、Edge 或其他浏览器。默认本地服务地址是 `http://127.0.0.1:8000`；如果 8000 已被旧实例或其他程序占用，程序会自动选择可用端口，并在页面底部显示本次实际地址。
 
+点击“字幕浮窗”可切换为半透明、置顶、可移动的字幕窗口。浮窗会缩小到会议软件上方的一块区域，并可拖动标题栏移动；点击“退出浮窗”恢复完整工作台。App 使用单实例锁，重复双击安装包不会再启动第二个本地服务副本。
+
 如果之前打开过旧版本，先关闭旧的 `LocalMeetingInterpreter` 窗口，再启动新安装包，避免同时运行多个本地服务实例。
 
 ## DMG 本地模型配置
@@ -26,6 +28,7 @@ cat > "$HOME/Library/Application Support/LocalMeetingInterpreter/.env" <<'EOF'
 MEETING_INTERPRETER_MODE=local
 MEETING_INTERPRETER_TRANSLATION_BACKEND=ollama
 MEETING_INTERPRETER_OLLAMA_MODEL=translategemma:4b
+MEETING_INTERPRETER_OLLAMA_KEEP_ALIVE=24h
 MEETING_INTERPRETER_ASR_MODEL=mlx-community/whisper-medium-mlx-8bit
 EOF
 ```

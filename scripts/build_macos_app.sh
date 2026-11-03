@@ -11,6 +11,7 @@ trap 'rm -rf "$STAGING_DIR"' EXIT
 rm -rf build dist
 "$PYTHON_BIN" -m PyInstaller --noconfirm --clean --windowed \
   --target-architecture arm64 \
+  --osx-bundle-identifier "com.localmeetinginterpreter.app" \
   --name "LocalMeetingInterpreter" \
   --add-data "web:web" \
   --exclude-module "torch" \
@@ -41,9 +42,8 @@ rm -rf build dist
   --collect-all "mlx" \
   src/meeting_interpreter/desktop.py
 
-# macOS may attribute browser microphone access to the launching desktop app.
-# Keep an explicit purpose string in the bundle so TCC never treats the app as
-# a privacy-sensitive caller without a usage description.
+# Keep an explicit purpose string in the native app bundle so macOS TCC can
+# request microphone access from LocalMeetingInterpreter.app.
 plutil -replace NSMicrophoneUsageDescription \
   -string "用于采集本地麦克风或会议回环音频，并在本机生成实时字幕。" \
   "dist/LocalMeetingInterpreter.app/Contents/Info.plist"

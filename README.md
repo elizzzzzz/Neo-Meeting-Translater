@@ -8,8 +8,9 @@
 - 流式音频事件、说话人标签、原文和译文的数据模型
 - 可替换的 ASR、说话人区分和翻译适配器
 - 本地 FastAPI WebSocket 服务
-- 浏览器实时字幕页面
-- 浏览器音频设备选择，可选择 Mac 麦克风或 BlackHole 等会议回环设备
+- 原生 macOS 窗口中的实时字幕页面
+- App 内音频设备选择，可选择 Mac 麦克风或 BlackHole 等会议回环设备
+- 可切换半透明、置顶、可移动的字幕浮窗，覆盖在腾讯会议或 Teams 上方
 - `mock` 模式用于在未下载模型时验证端到端流程
 
 真实模型适配器预留给后续迭代：Apple Silicon 优先使用 MLX/whisper.cpp，翻译使用本地 NLLB，VoxCPM2 只在需要语音输出时按需加载。
@@ -60,9 +61,9 @@ python -m meeting_interpreter
 
 首次下载 pyannote 模型时需要在 Hugging Face 接受模型使用条件；下载完成后可以切换为本地模型目录，推理过程不需要联网。M3/16G 建议先使用 CPU 说话人区分，避免和 MLX Whisper、NLLB 同时占用统一内存。
 
-首次使用会按 `MEETING_INTERPRETER_ASR_MODEL` 下载 MLX Whisper 权重；模型下载完成后，推理在本机执行。M3/16G 默认使用 8-bit medium 模型，在保留本地翻译和浏览器运行空间的同时提高中文、日文和英文会议识别准确率。若设备内存紧张，可手动切换为 `mlx-community/whisper-small-mlx-8bit`。
+首次使用会按 `MEETING_INTERPRETER_ASR_MODEL` 下载 MLX Whisper 权重；App 启动后会自动冷启动 ASR 和翻译模型，界面显示加载进度，准备完成后保持热启动。M3/16G 默认使用 8-bit medium 模型，在保留本地翻译和 App 运行空间的同时提高中文、日文和英文会议识别准确率。若设备内存紧张，可手动切换为 `mlx-community/whisper-small-mlx-8bit`。
 
-打开 <http://127.0.0.1:8000>，选择输入设备后点击“开启音频输入”。界面支持中文 ↔ 日本語、中文 ↔ English 两组双向方向，可用快捷按钮或交换按钮切换；源语言也可以保留为“自动识别”。默认后端会产生模拟的中日 / 中英会议字幕事件；接入真实模型后，浏览器协议保持不变。
+打开 App，选择输入设备后点击“开启音频输入”。界面支持中文 ↔ 日本語、中文 ↔ English 两组双向方向，可用快捷按钮或交换按钮切换；源语言也可以保留为“自动识别”。
 
 ## 服务接口
 

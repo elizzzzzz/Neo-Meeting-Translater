@@ -114,7 +114,7 @@ class OllamaTranslationBackend:
         model: str = "translategemma:4b",
         base_url: str = "http://127.0.0.1:11434",
         timeout: float = 180.0,
-        keep_alive: str = "10m",
+        keep_alive: str = "24h",
     ) -> None:
         self.model = model
         self.base_url = base_url.rstrip("/")

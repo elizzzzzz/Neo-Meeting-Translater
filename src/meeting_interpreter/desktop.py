@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import fcntl
 import socket
 import threading
 import time
@@ -13,6 +14,11 @@ from AppKit import (
     NSApplicationActivationPolicyRegular,
     NSBackingStoreBuffered,
     NSMakeRect,
+    NSColor,
+    NSScreen,
+    NSFloatingWindowLevel,
+    NSWindowCollectionBehaviorCanJoinAllSpaces,
+    NSWindowCollectionBehaviorFullScreenAuxiliary,
     NSWindow,
     NSWindowStyleMaskClosable,
     NSWindowStyleMaskMiniaturizable,
@@ -49,6 +55,38 @@ _load_user_config()
 from meeting_interpreter.app import app
 
 
+_INSTANCE_LOCK = None
+
+
+def _acquire_instance_lock() -> bool:
+    """Allow only one Finder-launched app process to own the local service."""
+    global _INSTANCE_LOCK
+    lock_path = Path.home() / "Library/Application Support/LocalMeetingInterpreter/app.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    handle = lock_path.open("a+")
+    try:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        handle.close()
+        return False
+    _INSTANCE_LOCK = handle
+    return True
+
+
+class _ScriptMessageHandler(NSObject):
+    """Bridge messages from the embedded workbench to the native window."""
+
+    def initWithDelegate_(self, delegate):
+        self = objc.super(_ScriptMessageHandler, self).init()
+        if self is not None:
+            self.delegate = delegate
+        return self
+
+    def userContentController_didReceiveScriptMessage_(self, _controller, message):
+        body = message.body()
+        self.delegate.handleNativeMessage_(body)
+
+
 def _port_is_available(host: str, port: int) -> bool:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
         probe.settimeout(0.15)
@@ -73,13 +111,51 @@ class _NativeAppDelegate(NSObject):
             self.url = url
             self.window = None
             self.web_view = None
+            self.bridge_handler = None
+            self.normal_frame = None
+            self.floating = False
         return self
+
+    def handleNativeMessage_(self, body):
+        if not isinstance(body, dict) or body.get("type") != "floating":
+            return
+        self.setFloating_(bool(body.get("enabled")))
+
+    def setFloating_(self, enabled: bool):
+        if self.window is None or self.floating == enabled:
+            return
+        if enabled:
+            self.normal_frame = self.window.frame()
+            screen = NSScreen.mainScreen()
+            visible = screen.visibleFrame() if screen is not None else NSMakeRect(0, 0, 1440, 980)
+            width = min(900, visible.size.width - 48)
+            height = min(260, visible.size.height - 48)
+            frame = NSMakeRect(visible.origin.x + 24, visible.origin.y + 24, width, height)
+            self.window.setFrame_display_(frame, True)
+            self.window.setLevel_(NSFloatingWindowLevel)
+            self.window.setCollectionBehavior_(NSWindowCollectionBehaviorCanJoinAllSpaces | NSWindowCollectionBehaviorFullScreenAuxiliary)
+            self.window.setAlphaValue_(0.92)
+            self.window.setOpaque_(False)
+            self.window.setBackgroundColor_(NSColor.clearColor())
+            self.window.setMovableByWindowBackground_(True)
+            self.window.setTitle_("实时字幕浮窗")
+        else:
+            if self.normal_frame is not None:
+                self.window.setFrame_display_(self.normal_frame, True)
+            self.window.setLevel_(0)
+            self.window.setCollectionBehavior_(0)
+            self.window.setAlphaValue_(1.0)
+            self.window.setOpaque_(True)
+            self.window.setBackgroundColor_(NSColor.windowBackgroundColor())
+            self.window.setTitle_("Local Meeting Interpreter")
+        self.floating = enabled
 
     def applicationDidFinishLaunching_(self, _notification):
         app = NSApplication.sharedApplication()
         app.setActivationPolicy_(NSApplicationActivationPolicyRegular)
 
-        frame = NSMakeRect(0, 0, 1440, 980)
+        screen = NSScreen.mainScreen()
+        frame = screen.visibleFrame() if screen is not None else NSMakeRect(0, 0, 1440, 980)
         style = (
             NSWindowStyleMaskTitled
             | NSWindowStyleMaskClosable
@@ -93,6 +169,8 @@ class _NativeAppDelegate(NSObject):
         self.window.center()
 
         configuration = WKWebViewConfiguration.alloc().init()
+        self.bridge_handler = _ScriptMessageHandler.alloc().initWithDelegate_(self)
+        configuration.userContentController().addScriptMessageHandler_name_(self.bridge_handler, "native")
         self.web_view = WKWebView.alloc().initWithFrame_configuration_(frame, configuration)
         self.web_view.setAutoresizingMask_(18)  # width + height
         self.window.setContentView_(self.web_view)
@@ -113,6 +191,9 @@ def _open_native_window(url: str) -> None:
 
 
 def main() -> None:
+    if not _acquire_instance_lock():
+        print("Local Meeting Interpreter is already running; reusing the existing app window.")
+        return
     host = os.getenv("MEETING_INTERPRETER_HOST", "127.0.0.1")
     requested_port = int(os.getenv("MEETING_INTERPRETER_PORT", "8000"))
     port = _select_port(host, requested_port)
@@ -133,7 +214,7 @@ def main() -> None:
             break
         except Exception:
             time.sleep(0.1)
-    app_url = f"http://{host}:{port}/?v=0.1.1"
+    app_url = f"http://{host}:{port}/?v=0.1.2"
     if not ready:
         print(f"Local Meeting Interpreter server did not become ready: {health_url}")
     _open_native_window(app_url)

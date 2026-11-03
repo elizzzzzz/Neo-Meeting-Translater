@@ -7,10 +7,12 @@ const stopBtn = document.querySelector('#stopBtn');
 const swapLanguagesBtn = document.querySelector('#swapLanguages');
 const exportBtn = document.querySelector('#exportBtn');
 const clearBtn = document.querySelector('#clearBtn');
+const floatingBtn = document.querySelector('#floatingBtn');
 const captions = document.querySelector('#captions');
 const captionCount = document.querySelector('#captionCount');
 const runtimeDot = document.querySelector('#runtimeDot');
 const runtimeText = document.querySelector('#runtimeText');
+const modelReadiness = document.querySelector('#modelReadiness');
 const sessionLabel = document.querySelector('#sessionLabel');
 const sourceStatus = document.querySelector('#sourceStatus');
 const directionStatus = document.querySelector('#directionStatus');
@@ -44,6 +46,7 @@ let voiceHits = 0;
 let audioFrames = 0;
 let lastCaptionAt = 0;
 let sessionStartedAt = 0;
+let floatingMode = false;
 
 function setDiagnostic(message) {
   diagnosticStatus.textContent = message;
@@ -57,6 +60,16 @@ function updateHealth(health) {
   runtimeMode = String(health.mode || 'mock').toUpperCase();
   modeStatus.textContent = runtimeMode;
   modeBadge.textContent = runtimeMode;
+  const models = health.models || {};
+  if (modelReadiness) {
+    modelReadiness.textContent = models.ready ? '模型可用 · 热启动' : `${Math.round(Number(models.progress || 0))}% · ${models.message || '模型加载中'}`;
+    modelReadiness.classList.toggle('ready', Boolean(models.ready));
+    modelReadiness.classList.toggle('error', models.stage === 'error');
+  }
+  if (runtimeMode === 'LOCAL' && models.stage !== 'error') {
+    startBtn.disabled = !models.ready || (socket && socket.readyState === WebSocket.OPEN);
+    if (!models.ready) setDiagnostic(models.message || '模型正在冷启动，请稍候');
+  }
   asrStatus.textContent = `${health.asr?.status || '未知'} · ${formatModel(health.asr?.model)}`;
   if (!health.ollama?.configured) {
     ollamaStatus.textContent = '未启用';
@@ -92,6 +105,14 @@ function resetVoiceDetection() {
 }
 
 function setRuntime(active, text) { runtimeDot.classList.toggle('active', active); runtimeText.textContent = text; }
+function setFloatingMode(enabled) {
+  floatingMode = enabled;
+  document.body.classList.toggle('floating-mode', enabled);
+  if (floatingBtn) floatingBtn.textContent = enabled ? '退出浮窗' : '字幕浮窗';
+  if (window.webkit?.messageHandlers?.native) {
+    window.webkit.messageHandlers.native.postMessage({ type: 'floating', enabled });
+  }
+}
 function updateSummary() {
   captionCount.textContent = String(captionRows.length);
   const sourceLabel = sourceLanguage.options[sourceLanguage.selectedIndex]?.textContent || '自动识别';
@@ -167,7 +188,7 @@ async function startSession() {
   audioFrames = 0; audioStatus.textContent = '连接中…'; setDiagnostic('正在连接本地服务');
   sessionStartedAt = Date.now();
   if (!navigator.mediaDevices?.getUserMedia) {
-    sessionLabel.textContent = '当前浏览器不支持麦克风输入，请使用最新 Chrome 或 Edge。';
+    sessionLabel.textContent = '当前 App 不支持麦克风输入，请检查 macOS 麦克风权限。';
     startBtn.disabled = false;
     setRuntime(false, '不可用');
     return;
@@ -230,7 +251,7 @@ function cleanupAudio() { if (processor) processor.disconnect(); if (audioContex
 function stopSession() { if (socket && socket.readyState === WebSocket.OPEN) socket.close(); else cleanupAudio(); }
 function exportTranscript() { const text = captionRows.map((row) => `[${formatTime(row.start_ms)}] ${row.speaker_id}\n${row.original_text}\n${row.translated_text || ''}`).join('\n\n'); const blob = new Blob([text || '暂无字幕'], { type: 'text/plain;charset=utf-8' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `meeting-${new Date().toISOString().slice(0, 10)}.txt`; link.click(); URL.revokeObjectURL(link.href); }
 
-startBtn.addEventListener('click', startSession); stopBtn.addEventListener('click', stopSession); clearBtn.addEventListener('click', () => { captionRows = []; renderCaptions(); updateSummary(); }); exportBtn.addEventListener('click', exportTranscript); sourceLanguage.addEventListener('change', () => { ensureDifferentLanguages('source'); updateSummary(); }); targetLanguage.addEventListener('change', () => { ensureDifferentLanguages('target'); updateSummary(); }); speakerMode.addEventListener('change', updateSummary); inputDevice.addEventListener('change', updateSummary); swapLanguagesBtn.addEventListener('click', swapLanguages); directionButtons.forEach((button) => button.addEventListener('click', () => setDirection(button.dataset.source, button.dataset.target))); modeStatus.textContent = 'Mock'; modeBadge.textContent = 'MOCK'; renderCaptions(); updateSummary(); loadDevices();
+startBtn.addEventListener('click', startSession); stopBtn.addEventListener('click', stopSession); clearBtn.addEventListener('click', () => { captionRows = []; renderCaptions(); updateSummary(); }); exportBtn.addEventListener('click', exportTranscript); floatingBtn?.addEventListener('click', () => setFloatingMode(!floatingMode)); sourceLanguage.addEventListener('change', () => { ensureDifferentLanguages('source'); updateSummary(); }); targetLanguage.addEventListener('change', () => { ensureDifferentLanguages('target'); updateSummary(); }); speakerMode.addEventListener('change', updateSummary); inputDevice.addEventListener('change', updateSummary); swapLanguagesBtn.addEventListener('click', swapLanguages); directionButtons.forEach((button) => button.addEventListener('click', () => setDirection(button.dataset.source, button.dataset.target))); modeStatus.textContent = 'Mock'; modeBadge.textContent = 'MOCK'; renderCaptions(); updateSummary(); loadDevices();
 if (serviceAddress) serviceAddress.textContent = location.host;
 fetch('/health').then((response) => response.json()).then(updateHealth).catch(() => { diagnosticStatus.textContent = '无法读取服务状态'; });
 setInterval(() => { fetch('/health').then((response) => response.json()).then(updateHealth).catch(() => {}); }, 3000);
