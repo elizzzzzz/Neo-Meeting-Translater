@@ -4,6 +4,11 @@ set -euo pipefail
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$PROJECT_ROOT"
 PYTHON_BIN="${MEETING_INTERPRETER_BUILD_PYTHON:-python3}"
+ICON_VARIANT="${MEETING_INTERPRETER_ICON_VARIANT:-a}"
+case "$ICON_VARIANT" in
+  a|b|c) ICON_PATH="assets/icons/variant-${ICON_VARIANT}.icns" ;;
+  *) echo "MEETING_INTERPRETER_ICON_VARIANT must be a, b, or c" >&2; exit 2 ;;
+esac
 STAGING_DIR="$(mktemp -d "${TMPDIR:-/tmp}/local-meeting-interpreter.XXXXXX")"
 trap 'rm -rf "$STAGING_DIR"' EXIT
 
@@ -13,6 +18,7 @@ rm -rf build dist
   --target-architecture arm64 \
   --osx-bundle-identifier "com.localmeetinginterpreter.app" \
   --name "LocalMeetingInterpreter" \
+  --icon "$ICON_PATH" \
   --add-data "web:web" \
   --exclude-module "torch" \
   --exclude-module "transformers" \
@@ -66,9 +72,13 @@ if command -v hdiutil >/dev/null 2>&1; then
     echo "Note: dist/LocalMeetingInterpreter.app was copied successfully; verify the signed DMG copy instead."
   fi
   hdiutil create -volname "Local Meeting Interpreter" -srcfolder "$STAGING_DIR" -ov -format UDZO "dist/LocalMeetingInterpreter.dmg"
+  ditto -c -k --keepParent "$STAGING_DIR/LocalMeetingInterpreter.app" "dist/LocalMeetingInterpreter-portable.zip"
 fi
 
 echo "Built: $PROJECT_ROOT/dist/LocalMeetingInterpreter.app"
 if [ -f "$PROJECT_ROOT/dist/LocalMeetingInterpreter.dmg" ]; then
   echo "Built: $PROJECT_ROOT/dist/LocalMeetingInterpreter.dmg"
+fi
+if [ -f "$PROJECT_ROOT/dist/LocalMeetingInterpreter-portable.zip" ]; then
+  echo "Built: $PROJECT_ROOT/dist/LocalMeetingInterpreter-portable.zip"
 fi

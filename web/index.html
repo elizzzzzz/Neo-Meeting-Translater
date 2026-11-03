@@ -14,7 +14,7 @@
     </header>
     <nav class="sub-bar" aria-label="工作区导航">
       <div><span class="eyebrow">MEETING WORKSPACE</span><strong>实时会议</strong></div>
-      <div class="sub-actions"><span id="modeBadge" class="mode-badge">MOCK</span><button id="exportBtn" class="button button-ghost" type="button">导出记录</button></div>
+      <div class="sub-actions"><span id="modeBadge" class="mode-badge">演示</span><button id="tipsBtn" class="button button-ghost" type="button">使用指南</button><button id="settingsBtn" class="button button-ghost" type="button">本地设置</button><button id="exportBtn" class="button button-ghost" type="button">导出记录</button></div>
     </nav>
     <main class="page-shell">
       <section class="intro-row">
@@ -42,13 +42,41 @@
         <aside class="side-column">
           <section class="side-panel">
             <div class="panel-header compact"><div><span class="section-label">SESSION</span><h2>当前状态</h2></div></div>
-            <dl class="status-list"><div><dt>输入来源</dt><dd id="sourceStatus">未选择</dd></div><div><dt>方向</dt><dd id="directionStatus">自动 → 中文</dd></div><div><dt>说话人模式</dt><dd id="speakerStatus">稍后区分</dd></div><div><dt>运行模式</dt><dd id="modeStatus">Mock</dd></div><div><dt>ASR 模型</dt><dd id="asrStatus">检查中…</dd></div><div><dt>Ollama 服务</dt><dd id="ollamaStatus">检查中…</dd></div><div><dt>Ollama 模型</dt><dd id="ollamaModelStatus">检查中…</dd></div><div><dt>翻译推理</dt><dd id="translationStatus">检查中…</dd></div><div><dt>音频链路</dt><dd id="audioStatus">未开始</dd></div><div><dt>诊断</dt><dd id="diagnosticStatus">等待启动</dd></div></dl>
+            <dl class="status-list"><div><dt>输入来源</dt><dd id="sourceStatus">未选择</dd></div><div><dt>方向</dt><dd id="directionStatus">自动 → 中文</dd></div><div><dt>说话人模式</dt><dd id="speakerStatus">稍后区分</dd></div><div><dt>运行模式</dt><dd id="modeStatus">演示</dd></div><div><dt>语音识别（ASR）</dt><dd id="asrStatus">检查中…</dd></div><div><dt>本地翻译引擎（Ollama）</dt><dd id="ollamaStatus">检查中…</dd></div><div><dt>翻译模型</dt><dd id="ollamaModelStatus">检查中…</dd></div><div><dt>翻译状态</dt><dd id="translationStatus">检查中…</dd></div><div><dt>音频链路</dt><dd id="audioStatus">未开始</dd></div><div><dt>诊断</dt><dd id="diagnosticStatus">等待启动</dd></div></dl>
           </section>
           <section class="side-panel note-panel"><span class="section-label">LOCAL FIRST</span><h2>模型在本机运行</h2><p>音频直接发送到本地服务。模型权重和会议记录不会进入云端 API。</p><button id="clearBtn" class="button button-ghost full-width" type="button">清空字幕</button></section>
         </aside>
       </section>
     </main>
+    <div id="tipsModal" class="modal-backdrop" hidden>
+      <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="tipsTitle">
+        <div class="modal-kicker">首次使用</div>
+        <h2 id="tipsTitle">三步开始本地会议翻译</h2>
+        <p class="modal-lead">所有音频和模型都留在这台 Mac 上。首次启动会检查 Ollama，并预热语音识别与翻译模型。</p>
+        <div class="tip-grid">
+          <article class="tip-item"><span class="tip-number">01</span><div><strong>选音频</strong><p>麦克风用于现场会议；腾讯会议和 Teams 可选择 BlackHole 回环设备。</p></div></article>
+          <article class="tip-item"><span class="tip-number">02</span><div><strong>等模型就绪</strong><p>顶部显示冷启动进度。看到“模型可用 · 热启动”后再开始会议。</p></div></article>
+          <article class="tip-item"><span class="tip-number">03</span><div><strong>需要时开浮窗</strong><p>点击“字幕浮窗”，字幕会置顶、半透明并可拖动到会议窗口空白处。</p></div></article>
+        </div>
+        <label class="remember-row"><input id="rememberTips" type="checkbox" />以后不再提醒</label>
+        <div class="modal-actions"><button id="closeTipsBtn" class="button button-ghost" type="button">稍后再看</button><button id="continueTipsBtn" class="button button-primary" type="button">开始设置</button></div>
+      </section>
+    </div>
+    <div id="settingsModal" class="modal-backdrop" hidden>
+      <section class="modal-card settings-card" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+        <div class="modal-heading"><div><div class="modal-kicker">本机环境</div><h2 id="settingsTitle">模型与 Ollama 设置</h2></div><button id="closeSettingsBtn" class="icon-button" type="button" aria-label="关闭">×</button></div>
+        <div class="environment-grid">
+          <div class="environment-item"><span>Ollama 安装</span><strong id="ollamaInstallStatus">检查中…</strong></div>
+          <div class="environment-item"><span>当前版本</span><strong id="ollamaVersionStatus">检查中…</strong></div>
+          <div class="environment-item"><span>推荐翻译模型</span><strong id="recommendedModelStatus">检查中…</strong></div>
+          <div class="environment-item"><span>模型状态</span><strong id="recommendedModelPresence">检查中…</strong></div>
+        </div>
+        <div id="systemNotice" class="system-notice" role="status">正在检查 Ollama 和推荐模型…</div>
+        <div class="settings-field"><label for="modelDirectory">模型保存目录</label><div class="path-picker"><input id="modelDirectory" type="text" spellcheck="false" /><button id="chooseModelDirectoryBtn" class="button button-ghost" type="button">选择目录</button></div><small>语音识别和翻译模型会从这里读取或下载；更改后需要重新打开 App。</small></div>
+        <div class="modal-actions settings-actions"><button id="checkOllamaBtn" class="button button-ghost" type="button">重新检查</button><button id="upgradeOllamaBtn" class="button button-ghost" type="button">尝试升级 Ollama</button><button id="pullModelBtn" class="button button-primary" type="button">安装推荐模型</button><button id="saveSettingsBtn" class="button button-dark" type="button">保存目录</button></div>
+      </section>
+    </div>
     <footer class="footer-bar"><span>文字模式 · M3 / 16G 配置</span><span id="footerStatus">服务地址 <span id="serviceAddress">127.0.0.1:8000</span></span></footer>
-    <script src="/web/app.js?v=0.1.2" defer></script>
+    <script src="/web/app.js?v=0.2.0" defer></script>
   </body>
 </html>

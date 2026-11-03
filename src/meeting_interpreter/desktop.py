@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import fcntl
+import json
 import socket
 import threading
 import time
@@ -15,6 +16,8 @@ from AppKit import (
     NSApplicationActivationPolicyRegular,
     NSBackingStoreBuffered,
     NSMakeRect,
+    NSOpenPanel,
+    NSModalResponseOK,
     NSColor,
     NSScreen,
     NSRunningApplication,
@@ -51,6 +54,13 @@ def _load_user_config() -> None:
             if key and value and key not in os.environ:
                 os.environ[key] = value
         break
+
+    default_model_dir = Path.home() / "Library/Application Support/LocalMeetingInterpreter/models"
+    model_dir = Path(os.environ.get("MEETING_INTERPRETER_MODEL_DIR", default_model_dir)).expanduser()
+    os.environ.setdefault("MEETING_INTERPRETER_MODEL_DIR", str(model_dir))
+    os.environ.setdefault("HF_HOME", str(model_dir / "huggingface"))
+    os.environ.setdefault("HUGGINGFACE_HUB_CACHE", str(model_dir / "huggingface" / "hub"))
+    os.environ.setdefault("TRANSFORMERS_CACHE", str(model_dir / "huggingface" / "transformers"))
 
 
 _load_user_config()
@@ -122,9 +132,27 @@ class _NativeAppDelegate(NSObject):
         return self
 
     def handleNativeMessage_(self, body):
-        if not isinstance(body, dict) or body.get("type") != "floating":
+        if not isinstance(body, dict):
             return
-        self.setFloating_(bool(body.get("enabled")))
+        message_type = body.get("type")
+        if message_type == "floating":
+            self.setFloating_(bool(body.get("enabled")))
+        elif message_type == "choose_model_directory":
+            self.chooseModelDirectory()
+
+    def chooseModelDirectory(self):
+        panel = NSOpenPanel.openPanel()
+        panel.setCanChooseFiles_(False)
+        panel.setCanChooseDirectories_(True)
+        panel.setAllowsMultipleSelection_(False)
+        panel.setPrompt_("选择此目录")
+        panel.setMessage_("选择用于保存语音识别和翻译模型的本地目录")
+        if panel.runModal() != NSModalResponseOK or not panel.URLs():
+            return
+        path = panel.URLs()[0].path()
+        if self.web_view is not None:
+            script = f"window.__onModelDirectorySelected({json.dumps(path, ensure_ascii=False)});"
+            self.web_view.evaluateJavaScript_completionHandler_(script, None)
 
     def setFloating_(self, enabled: bool):
         if self.window is None or self.floating == enabled:
@@ -219,7 +247,7 @@ def main() -> None:
             break
         except Exception:
             time.sleep(0.1)
-    app_url = f"http://{host}:{port}/?v=0.1.2"
+    app_url = f"http://{host}:{port}/?v=0.2.0"
     if not ready:
         print(f"Local Meeting Interpreter server did not become ready: {health_url}")
     _open_native_window(app_url)

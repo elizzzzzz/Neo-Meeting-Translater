@@ -47,7 +47,11 @@ export MEETING_INTERPRETER_TRANSLATION_MODEL=facebook/nllb-200-distilled-600M
 python -m meeting_interpreter
 ```
 
-安装包和界面说明见 [macOS 安装包](docs/macos-install.md)。安装包是独立的 macOS App，内部使用原生窗口嵌入本地工作台，不会启动 Chrome、Edge 或其他浏览器。
+安装包和界面说明见 [macOS 安装包](docs/macos-install.md)。发布目录同时提供 DMG 和免安装 ZIP：解压 `LocalMeetingInterpreter-portable.zip` 后直接双击 `LocalMeetingInterpreter.app` 即可运行，不需要写入 Applications，也不会启动 Chrome、Edge 或其他浏览器。
+
+首次打开 App 会显示使用提示，并自动检查 Ollama 是否安装、服务是否运行、版本是否有更新以及推荐翻译模型 `translategemma:4b` 是否已下载。点击“本地设置”可以重新检查、尝试通过 Homebrew 升级 Ollama、安装推荐模型，并选择模型保存目录。勾选“以后不再提醒”可以关闭首次提示；之后仍可从顶部“使用指南”再次打开。
+
+界面中的 ASR 已标注为“语音识别”，Ollama 已标注为“本地翻译引擎”，模型状态和冷启动进度使用中文显示，方便非技术人员判断当前是否可以开始会议。
 
 启用本地多人区分：
 

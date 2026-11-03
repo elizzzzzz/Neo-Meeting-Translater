@@ -1,6 +1,8 @@
 # macOS 安装包
 
-项目针对 Apple M3 / 16G 统一内存提供两种安装方式：源码运行适合开发和模型调试，DMG 适合日常启动。安装包只包含程序和界面，不包含 ASR、翻译或 TTS 模型权重。
+项目针对 Apple M3 / 16G 统一内存提供三种运行方式：源码运行适合开发和模型调试，DMG 适合固定安装，免安装 ZIP 适合直接解压运行。安装包只包含程序和界面，不包含语音识别、翻译或 TTS 模型权重。
+
+免安装方式：解压 `LocalMeetingInterpreter-portable.zip`，直接双击里面的 `LocalMeetingInterpreter.app`。App 不需要拖入 Applications，也不会启动浏览器。
 
 ## 从源码运行
 
@@ -52,6 +54,16 @@ MEETING_INTERPRETER_BUILD_PYTHON=/opt/homebrew/bin/python3 ./scripts/build_macos
 
 - `dist/LocalMeetingInterpreter.app`
 - `dist/LocalMeetingInterpreter.dmg`
+- `dist/LocalMeetingInterpreter-portable.zip`
+
+默认使用图标方案 A（双语气泡）。如需使用 B（声谱门）或 C（翻译书签）重新构建：
+
+```bash
+MEETING_INTERPRETER_ICON_VARIANT=b ./scripts/build_macos_app.sh
+MEETING_INTERPRETER_ICON_VARIANT=c ./scripts/build_macos_app.sh
+```
+
+首次打开会出现三步使用提示。顶部“使用指南”可以再次查看；勾选“以后不再提醒”后，App 不会再次自动弹出。顶部“本地设置”会检查 Ollama 安装状态、运行状态、当前版本、最新版本和推荐模型，并提供升级、安装推荐模型和选择模型目录的入口。默认模型目录是 `~/Library/Application Support/LocalMeetingInterpreter/models`，更改后重新打开 App 生效。
 
 安装后第一次使用本地模型时仍需要准备模型缓存。不要把模型权重提交到 GitHub；可以在目标机器上下载，也可以把已验证的模型缓存复制到本机缓存目录。
 

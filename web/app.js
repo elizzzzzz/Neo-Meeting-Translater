@@ -8,6 +8,25 @@ const swapLanguagesBtn = document.querySelector('#swapLanguages');
 const exportBtn = document.querySelector('#exportBtn');
 const clearBtn = document.querySelector('#clearBtn');
 const floatingBtn = document.querySelector('#floatingBtn');
+const tipsBtn = document.querySelector('#tipsBtn');
+const settingsBtn = document.querySelector('#settingsBtn');
+const tipsModal = document.querySelector('#tipsModal');
+const settingsModal = document.querySelector('#settingsModal');
+const closeTipsBtn = document.querySelector('#closeTipsBtn');
+const continueTipsBtn = document.querySelector('#continueTipsBtn');
+const closeSettingsBtn = document.querySelector('#closeSettingsBtn');
+const rememberTips = document.querySelector('#rememberTips');
+const ollamaInstallStatus = document.querySelector('#ollamaInstallStatus');
+const ollamaVersionStatus = document.querySelector('#ollamaVersionStatus');
+const recommendedModelStatus = document.querySelector('#recommendedModelStatus');
+const recommendedModelPresence = document.querySelector('#recommendedModelPresence');
+const systemNotice = document.querySelector('#systemNotice');
+const modelDirectory = document.querySelector('#modelDirectory');
+const chooseModelDirectoryBtn = document.querySelector('#chooseModelDirectoryBtn');
+const checkOllamaBtn = document.querySelector('#checkOllamaBtn');
+const upgradeOllamaBtn = document.querySelector('#upgradeOllamaBtn');
+const pullModelBtn = document.querySelector('#pullModelBtn');
+const saveSettingsBtn = document.querySelector('#saveSettingsBtn');
 const captions = document.querySelector('#captions');
 const captionCount = document.querySelector('#captionCount');
 const runtimeDot = document.querySelector('#runtimeDot');
@@ -56,10 +75,14 @@ function formatModel(value) {
   const text = String(value || '未配置');
   return text.length > 28 ? `${text.slice(0, 25)}…` : text;
 }
+function statusText(value) {
+  return ({ loading: '加载中', ready: '已就绪', running: '运行中', processing: '推理中', configured: '已配置', offline: '未连接', missing: '缺少模型', error: '错误', mock: '演示' })[String(value || '').toLowerCase()] || String(value || '未知');
+}
 function updateHealth(health) {
   runtimeMode = String(health.mode || 'mock').toUpperCase();
-  modeStatus.textContent = runtimeMode;
-  modeBadge.textContent = runtimeMode;
+  const modeLabel = runtimeMode === 'LOCAL' ? '本地' : '演示';
+  modeStatus.textContent = modeLabel;
+  modeBadge.textContent = modeLabel;
   const models = health.models || {};
   if (modelReadiness) {
     modelReadiness.textContent = models.ready ? '模型可用 · 热启动' : `${Math.round(Number(models.progress || 0))}% · ${models.message || '模型加载中'}`;
@@ -70,7 +93,7 @@ function updateHealth(health) {
     startBtn.disabled = !models.ready || (socket && socket.readyState === WebSocket.OPEN);
     if (!models.ready) setDiagnostic(models.message || '模型正在冷启动，请稍候');
   }
-  asrStatus.textContent = `${health.asr?.status || '未知'} · ${formatModel(health.asr?.model)}`;
+  asrStatus.textContent = `${statusText(health.asr?.status)} · ${formatModel(health.asr?.model)}`;
   if (!health.ollama?.configured) {
     ollamaStatus.textContent = '未启用';
     ollamaModelStatus.textContent = '当前使用其他翻译后端';
@@ -91,11 +114,69 @@ function updateHealth(health) {
     ollamaModelStatus.textContent = `已安装，尚未加载 · ${formatModel(health.translation?.model)}`;
   }
   const responseMs = health.translation?.last_response_ms ? ` · 最近响应 ${health.translation.last_response_ms} ms` : '';
-  translationStatus.textContent = `${health.translation?.status || '未知'}${responseMs}`;
+  translationStatus.textContent = `${statusText(health.translation?.status)}${responseMs}`;
   const frames = Number(health.audio?.frames || 0);
   if (frames > audioFrames) audioStatus.textContent = `已收到 ${frames} 帧`;
   if (health.last_error) diagnosticStatus.textContent = health.last_error;
+  if (modelDirectory && health.settings?.model_dir) modelDirectory.value = health.settings.model_dir;
 }
+
+function toggleModal(modal, visible) {
+  if (!modal) return;
+  modal.hidden = !visible;
+  if (visible) modal.querySelector('button, input')?.focus();
+}
+function closeTips() {
+  if (rememberTips?.checked) localStorage.setItem('lmi.tips.dismissed', '1');
+  toggleModal(tipsModal, false);
+}
+function openSettings() {
+  toggleModal(settingsModal, true);
+  checkOllama();
+}
+function describeSystem(info) {
+  if (!info.installed) return '尚未检测到 Ollama。安装后可使用本地翻译引擎。';
+  if (info.update_available) return `发现 Ollama 新版本 ${info.latest_version}，可点击“尝试升级 Ollama”。`;
+  if (!info.reachable) return '已检测到 Ollama，但服务尚未运行。打开 Ollama 后点击重新检查。';
+  if (!info.recommended_model_present) return `Ollama 已运行，推荐模型 ${info.recommended_model} 尚未下载。`;
+  return `Ollama 已安装并运行，推荐模型 ${info.recommended_model} 可用。`;
+}
+async function checkOllama() {
+  if (systemNotice) { systemNotice.className = 'system-notice'; systemNotice.textContent = '正在检查 Ollama 和推荐模型…'; }
+  try {
+    const response = await fetch('/system/check');
+    const info = await response.json();
+    const recommended = info.recommended_model || 'translategemma:4b';
+    ollamaInstallStatus.textContent = info.installed ? (info.reachable ? '已安装并运行' : '已安装，服务未运行') : '未安装';
+    ollamaVersionStatus.textContent = info.version ? `${info.version} · ${info.version_check || '待核对'}` : '未检测到版本';
+    recommendedModelStatus.textContent = recommended;
+    recommendedModelPresence.textContent = info.recommended_model_present ? '已下载，可直接使用' : '尚未下载';
+    if (systemNotice) {
+      systemNotice.textContent = describeSystem(info);
+      systemNotice.className = `system-notice ${info.installed && info.recommended_model_present && !info.update_available ? 'good' : 'warn'}`;
+    }
+    upgradeOllamaBtn.disabled = !info.installed || !info.brew_available;
+    pullModelBtn.disabled = !info.installed || !info.reachable || Boolean(info.recommended_model_present);
+    pullModelBtn.textContent = info.recommended_model_present ? '推荐模型已就绪' : '安装推荐模型';
+  } catch (error) {
+    if (systemNotice) { systemNotice.className = 'system-notice warn'; systemNotice.textContent = `检测失败：${error.message || '本地服务不可用'}`; }
+  }
+}
+async function saveModelDirectory() {
+  const value = modelDirectory?.value?.trim();
+  if (!value) return;
+  saveSettingsBtn.disabled = true;
+  try {
+    const response = await fetch('/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model_dir: value }) });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.detail || '保存失败');
+    setDiagnostic('模型目录已保存，重新打开 App 后生效');
+    if (systemNotice) { systemNotice.className = 'system-notice good'; systemNotice.textContent = `已保存：${result.model_dir}。重新打开 App 后加载新目录。`; }
+  } catch (error) {
+    if (systemNotice) { systemNotice.className = 'system-notice warn'; systemNotice.textContent = `保存失败：${error.message}`; }
+  } finally { saveSettingsBtn.disabled = false; }
+}
+window.__onModelDirectorySelected = (path) => { if (modelDirectory) modelDirectory.value = path; };
 
 function resetVoiceDetection() {
   noiseSamples = [];
@@ -251,9 +332,11 @@ function cleanupAudio() { if (processor) processor.disconnect(); if (audioContex
 function stopSession() { if (socket && socket.readyState === WebSocket.OPEN) socket.close(); else cleanupAudio(); }
 function exportTranscript() { const text = captionRows.map((row) => `[${formatTime(row.start_ms)}] ${row.speaker_id}\n${row.original_text}\n${row.translated_text || ''}`).join('\n\n'); const blob = new Blob([text || '暂无字幕'], { type: 'text/plain;charset=utf-8' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `meeting-${new Date().toISOString().slice(0, 10)}.txt`; link.click(); URL.revokeObjectURL(link.href); }
 
-startBtn.addEventListener('click', startSession); stopBtn.addEventListener('click', stopSession); clearBtn.addEventListener('click', () => { captionRows = []; renderCaptions(); updateSummary(); }); exportBtn.addEventListener('click', exportTranscript); floatingBtn?.addEventListener('click', () => setFloatingMode(!floatingMode)); sourceLanguage.addEventListener('change', () => { ensureDifferentLanguages('source'); updateSummary(); }); targetLanguage.addEventListener('change', () => { ensureDifferentLanguages('target'); updateSummary(); }); speakerMode.addEventListener('change', updateSummary); inputDevice.addEventListener('change', updateSummary); swapLanguagesBtn.addEventListener('click', swapLanguages); directionButtons.forEach((button) => button.addEventListener('click', () => setDirection(button.dataset.source, button.dataset.target))); modeStatus.textContent = 'Mock'; modeBadge.textContent = 'MOCK'; renderCaptions(); updateSummary(); loadDevices();
+startBtn.addEventListener('click', startSession); stopBtn.addEventListener('click', stopSession); clearBtn.addEventListener('click', () => { captionRows = []; renderCaptions(); updateSummary(); }); exportBtn.addEventListener('click', exportTranscript); floatingBtn?.addEventListener('click', () => setFloatingMode(!floatingMode)); tipsBtn?.addEventListener('click', () => toggleModal(tipsModal, true)); settingsBtn?.addEventListener('click', openSettings); closeTipsBtn?.addEventListener('click', closeTips); continueTipsBtn?.addEventListener('click', () => { closeTips(); openSettings(); }); closeSettingsBtn?.addEventListener('click', () => toggleModal(settingsModal, false)); checkOllamaBtn?.addEventListener('click', checkOllama); upgradeOllamaBtn?.addEventListener('click', async () => { upgradeOllamaBtn.disabled = true; systemNotice.textContent = '正在尝试升级 Ollama…'; const response = await fetch('/system/upgrade', { method: 'POST' }); const result = await response.json(); systemNotice.textContent = result.message || '升级完成，请重新检查'; upgradeOllamaBtn.disabled = false; await checkOllama(); }); pullModelBtn?.addEventListener('click', async () => { pullModelBtn.disabled = true; systemNotice.textContent = '正在下载推荐翻译模型，首次可能需要几分钟…'; const response = await fetch('/system/pull-model', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: recommendedModelStatus.textContent }) }); const result = await response.json(); systemNotice.textContent = result.message || '模型下载完成'; await checkOllama(); }); saveSettingsBtn?.addEventListener('click', saveModelDirectory); chooseModelDirectoryBtn?.addEventListener('click', () => { if (window.webkit?.messageHandlers?.native) window.webkit.messageHandlers.native.postMessage({ type: 'choose_model_directory' }); else { const selected = window.prompt('输入模型保存目录', modelDirectory?.value || ''); if (selected && modelDirectory) modelDirectory.value = selected; } }); sourceLanguage.addEventListener('change', () => { ensureDifferentLanguages('source'); updateSummary(); }); targetLanguage.addEventListener('change', () => { ensureDifferentLanguages('target'); updateSummary(); }); speakerMode.addEventListener('change', updateSummary); inputDevice.addEventListener('change', updateSummary); swapLanguagesBtn.addEventListener('click', swapLanguages); directionButtons.forEach((button) => button.addEventListener('click', () => setDirection(button.dataset.source, button.dataset.target))); modeStatus.textContent = '演示'; modeBadge.textContent = '演示'; renderCaptions(); updateSummary(); loadDevices();
 if (serviceAddress) serviceAddress.textContent = location.host;
 fetch('/health').then((response) => response.json()).then(updateHealth).catch(() => { diagnosticStatus.textContent = '无法读取服务状态'; });
+fetch('/system/check').then((response) => response.json()).then(() => { if (!localStorage.getItem('lmi.tips.dismissed')) toggleModal(tipsModal, true); }).catch(() => { if (!localStorage.getItem('lmi.tips.dismissed')) toggleModal(tipsModal, true); });
+fetch('/settings').then((response) => response.json()).then((settings) => { if (modelDirectory && settings.model_dir) modelDirectory.value = settings.model_dir; }).catch(() => {});
 setInterval(() => { fetch('/health').then((response) => response.json()).then(updateHealth).catch(() => {}); }, 3000);
 setInterval(() => {
   if (!socket || socket.readyState !== WebSocket.OPEN || !audioFrames || lastCaptionAt) return;

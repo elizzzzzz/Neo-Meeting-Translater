@@ -9,13 +9,14 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .asr import MLXWhisperBackend
 from .models import AudioEvent, ErrorEvent, SessionConfig
 from .pipeline import Pipeline
+from .system import current_model_directory, inspect_ollama, pull_ollama_model, save_model_directory, upgrade_ollama
 from .translation import OllamaTranslationBackend
 
 ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[2]))
@@ -78,7 +79,36 @@ def create_app() -> FastAPI:
                 runtime["translation_status"] = "running"
             elif runtime["translation_status"] not in {"processing", "loading"}:
                 runtime["translation_status"] = "ready"
-        return {"status": "ok", "mode": mode, "asr": {"status": runtime["asr_status"], "model": asr_model}, "translation": {"status": runtime["translation_status"], "backend": translation_backend, "model": translation_model, "last_response_ms": runtime["last_translation_ms"]}, "ollama": ollama, "audio": {"frames": runtime["audio_frames"], "last_audio_at": runtime["last_audio_at"]}, "models": {"stage": runtime["warmup_stage"], "message": runtime["warmup_message"], "progress": runtime["warmup_progress"], "ready": runtime["startup_ready"]}, "last_error": runtime["last_error"], "checked_at": runtime["last_health_at"]}
+        return {"status": "ok", "mode": mode, "asr": {"status": runtime["asr_status"], "model": asr_model}, "translation": {"status": runtime["translation_status"], "backend": translation_backend, "model": translation_model, "last_response_ms": runtime["last_translation_ms"]}, "ollama": ollama, "audio": {"frames": runtime["audio_frames"], "last_audio_at": runtime["last_audio_at"]}, "models": {"stage": runtime["warmup_stage"], "message": runtime["warmup_message"], "progress": runtime["warmup_progress"], "ready": runtime["startup_ready"]}, "settings": {"model_dir": current_model_directory()}, "last_error": runtime["last_error"], "checked_at": runtime["last_health_at"]}
+
+    @app.get("/system/check")
+    async def system_check() -> dict[str, object]:
+        """Inspect local Ollama installation and recommend the default model."""
+        return await asyncio.to_thread(inspect_ollama)
+
+    @app.post("/system/upgrade")
+    async def system_upgrade() -> dict[str, object]:
+        """Try a Homebrew Ollama upgrade when the user explicitly requests it."""
+        return await asyncio.to_thread(upgrade_ollama)
+
+    @app.post("/system/pull-model")
+    async def system_pull_model(payload: dict[str, object] | None = None) -> dict[str, object]:
+        model = payload.get("model") if isinstance(payload, dict) else None
+        return await asyncio.to_thread(pull_ollama_model, model if isinstance(model, str) else "translategemma:4b")
+
+    @app.get("/settings")
+    async def get_settings() -> dict[str, object]:
+        return {"model_dir": current_model_directory()}
+
+    @app.post("/settings")
+    async def update_settings(payload: dict[str, object]) -> dict[str, object]:
+        model_dir = payload.get("model_dir")
+        if not isinstance(model_dir, str) or not model_dir.strip():
+            raise HTTPException(status_code=400, detail="请提供模型保存目录。")
+        try:
+            return await asyncio.to_thread(save_model_directory, model_dir.strip())
+        except (OSError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.on_event("startup")
     async def warm_models() -> None:
