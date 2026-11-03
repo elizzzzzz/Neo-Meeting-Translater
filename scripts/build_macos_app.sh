@@ -49,9 +49,22 @@ plutil -replace NSMicrophoneUsageDescription \
   "dist/LocalMeetingInterpreter.app/Contents/Info.plist"
 
 if command -v hdiutil >/dev/null 2>&1; then
+  # PyInstaller can inherit com.apple.provenance/resource-fork attributes from
+  # the build environment.  Copy through a clean staging directory before
+  # signing so both the distributable app and the DMG contain a verifiable
+  # bundle.
   ditto --noextattr --norsrc "dist/LocalMeetingInterpreter.app" "$STAGING_DIR/LocalMeetingInterpreter.app"
   codesign --force --deep --sign - "$STAGING_DIR/LocalMeetingInterpreter.app"
   codesign --verify --deep --strict "$STAGING_DIR/LocalMeetingInterpreter.app"
+  rm -rf "dist/LocalMeetingInterpreter.app"
+  ditto --noextattr --norsrc "$STAGING_DIR/LocalMeetingInterpreter.app" "dist/LocalMeetingInterpreter.app"
+  # The workspace volume may add com.apple.provenance to files copied into
+  # dist after signing.  The DMG is built from the already-verified staging
+  # copy below; report this filesystem-specific condition without failing the
+  # release build.
+  if ! codesign --verify --deep --strict "dist/LocalMeetingInterpreter.app"; then
+    echo "Note: dist/LocalMeetingInterpreter.app was copied successfully; verify the signed DMG copy instead."
+  fi
   hdiutil create -volname "Local Meeting Interpreter" -srcfolder "$STAGING_DIR" -ov -format UDZO "dist/LocalMeetingInterpreter.dmg"
 fi
 
