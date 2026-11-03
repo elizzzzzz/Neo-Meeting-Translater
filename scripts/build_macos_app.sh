@@ -9,17 +9,21 @@ case "$ICON_VARIANT" in
   a|b|c) ICON_PATH="assets/icons/variant-${ICON_VARIANT}.icns" ;;
   *) echo "MEETING_INTERPRETER_ICON_VARIANT must be a, b, or c" >&2; exit 2 ;;
 esac
-STAGING_DIR="$(mktemp -d "${TMPDIR:-/tmp}/local-meeting-interpreter.XXXXXX")"
+# Build outside cloud-managed Documents to avoid partially materialized bundles.
+STAGING_DIR="$(mktemp -d /private/tmp/local-meeting-interpreter.XXXXXX)"
+PYTHON_CMD=(/usr/bin/arch -arm64 "$PYTHON_BIN")
 trap 'rm -rf "$STAGING_DIR"' EXIT
 
-"$PYTHON_BIN" -m pip install -e '.[installer]'
-rm -rf build dist
-"$PYTHON_BIN" -m PyInstaller --noconfirm --clean --windowed \
+"${PYTHON_CMD[@]}" -c 'import PyInstaller, AppKit, WebKit, mlx_whisper'
+"${PYTHON_CMD[@]}" -m PyInstaller --noconfirm --clean --windowed \
+  --distpath "$STAGING_DIR/frozen" \
+  --workpath "$STAGING_DIR/work" \
+  --specpath "$STAGING_DIR" \
   --target-architecture arm64 \
   --osx-bundle-identifier "com.localmeetinginterpreter.app" \
   --name "LocalMeetingInterpreter" \
-  --icon "$ICON_PATH" \
-  --add-data "web:web" \
+  --icon "$PROJECT_ROOT/$ICON_PATH" \
+  --add-data "$PROJECT_ROOT/web:web" \
   --exclude-module "torch" \
   --exclude-module "transformers" \
   --exclude-module "pyannote" \
@@ -46,39 +50,27 @@ rm -rf build dist
   --hidden-import "mlx_whisper" \
   --collect-all "mlx_whisper" \
   --collect-all "mlx" \
-  src/meeting_interpreter/desktop.py
+  "$PROJECT_ROOT/src/meeting_interpreter/desktop.py"
 
-# Keep an explicit purpose string in the native app bundle so macOS TCC can
-# request microphone access from LocalMeetingInterpreter.app.
+BUNDLE="$STAGING_DIR/frozen/LocalMeetingInterpreter.app"
 plutil -replace NSMicrophoneUsageDescription \
   -string "用于采集本地麦克风或会议回环音频，并在本机生成实时字幕。" \
-  "dist/LocalMeetingInterpreter.app/Contents/Info.plist"
-
-if command -v hdiutil >/dev/null 2>&1; then
-  # PyInstaller can inherit com.apple.provenance/resource-fork attributes from
-  # the build environment.  Copy through a clean staging directory before
-  # signing so both the distributable app and the DMG contain a verifiable
-  # bundle.
-  ditto --noextattr --norsrc "dist/LocalMeetingInterpreter.app" "$STAGING_DIR/LocalMeetingInterpreter.app"
-  codesign --force --deep --sign - "$STAGING_DIR/LocalMeetingInterpreter.app"
-  codesign --verify --deep --strict "$STAGING_DIR/LocalMeetingInterpreter.app"
-  rm -rf "dist/LocalMeetingInterpreter.app"
-  ditto --noextattr --norsrc "$STAGING_DIR/LocalMeetingInterpreter.app" "dist/LocalMeetingInterpreter.app"
-  # The workspace volume may add com.apple.provenance to files copied into
-  # dist after signing.  The DMG is built from the already-verified staging
-  # copy below; report this filesystem-specific condition without failing the
-  # release build.
-  if ! codesign --verify --deep --strict "dist/LocalMeetingInterpreter.app"; then
-    echo "Note: dist/LocalMeetingInterpreter.app was copied successfully; verify the signed DMG copy instead."
-  fi
-  hdiutil create -volname "Local Meeting Interpreter" -srcfolder "$STAGING_DIR" -ov -format UDZO "dist/LocalMeetingInterpreter.dmg"
-  ditto -c -k --keepParent "$STAGING_DIR/LocalMeetingInterpreter.app" "dist/LocalMeetingInterpreter-portable.zip"
-fi
-
-echo "Built: $PROJECT_ROOT/dist/LocalMeetingInterpreter.app"
-if [ -f "$PROJECT_ROOT/dist/LocalMeetingInterpreter.dmg" ]; then
-  echo "Built: $PROJECT_ROOT/dist/LocalMeetingInterpreter.dmg"
-fi
-if [ -f "$PROJECT_ROOT/dist/LocalMeetingInterpreter-portable.zip" ]; then
-  echo "Built: $PROJECT_ROOT/dist/LocalMeetingInterpreter-portable.zip"
-fi
+  "$BUNDLE/Contents/Info.plist"
+plutil -replace CFBundleShortVersionString -string "0.2.1" "$BUNDLE/Contents/Info.plist"
+mkdir -p "$STAGING_DIR/delivery" "$STAGING_DIR/packages"
+ditto --noextattr --norsrc "$BUNDLE" "$STAGING_DIR/delivery/LocalMeetingInterpreter.app"
+codesign --force --deep --sign - "$STAGING_DIR/delivery/LocalMeetingInterpreter.app"
+codesign --verify --deep --strict "$STAGING_DIR/delivery/LocalMeetingInterpreter.app"
+ditto -c -k --norsrc --noextattr --keepParent \
+  "$STAGING_DIR/delivery/LocalMeetingInterpreter.app" "$STAGING_DIR/packages/LocalMeetingInterpreter-portable.zip"
+test -s "$STAGING_DIR/packages/LocalMeetingInterpreter-portable.zip"
+hdiutil create -fs HFS+ -volname "Local Meeting Interpreter" \
+  -srcfolder "$STAGING_DIR/delivery" -ov -format UDZO "$STAGING_DIR/packages/LocalMeetingInterpreter.dmg"
+test -s "$STAGING_DIR/packages/LocalMeetingInterpreter.dmg"
+"${PYTHON_CMD[@]}" scripts/verify_macos_release.py "$STAGING_DIR/packages"
+# Publish only after extracting the ZIP and mounting the DMG both succeed.
+mkdir -p "$PROJECT_ROOT/dist"
+ditto "$STAGING_DIR/packages/LocalMeetingInterpreter-portable.zip" "$PROJECT_ROOT/dist/LocalMeetingInterpreter-portable.zip"
+ditto "$STAGING_DIR/packages/LocalMeetingInterpreter.dmg" "$PROJECT_ROOT/dist/LocalMeetingInterpreter.dmg"
+echo "Built and verified: $PROJECT_ROOT/dist/LocalMeetingInterpreter-portable.zip"
+echo "Built and verified: $PROJECT_ROOT/dist/LocalMeetingInterpreter.dmg"

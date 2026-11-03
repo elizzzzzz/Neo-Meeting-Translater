@@ -49,7 +49,7 @@ python -m meeting_interpreter
 
 安装包和界面说明见 [macOS 安装包](docs/macos-install.md)。发布目录同时提供 DMG 和免安装 ZIP：解压 `LocalMeetingInterpreter-portable.zip` 后直接双击 `LocalMeetingInterpreter.app` 即可运行，不需要写入 Applications，也不会启动 Chrome、Edge 或其他浏览器。
 
-首次打开 App 会显示使用提示，并自动检查 Ollama 是否安装、服务是否运行、版本是否有更新以及推荐翻译模型 `translategemma:4b` 是否已下载。点击“本地设置”可以重新检查、尝试通过 Homebrew 升级 Ollama、安装推荐模型，并选择模型保存目录。勾选“以后不再提醒”可以关闭首次提示；之后仍可从顶部“使用指南”再次打开。
+首次打开 App 会显示使用提示，并自动检查 Ollama 是否安装、服务是否运行、版本是否有更新以及推荐翻译模型 `translategemma:4b` 是否已下载。点击“本地设置”可以重新检查、尝试通过 Homebrew 升级 Ollama、安装推荐模型，并选择语音识别模型缓存目录（翻译模型仍由 Ollama 管理）。使用提示偏好独立保存在本机，不受服务端口变化影响；勾选“以后不再提醒”可以关闭启动提示；之后仍可从顶部“使用指南”再次打开。
 
 界面中的 ASR 已标注为“语音识别”，Ollama 已标注为“本地翻译引擎”，模型状态和冷启动进度使用中文显示，方便非技术人员判断当前是否可以开始会议。
 
@@ -68,6 +68,14 @@ python -m meeting_interpreter
 首次使用会按 `MEETING_INTERPRETER_ASR_MODEL` 下载 MLX Whisper 权重；App 启动后会自动冷启动 ASR 和翻译模型，界面显示加载进度，准备完成后保持热启动。M3/16G 默认使用 8-bit medium 模型，在保留本地翻译和 App 运行空间的同时提高中文、日文和英文会议识别准确率。若设备内存紧张，可手动切换为 `mlx-community/whisper-small-mlx-8bit`。
 
 打开 App，选择输入设备后点击“开启音频输入”。界面支持中文 ↔ 日本語、中文 ↔ English 两组双向方向，可用快捷按钮或交换按钮切换；源语言也可以保留为“自动识别”。
+
+## 未连接模型时体验界面
+
+点击“演示字幕”即可预览中文、日文、英文示例文字、临时字幕更新为完整字幕、两位示例发言人、字幕滚动和半透明浮窗。示例不读取麦克风、不调用真实模型，不能代表识别精度或多人区分效果。停止和清空按钮可以随时结束演示；原生 App 的“导出记录”使用 macOS 保存对话框，将原文和译文保存为 UTF-8 文字文件。
+
+没有模型或模型未就绪时，真实音频输入按钮保持禁用；顶部和右侧会显示具体状态。真实识别、翻译延时及腾讯会议 / Teams 音频接入需在模型连接后另行验证。
+
+开发验证：`pytest -q`、`node --test tests/frontend.test.cjs`；安装 Playwright 和 Chromium 后可以运行 `python scripts/smoke_workspace.py`，检查桌面单屏布局、设置输入保持、示例字幕与浮窗。此检查不连接真实模型。
 
 ## 服务接口
 

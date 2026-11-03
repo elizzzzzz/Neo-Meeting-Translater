@@ -35,3 +35,28 @@ def test_default_model_directory_is_application_support(monkeypatch, tmp_path: P
     monkeypatch.delenv("MEETING_INTERPRETER_MODEL_DIR", raising=False)
     monkeypatch.setattr(system.Path, "home", lambda: tmp_path)
     assert system.current_model_directory() == str(tmp_path / "Library/Application Support/LocalMeetingInterpreter/models")
+
+
+def test_tips_preference_survives_a_new_process(monkeypatch, tmp_path):
+    import json
+    from fastapi.testclient import TestClient
+    from meeting_interpreter.app import create_app
+
+    preferences = tmp_path / 'preferences.json'
+    monkeypatch.setattr(system, 'preferences_path', lambda: preferences, raising=False)
+    monkeypatch.setenv('MEETING_INTERPRETER_MODE', 'mock')
+    with TestClient(create_app()) as client:
+        assert client.get('/preferences').status_code == 200
+        assert client.post('/preferences', json={'show_tips': False}).status_code == 200
+    assert json.loads(preferences.read_text())['show_tips'] is False
+    with TestClient(create_app()) as client:
+        assert client.get('/preferences').json()['show_tips'] is False
+
+
+def test_model_directory_rejects_newline_before_writing_config(monkeypatch, tmp_path):
+    import pytest
+    config = tmp_path / '.env'
+    monkeypatch.setattr(system, 'user_config_path', lambda: config)
+    with pytest.raises(ValueError, match='换行'):
+        system.save_model_directory(str(tmp_path / 'models') + '\nEXTRA_SETTING=1')
+    assert not config.exists()

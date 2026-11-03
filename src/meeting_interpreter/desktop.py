@@ -7,6 +7,7 @@ import socket
 import threading
 import time
 import urllib.request
+from collections.abc import Mapping
 from pathlib import Path
 
 import objc
@@ -17,6 +18,7 @@ from AppKit import (
     NSBackingStoreBuffered,
     NSMakeRect,
     NSOpenPanel,
+    NSSavePanel,
     NSModalResponseOK,
     NSColor,
     NSScreen,
@@ -132,13 +134,31 @@ class _NativeAppDelegate(NSObject):
         return self
 
     def handleNativeMessage_(self, body):
-        if not isinstance(body, dict):
+        if not isinstance(body, Mapping):
             return
         message_type = body.get("type")
         if message_type == "floating":
             self.setFloating_(bool(body.get("enabled")))
         elif message_type == "choose_model_directory":
             self.chooseModelDirectory()
+        elif message_type == "export_transcript":
+            self.exportTranscript_(body)
+
+    def exportTranscript_(self, body):
+        panel = NSSavePanel.savePanel()
+        panel.setNameFieldStringValue_(Path(str(body.get("filename") or "meeting.txt")).name)
+        panel.setCanCreateDirectories_(True)
+        panel.setMessage_("将会议原文和翻译保存为本地文字文件")
+        if panel.runModal() != NSModalResponseOK or panel.URL() is None:
+            return
+        try:
+            Path(panel.URL().path()).write_text(str(body.get("text") or "暂无字幕"), encoding="utf-8")
+            result = {"ok": True, "message": "会议记录已保存"}
+        except OSError as exc:
+            result = {"ok": False, "message": f"保存失败：{exc}"}
+        if self.web_view is not None:
+            script = f"window.__onTranscriptExported({json.dumps(result, ensure_ascii=False)});"
+            self.web_view.evaluateJavaScript_completionHandler_(script, None)
 
     def chooseModelDirectory(self):
         panel = NSOpenPanel.openPanel()
@@ -146,7 +166,7 @@ class _NativeAppDelegate(NSObject):
         panel.setCanChooseDirectories_(True)
         panel.setAllowsMultipleSelection_(False)
         panel.setPrompt_("选择此目录")
-        panel.setMessage_("选择用于保存语音识别和翻译模型的本地目录")
+        panel.setMessage_("选择用于保存语音识别模型缓存的本地目录；翻译模型由 Ollama 管理")
         if panel.runModal() != NSModalResponseOK or not panel.URLs():
             return
         path = panel.URLs()[0].path()
@@ -199,7 +219,9 @@ class _NativeAppDelegate(NSObject):
             frame, style, NSBackingStoreBuffered, False
         )
         self.window.setTitle_("Local Meeting Interpreter")
-        self.window.center()
+        # visibleFrame includes the title bar; using it as a content rect alone
+        # makes the resulting window taller than the available screen.
+        self.window.setFrame_display_(frame, True)
 
         configuration = WKWebViewConfiguration.alloc().init()
         self.bridge_handler = _ScriptMessageHandler.alloc().initWithDelegate_(self)
@@ -247,7 +269,7 @@ def main() -> None:
             break
         except Exception:
             time.sleep(0.1)
-    app_url = f"http://{host}:{port}/?v=0.2.0"
+    app_url = f"http://{host}:{port}/?v=0.2.1"
     if not ready:
         print(f"Local Meeting Interpreter server did not become ready: {health_url}")
     _open_native_window(app_url)

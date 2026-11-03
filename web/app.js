@@ -8,6 +8,7 @@ const swapLanguagesBtn = document.querySelector('#swapLanguages');
 const exportBtn = document.querySelector('#exportBtn');
 const clearBtn = document.querySelector('#clearBtn');
 const floatingBtn = document.querySelector('#floatingBtn');
+const demoBtn = document.querySelector('#demoBtn');
 const tipsBtn = document.querySelector('#tipsBtn');
 const settingsBtn = document.querySelector('#settingsBtn');
 const tipsModal = document.querySelector('#tipsModal');
@@ -66,6 +67,10 @@ let audioFrames = 0;
 let lastCaptionAt = 0;
 let sessionStartedAt = 0;
 let floatingMode = false;
+let modelsReady = false;
+let demoTimer;
+let demoStep = 0;
+let demoSession = "";
 
 function setDiagnostic(message) {
   diagnosticStatus.textContent = message;
@@ -85,14 +90,14 @@ function updateHealth(health) {
   modeBadge.textContent = modeLabel;
   const models = health.models || {};
   if (modelReadiness) {
-    modelReadiness.textContent = models.ready ? '模型可用 · 热启动' : `${Math.round(Number(models.progress || 0))}% · ${models.message || '模型加载中'}`;
+    modelsReady = Boolean(models.ready);
+    modelReadiness.textContent = runtimeMode === 'MOCK' ? '界面演示 · 不使用真实模型' : models.ready ? '模型可用 · 热启动' : `${Math.round(Number(models.progress || 0))}% · ${models.message || '模型未就绪'}`;
     modelReadiness.classList.toggle('ready', Boolean(models.ready));
     modelReadiness.classList.toggle('error', models.stage === 'error');
   }
-  if (runtimeMode === 'LOCAL' && models.stage !== 'error') {
-    startBtn.disabled = !models.ready || (socket && socket.readyState === WebSocket.OPEN);
-    if (!models.ready) setDiagnostic(models.message || '模型正在冷启动，请稍候');
-  }
+  startBtn.disabled = runtimeMode !== 'LOCAL' || !models.ready || Boolean(socket && socket.readyState <= WebSocket.OPEN) || Boolean(demoTimer);
+  startBtn.title = runtimeMode !== 'LOCAL' ? '尚未连接真实模型，可先演示字幕和浮窗' : !models.ready ? '模型未就绪，请先检查本地设置' : '';
+  if (runtimeMode === 'LOCAL' && !models.ready && !demoTimer) setDiagnostic(models.message || '模型未连接，可先演示字幕');
   asrStatus.textContent = `${statusText(health.asr?.status)} · ${formatModel(health.asr?.model)}`;
   if (!health.ollama?.configured) {
     ollamaStatus.textContent = '未启用';
@@ -118,7 +123,7 @@ function updateHealth(health) {
   const frames = Number(health.audio?.frames || 0);
   if (frames > audioFrames) audioStatus.textContent = `已收到 ${frames} 帧`;
   if (health.last_error) diagnosticStatus.textContent = health.last_error;
-  if (modelDirectory && health.settings?.model_dir) modelDirectory.value = health.settings.model_dir;
+  document.querySelectorAll('.status-list dd').forEach(value => { value.title = value.textContent; });
 }
 
 function toggleModal(modal, visible) {
@@ -126,13 +131,37 @@ function toggleModal(modal, visible) {
   modal.hidden = !visible;
   if (visible) modal.querySelector('button, input')?.focus();
 }
-function closeTips() {
-  if (rememberTips?.checked) localStorage.setItem('lmi.tips.dismissed', '1');
-  toggleModal(tipsModal, false);
+async function closeTips() {
+  try {
+    const response = await fetch('/preferences', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ show_tips: !rememberTips.checked }),
+    });
+    if (!response.ok) throw new Error('偏好保存失败');
+    toggleModal(tipsModal, false);
+    return true;
+  } catch {
+    setDiagnostic('无法保存使用提示设置，请稍后重试');
+    return false;
+  }
 }
-function openSettings() {
+async function loadPreferences() {
+  try {
+    const response = await fetch('/preferences');
+    if (!response.ok) throw new Error('无法读取偏好');
+    const settings = await response.json();
+    rememberTips.checked = settings.show_tips === false;
+    toggleModal(tipsModal, settings.show_tips !== false);
+  } catch { toggleModal(tipsModal, true); }
+}
+async function openSettings() {
   toggleModal(settingsModal, true);
-  checkOllama();
+  try {
+    const response = await fetch('/settings');
+    const settings = await response.json();
+    if (!modelDirectory.value) modelDirectory.value = settings.model_dir || '';
+  } catch { setDiagnostic('无法读取本地设置'); }
+  await checkOllama();
 }
 function describeSystem(info) {
   if (!info.installed) return '尚未检测到 Ollama。安装后可使用本地翻译引擎。';
@@ -256,7 +285,10 @@ function containsVoice(buffer) {
   return voiceHits >= 2;
 }
 async function loadDevices() {
-  if (!navigator.mediaDevices?.enumerateDevices) return;
+  if (!navigator.mediaDevices?.enumerateDevices) {
+    inputDevice.innerHTML = '<option value="">默认麦克风（授权后显示名称）</option>';
+    updateSummary(); return;
+  }
   try {
     const devices = await navigator.mediaDevices.enumerateDevices(); const inputs = devices.filter((device) => device.kind === 'audioinput');
     inputDevice.innerHTML = inputs.length ? inputs.map((device, index) => `<option value="${escapeHtml(device.deviceId)}">${escapeHtml(device.label || `音频输入 ${index + 1}`)}</option>`).join('') : '<option value="">默认音频输入</option>';
@@ -264,6 +296,8 @@ async function loadDevices() {
   } catch { inputDevice.innerHTML = '<option value="">默认音频输入</option>'; sourceStatus.textContent = '设备读取失败'; }
 }
 async function startSession() {
+  if (runtimeMode !== 'LOCAL' || !modelsReady || (socket && socket.readyState <= WebSocket.OPEN)) return;
+  stopDemo(); lastCaptionAt = 0;
   startBtn.disabled = true; setRuntime(false, '连接中…');
   resetVoiceDetection();
   audioFrames = 0; audioStatus.textContent = '连接中…'; setDiagnostic('正在连接本地服务');
@@ -325,19 +359,119 @@ async function startSession() {
     if (event.type === 'status') setDiagnostic(event.message);
     if (event.type === 'error') setDiagnostic(`错误：${event.message}`);
   };
-  socket.onclose = () => { cleanupAudio(); startBtn.disabled = false; stopBtn.disabled = true; setRuntime(false, '已停止'); };
+  socket.onclose = () => { cleanupAudio(); startBtn.disabled = runtimeMode !== 'LOCAL' || !modelsReady; stopBtn.disabled = true; setRuntime(false, '已停止'); };
   socket.onerror = () => { setDiagnostic('本地服务连接失败'); setRuntime(false, '连接失败'); };
 }
 function cleanupAudio() { if (processor) processor.disconnect(); if (audioContext) audioContext.close(); if (mediaStream) mediaStream.getTracks().forEach((track) => track.stop()); processor = null; audioContext = null; mediaStream = null; }
-function stopSession() { if (socket && socket.readyState === WebSocket.OPEN) socket.close(); else cleanupAudio(); }
-function exportTranscript() { const text = captionRows.map((row) => `[${formatTime(row.start_ms)}] ${row.speaker_id}\n${row.original_text}\n${row.translated_text || ''}`).join('\n\n'); const blob = new Blob([text || '暂无字幕'], { type: 'text/plain;charset=utf-8' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `meeting-${new Date().toISOString().slice(0, 10)}.txt`; link.click(); URL.revokeObjectURL(link.href); }
+function stopSession() { stopDemo(); if (socket && socket.readyState <= WebSocket.OPEN) socket.close(); else cleanupAudio(); }
+function exportTranscript() {
+  const text = captionRows.map(row => `[${formatTime(row.start_ms)}] ${row.speaker_id}\n${row.original_text}\n${row.translated_text || ''}`).join('\n\n') || '暂无字幕';
+  const filename = `meeting-${new Date().toISOString().slice(0, 10)}.txt`;
+  if (window.webkit?.messageHandlers?.native) {
+    window.webkit.messageHandlers.native.postMessage({ type: 'export_transcript', filename, text });
+    return;
+  }
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob); link.download = filename; link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+}
+window.__onTranscriptExported = result => { setDiagnostic(result.message); };
 
-startBtn.addEventListener('click', startSession); stopBtn.addEventListener('click', stopSession); clearBtn.addEventListener('click', () => { captionRows = []; renderCaptions(); updateSummary(); }); exportBtn.addEventListener('click', exportTranscript); floatingBtn?.addEventListener('click', () => setFloatingMode(!floatingMode)); tipsBtn?.addEventListener('click', () => toggleModal(tipsModal, true)); settingsBtn?.addEventListener('click', openSettings); closeTipsBtn?.addEventListener('click', closeTips); continueTipsBtn?.addEventListener('click', () => { closeTips(); openSettings(); }); closeSettingsBtn?.addEventListener('click', () => toggleModal(settingsModal, false)); checkOllamaBtn?.addEventListener('click', checkOllama); upgradeOllamaBtn?.addEventListener('click', async () => { upgradeOllamaBtn.disabled = true; systemNotice.textContent = '正在尝试升级 Ollama…'; const response = await fetch('/system/upgrade', { method: 'POST' }); const result = await response.json(); systemNotice.textContent = result.message || '升级完成，请重新检查'; upgradeOllamaBtn.disabled = false; await checkOllama(); }); pullModelBtn?.addEventListener('click', async () => { pullModelBtn.disabled = true; systemNotice.textContent = '正在下载推荐翻译模型，首次可能需要几分钟…'; const response = await fetch('/system/pull-model', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: recommendedModelStatus.textContent }) }); const result = await response.json(); systemNotice.textContent = result.message || '模型下载完成'; await checkOllama(); }); saveSettingsBtn?.addEventListener('click', saveModelDirectory); chooseModelDirectoryBtn?.addEventListener('click', () => { if (window.webkit?.messageHandlers?.native) window.webkit.messageHandlers.native.postMessage({ type: 'choose_model_directory' }); else { const selected = window.prompt('输入模型保存目录', modelDirectory?.value || ''); if (selected && modelDirectory) modelDirectory.value = selected; } }); sourceLanguage.addEventListener('change', () => { ensureDifferentLanguages('source'); updateSummary(); }); targetLanguage.addEventListener('change', () => { ensureDifferentLanguages('target'); updateSummary(); }); speakerMode.addEventListener('change', updateSummary); inputDevice.addEventListener('change', updateSummary); swapLanguagesBtn.addEventListener('click', swapLanguages); directionButtons.forEach((button) => button.addEventListener('click', () => setDirection(button.dataset.source, button.dataset.target))); modeStatus.textContent = '演示'; modeBadge.textContent = '演示'; renderCaptions(); updateSummary(); loadDevices();
+
+const demoText = [
+  { zh: '今天我们先确认会议议程。', ja: '今日はまず会議の議題を確認します。', en: "Let's confirm the meeting agenda first." },
+  { zh: '请在周五之前发送更新后的方案。', ja: '金曜日までに更新した提案を送ってください。', en: 'Please send the updated proposal before Friday.' },
+  { zh: '收到，我们会整理意见后再回复。', ja: '承知しました。意見をまとめてから返信します。', en: 'Understood. We will respond after collecting feedback.' },
+];
+function advanceDemo() {
+  const index = Math.floor(demoStep / 2);
+  if (index >= demoText.length) { stopDemo(); setDiagnostic('字幕演示完成 · 示例文字并非真实识别结果'); return; }
+  const final = demoStep % 2 === 1;
+  const source = sourceLanguage.value === 'auto' ? (targetLanguage.value === 'zh' ? 'ja' : 'zh') : sourceLanguage.value;
+  const text = demoText[index];
+  const event = {
+    type: 'caption', session_id: demoSession, segment_id: `demo-${index}`,
+    speaker_id: `示例发言人 ${index % 2 + 1}`, start_ms: index * 4000, end_ms: (index + 1) * 4000,
+    original_text: final ? text[source] : text[source].slice(0, Math.max(3, Math.floor(text[source].length * .55))),
+    translated_text: final ? text[targetLanguage.value] : '', is_final: final,
+  };
+  const existing = captionRows.findIndex(row => row.session_id === demoSession && row.segment_id === event.segment_id);
+  if (existing >= 0) captionRows[existing] = event; else captionRows.push(event);
+  demoStep += 1;
+  renderCaptions(); updateSummary();
+  setDiagnostic('示例字幕演示 · 可打开浮窗、移动窗口或导出记录');
+}
+function startDemo() {
+  if (socket && socket.readyState <= WebSocket.OPEN) return;
+  stopDemo(); demoStep = 0; demoSession = `demo-${Date.now()}`;
+  demoTimer = setInterval(advanceDemo, 1600);
+  stopBtn.disabled = false; startBtn.disabled = true;
+  if (demoBtn) demoBtn.disabled = true;
+  setRuntime(true, '字幕演示'); advanceDemo();
+}
+function stopDemo() {
+  if (demoTimer) clearInterval(demoTimer);
+  demoTimer = undefined;
+  if (demoBtn) demoBtn.disabled = false;
+  startBtn.disabled = runtimeMode !== 'LOCAL' || !modelsReady;
+  stopBtn.disabled = !(socket && socket.readyState === WebSocket.OPEN);
+  setRuntime(false, '待机');
+}
+async function runSystemAction(button, endpoint, body, busyMessage) {
+  button.disabled = true;
+  systemNotice.className = 'system-notice';
+  systemNotice.textContent = busyMessage;
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw new Error(result.message || result.detail || '操作失败');
+    await checkOllama();
+    systemNotice.textContent = result.message || '操作完成';
+    systemNotice.className = 'system-notice good';
+  } catch (error) {
+    systemNotice.className = 'system-notice warn';
+    systemNotice.textContent = `操作未完成：${error.message}`;
+  } finally { button.disabled = false; }
+}
+startBtn.addEventListener('click', startSession);
+stopBtn.addEventListener('click', stopSession);
+demoBtn?.addEventListener('click', startDemo);
+clearBtn.addEventListener('click', () => { stopDemo(); captionRows = []; mockCaptionKeys.clear(); renderCaptions(); updateSummary(); });
+exportBtn.addEventListener('click', exportTranscript);
+floatingBtn?.addEventListener('click', () => setFloatingMode(!floatingMode));
+tipsBtn?.addEventListener('click', () => toggleModal(tipsModal, true));
+settingsBtn?.addEventListener('click', openSettings);
+closeTipsBtn?.addEventListener('click', closeTips);
+continueTipsBtn?.addEventListener('click', async () => { if (await closeTips()) await openSettings(); });
+closeSettingsBtn?.addEventListener('click', () => toggleModal(settingsModal, false));
+checkOllamaBtn?.addEventListener('click', checkOllama);
+upgradeOllamaBtn?.addEventListener('click', () => runSystemAction(upgradeOllamaBtn, '/system/upgrade', {}, '正在尝试升级本地翻译引擎…'));
+pullModelBtn?.addEventListener('click', () => runSystemAction(pullModelBtn, '/system/pull-model', { model: recommendedModelStatus.textContent }, '正在下载推荐翻译模型…'));
+saveSettingsBtn?.addEventListener('click', saveModelDirectory);
+chooseModelDirectoryBtn?.addEventListener('click', () => {
+  if (window.webkit?.messageHandlers?.native) window.webkit.messageHandlers.native.postMessage({ type: 'choose_model_directory' });
+  else modelDirectory?.focus();
+});
+sourceLanguage.addEventListener('change', () => { ensureDifferentLanguages('source'); updateSummary(); });
+targetLanguage.addEventListener('change', () => { ensureDifferentLanguages('target'); updateSummary(); });
+speakerMode.addEventListener('change', updateSummary);
+inputDevice.addEventListener('change', updateSummary);
+swapLanguagesBtn.addEventListener('click', swapLanguages);
+directionButtons.forEach(button => button.addEventListener('click', () => setDirection(button.dataset.source, button.dataset.target)));
+document.addEventListener('keydown', event => {
+  if (event.key !== 'Escape') return;
+  if (!settingsModal.hidden) toggleModal(settingsModal, false);
+  else if (!tipsModal.hidden) closeTips();
+  else if (floatingMode) setFloatingMode(false);
+});
+modeStatus.textContent = '演示'; modeBadge.textContent = '演示'; startBtn.disabled = true;
+renderCaptions(); updateSummary(); loadDevices(); loadPreferences(); checkOllama();
 if (serviceAddress) serviceAddress.textContent = location.host;
-fetch('/health').then((response) => response.json()).then(updateHealth).catch(() => { diagnosticStatus.textContent = '无法读取服务状态'; });
-fetch('/system/check').then((response) => response.json()).then(() => { if (!localStorage.getItem('lmi.tips.dismissed')) toggleModal(tipsModal, true); }).catch(() => { if (!localStorage.getItem('lmi.tips.dismissed')) toggleModal(tipsModal, true); });
-fetch('/settings').then((response) => response.json()).then((settings) => { if (modelDirectory && settings.model_dir) modelDirectory.value = settings.model_dir; }).catch(() => {});
-setInterval(() => { fetch('/health').then((response) => response.json()).then(updateHealth).catch(() => {}); }, 3000);
+fetch('/health').then(response => response.json()).then(updateHealth).catch(() => { setDiagnostic('本地服务未连接，可先检查 App 状态'); });
+setInterval(() => { fetch('/health').then(response => response.json()).then(updateHealth).catch(() => {}); }, 3000);
 setInterval(() => {
   if (!socket || socket.readyState !== WebSocket.OPEN || !audioFrames || lastCaptionAt) return;
   if (sessionStartedAt && Date.now() - sessionStartedAt > 7000) setDiagnostic('已收到音频，但暂未检测到语音；请提高音量或检查输入设备');

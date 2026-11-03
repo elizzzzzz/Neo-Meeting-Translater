@@ -5,6 +5,7 @@ import os
 import re
 import shutil
 import subprocess
+import tempfile
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -16,6 +17,40 @@ _VERSION_RE = re.compile(r"(?:ollama version is |ollama version )?(v?\d+\.\d+\.\
 
 def user_config_path() -> Path:
     return Path.home() / "Library/Application Support/LocalMeetingInterpreter/.env"
+
+
+def preferences_path() -> Path:
+    return user_config_path().with_name("preferences.json")
+
+
+def _atomic_write(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent, delete=False) as handle:
+            temporary = Path(handle.name)
+            handle.write(text)
+        temporary.replace(path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
+def read_preferences() -> dict[str, bool]:
+    try:
+        saved = json.loads(preferences_path().read_text(encoding="utf-8"))
+        show_tips = saved.get("show_tips", True) if isinstance(saved, dict) else True
+    except (OSError, ValueError):
+        show_tips = True
+    return {"show_tips": show_tips if type(show_tips) is bool else True}
+
+
+def save_preferences(show_tips: bool) -> dict[str, bool]:
+    if type(show_tips) is not bool:
+        raise ValueError("提示设置必须为是或否。")
+    preferences = {"show_tips": show_tips}
+    _atomic_write(preferences_path(), json.dumps(preferences) + "\n")
+    return preferences
 
 
 def _ollama_path() -> str | None:
@@ -122,6 +157,8 @@ def pull_ollama_model(model: str = RECOMMENDED_OLLAMA_MODEL, timeout: float = 18
 
 
 def save_model_directory(model_dir: str) -> dict[str, object]:
+    if any(char in model_dir for char in "\r\n\x00"):
+        raise ValueError("模型目录不能包含换行或空字符。")
     path = Path(model_dir).expanduser()
     if not path.is_absolute():
         raise ValueError("模型目录必须是绝对路径。")
@@ -150,12 +187,17 @@ def save_model_directory(model_dir: str) -> dict[str, object]:
         else:
             output.append(line)
     output.extend(f"{key}={value}" for key, value in values.items() if key not in seen)
-    config.write_text("\n".join(output).rstrip() + "\n", encoding="utf-8")
-    os.environ.update(values)
+    _atomic_write(config, "\n".join(output).rstrip() + "\n")
     return {"model_dir": str(path), "config_path": str(config), "restart_required": True}
 
 
 def current_model_directory() -> str:
+    try:
+        for line in user_config_path().read_text(encoding="utf-8").splitlines():
+            if line.startswith("MEETING_INTERPRETER_MODEL_DIR="):
+                return str(Path(line.split("=", 1)[1].strip().strip("\"'")).expanduser())
+    except OSError:
+        pass
     configured = os.getenv("MEETING_INTERPRETER_MODEL_DIR")
     if configured:
         return str(Path(configured).expanduser())

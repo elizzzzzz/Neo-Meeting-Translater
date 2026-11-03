@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from .asr import MLXWhisperBackend
 from .models import AudioEvent, ErrorEvent, SessionConfig
 from .pipeline import Pipeline
-from .system import current_model_directory, inspect_ollama, pull_ollama_model, save_model_directory, upgrade_ollama
+from .system import current_model_directory, inspect_ollama, pull_ollama_model, read_preferences, save_preferences, save_model_directory, upgrade_ollama
 from .translation import OllamaTranslationBackend
 
 ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[2]))
@@ -99,6 +99,17 @@ def create_app() -> FastAPI:
     @app.get("/settings")
     async def get_settings() -> dict[str, object]:
         return {"model_dir": current_model_directory()}
+
+    @app.get("/preferences")
+    async def get_preferences() -> dict[str, bool]:
+        return await asyncio.to_thread(read_preferences)
+
+    @app.post("/preferences")
+    async def update_preferences(payload: dict[str, object]) -> dict[str, bool]:
+        try:
+            return await asyncio.to_thread(save_preferences, payload.get("show_tips"))
+        except (OSError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.post("/settings")
     async def update_settings(payload: dict[str, object]) -> dict[str, object]:
