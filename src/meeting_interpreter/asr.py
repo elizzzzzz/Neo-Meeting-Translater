@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import threading
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -38,11 +39,21 @@ class MLXWhisperBackend:
     MLX in environments without Apple Silicon.
     """
 
+    # MLX Whisper caches a single model globally; serialize inference across
+    # sessions while keeping each session's language and prompt independent.
+    _inference_lock = threading.Lock()
+
     def __init__(self, model: str, language: str | None = None) -> None:
         self.model = model
         self.language = None if language in (None, "", "auto") else language
         self._mlx_whisper = None
         self._context_prompt = ""
+
+    def for_language(self, language: str) -> MLXWhisperBackend:
+        """Reuse warm weights, with fresh decoding settings for this session."""
+        backend = MLXWhisperBackend(self.model, language)
+        backend._mlx_whisper = self._mlx_whisper
+        return backend
 
     def set_context(self, text: str) -> None:
         """Provide the latest committed text as a decoding hint."""
@@ -62,7 +73,11 @@ class MLXWhisperBackend:
             raise ValueError("MLX Whisper adapter currently expects 16 kHz PCM")
         if not pcm:
             return None
-        return await asyncio.to_thread(self._transcribe_sync, pcm, start_ms)
+        return await asyncio.to_thread(self._transcribe_locked, pcm, start_ms)
+
+    def _transcribe_locked(self, pcm: bytes, start_ms: int) -> ASRResult | None:
+        with self._inference_lock:
+            return self._transcribe_sync(pcm, start_ms)
 
     def _transcribe_sync(self, pcm: bytes, start_ms: int) -> ASRResult | None:
         import numpy as np
@@ -75,12 +90,21 @@ class MLXWhisperBackend:
             language=self.language,
             task="transcribe",
             word_timestamps=False,
-            condition_on_previous_text=True,
+            condition_on_previous_text=False,
             initial_prompt=self._context_prompt or None,
             temperature=0.0,
             verbose=False,
         )
-        text = result.get("text", "").strip()
+        # Whisper can confidently decode stock phrases on noise. Its default
+        # skip rule can retain high-no-speech segments when logprob is high;
+        # require both speech probability and decoding confidence here.
+        segments = result.get("segments", [])
+        text = "".join(
+            segment.get("text", "") for segment in segments
+            if segment.get("no_speech_prob", 0) < 0.6
+            and segment.get("avg_logprob", 0) >= -1.0
+            and segment.get("compression_ratio", 0) <= 2.4
+        ).strip()
         if not text:
             return None
         duration_ms = round(len(waveform) / 16_000 * 1000)

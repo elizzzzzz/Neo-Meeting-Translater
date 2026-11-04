@@ -44,6 +44,9 @@ const ollamaStatus = document.querySelector('#ollamaStatus');
 const ollamaModelStatus = document.querySelector('#ollamaModelStatus');
 const translationStatus = document.querySelector('#translationStatus');
 const audioStatus = document.querySelector('#audioStatus');
+const inputLevelStatus = document.querySelector('#inputLevelStatus');
+const inputLevelMeter = document.querySelector('#inputLevelMeter');
+const recognitionLanguageStatus = document.querySelector('#recognitionLanguageStatus');
 const diagnosticStatus = document.querySelector('#diagnosticStatus');
 const directionPill = document.querySelector('#directionPill');
 const serviceAddress = document.querySelector('#serviceAddress');
@@ -52,17 +55,14 @@ const directionButtons = [...document.querySelectorAll('.direction-button')];
 let socket;
 let audioContext;
 let mediaStream;
+let activeInputLabel = '';
+let pendingAudio = new Float32Array();
+let audioInFlight = false;
+let skippedAudioSamples = 0;
 let processor;
 let captionRows = [];
 let runtimeMode = 'MOCK';
 const mockCaptionKeys = new Set();
-const VOICE_RMS_THRESHOLD = 0.02;
-const VOICE_PEAK_THRESHOLD = 0.08;
-const CALIBRATION_FRAMES = 4;
-let noiseSamples = [];
-let noiseFloorRms = VOICE_RMS_THRESHOLD;
-let noiseFloorPeak = VOICE_PEAK_THRESHOLD;
-let voiceHits = 0;
 let audioFrames = 0;
 let lastCaptionAt = 0;
 let sessionStartedAt = 0;
@@ -71,6 +71,7 @@ let modelsReady = false;
 let demoTimer;
 let demoStep = 0;
 let demoSession = "";
+let lastInputRms = 0;
 
 function setDiagnostic(message) {
   diagnosticStatus.textContent = message;
@@ -207,11 +208,16 @@ async function saveModelDirectory() {
 }
 window.__onModelDirectorySelected = (path) => { if (modelDirectory) modelDirectory.value = path; };
 
-function resetVoiceDetection() {
-  noiseSamples = [];
-  noiseFloorRms = VOICE_RMS_THRESHOLD;
-  noiseFloorPeak = VOICE_PEAK_THRESHOLD;
-  voiceHits = 0;
+function setSessionControls(active) {
+  [inputDevice, sourceLanguage, targetLanguage, speakerMode, swapLanguagesBtn, ...directionButtons].forEach(control => {
+    control.disabled = active;
+    control.title = active ? '停止音频后可更改设置' : '';
+  });
+  if (demoBtn) demoBtn.disabled = active;
+}
+function updateRecognitionLanguage(language) {
+  const name = ({zh:'中文',ja:'日语',en:'英语'})[language];
+  recognitionLanguageStatus.textContent = name ? `已锁定${name}` : '自动识别';
 }
 
 function setRuntime(active, text) { runtimeDot.classList.toggle('active', active); runtimeText.textContent = text; }
@@ -231,7 +237,7 @@ function updateSummary() {
   directionStatus.textContent = direction;
   directionPill.textContent = direction;
   speakerStatus.textContent = speakerMode.options[speakerMode.selectedIndex]?.textContent || '稍后区分';
-  sourceStatus.textContent = inputDevice.options[inputDevice.selectedIndex]?.textContent || '未选择';
+  sourceStatus.textContent = activeInputLabel || inputDevice.options[inputDevice.selectedIndex]?.textContent || '未选择';
   directionButtons.forEach((button) => button.classList.toggle('selected', button.dataset.source === sourceLanguage.value && button.dataset.target === targetLanguage.value));
 }
 function ensureDifferentLanguages(changed) {
@@ -263,35 +269,43 @@ function encodePcm(buffer) {
   for (let index = 0; index < buffer.length; index += 1) { const sample = Math.max(-1, Math.min(1, buffer[index])); pcm[index] = sample < 0 ? sample * 0x8000 : sample * 0x7fff; }
   const bytes = new Uint8Array(pcm.buffer); let binary = ''; for (const byte of bytes) binary += String.fromCharCode(byte); return btoa(binary);
 }
-function containsVoice(buffer) {
-  if (!buffer.length) return false;
-  let sumSquares = 0; let peak = 0;
-  for (const sample of buffer) { const magnitude = Math.abs(sample); sumSquares += magnitude * magnitude; peak = Math.max(peak, magnitude); }
-  const rms = Math.sqrt(sumSquares / buffer.length);
-  if (noiseSamples.length < CALIBRATION_FRAMES) {
-    noiseSamples.push({ rms, peak });
-    if (noiseSamples.length === CALIBRATION_FRAMES) {
-      const rmsValues = noiseSamples.map((sample) => sample.rms).sort((a, b) => a - b);
-      const peakValues = noiseSamples.map((sample) => sample.peak).sort((a, b) => a - b);
-      const midpoint = Math.floor(noiseSamples.length / 2);
-      noiseFloorRms = Math.max(VOICE_RMS_THRESHOLD * 0.75, rmsValues[midpoint]);
-      noiseFloorPeak = Math.max(VOICE_PEAK_THRESHOLD * 0.75, peakValues[midpoint]);
-    }
-    return false;
-  }
-  const candidate = rms >= Math.max(VOICE_RMS_THRESHOLD, noiseFloorRms * 2.0)
-    && peak >= Math.max(VOICE_PEAK_THRESHOLD, noiseFloorPeak * 1.8);
-  voiceHits = candidate ? voiceHits + 1 : 0;
-  return voiceHits >= 2;
+function sendPendingAudio() {
+  if (audioInFlight || !pendingAudio.length || !socket || socket.readyState !== WebSocket.OPEN) return;
+  const pcm = pendingAudio; pendingAudio = new Float32Array(); audioInFlight = true;
+  const sourceType = /blackhole|loopback|virtual/i.test(activeInputLabel) ? 'meeting_loopback' : 'microphone';
+  socket.send(JSON.stringify({type:'audio',session_id:sourceType,audio_base64:encodePcm(pcm),sample_rate:16000,channels:1,source:sourceType}));
 }
-async function loadDevices() {
+function queueAudioFrame(pcm) {
+  // Bound pending audio to the same four-second window as the decoder. Keep
+  // the newest sound when inference cannot keep pace with the microphone.
+  skippedAudioSamples += Math.max(0, pendingAudio.length + pcm.length - 64000);
+  const frame = pcm.length > 64000 ? pcm.subarray(pcm.length - 64000) : pcm;
+  const retained = pendingAudio.subarray(Math.max(0, pendingAudio.length - (64000 - frame.length)));
+  const next = new Float32Array(retained.length + frame.length);
+  next.set(retained); next.set(frame, retained.length); pendingAudio = next;
+  if (skippedAudioSamples) audioStatus.textContent = `保持实时 · 已跳过 ${(skippedAudioSamples / 16000).toFixed(1)} 秒积压`;
+  sendPendingAudio();
+}
+function updateInputLevel(buffer) {
+  let sumSquares = 0;
+  for (const sample of buffer) sumSquares += sample * sample;
+  lastInputRms = buffer.length ? Math.sqrt(sumSquares / buffer.length) : 0;
+  const db = lastInputRms ? Math.max(-90, Math.round(20 * Math.log10(lastInputRms))) : -90;
+  inputLevelMeter.value = Math.max(0, (db + 60) / 60);
+  inputLevelStatus.textContent = lastInputRms < .0003 ? '无输入 / 静音' : `${lastInputRms < .003 ? '音量较低' : '收到声音'} · ${db} dB`;
+}
+async function loadDevices(activeTrack = null) {
   if (!navigator.mediaDevices?.enumerateDevices) {
     inputDevice.innerHTML = '<option value="">默认麦克风（授权后显示名称）</option>';
     updateSummary(); return;
   }
   try {
+    const selected = activeTrack?.getSettings?.().deviceId || inputDevice.value;
     const devices = await navigator.mediaDevices.enumerateDevices(); const inputs = devices.filter((device) => device.kind === 'audioinput');
     inputDevice.innerHTML = inputs.length ? inputs.map((device, index) => `<option value="${escapeHtml(device.deviceId)}">${escapeHtml(device.label || `音频输入 ${index + 1}`)}</option>`).join('') : '<option value="">默认音频输入</option>';
+    if (inputs.some(device => device.deviceId === selected)) inputDevice.value = selected;
+    const active = inputs.find(device => device.deviceId === selected);
+    if (activeTrack) activeInputLabel = activeTrack.label || active?.label || '默认麦克风（名称不可用）';
     updateSummary();
   } catch { inputDevice.innerHTML = '<option value="">默认音频输入</option>'; sourceStatus.textContent = '设备读取失败'; }
 }
@@ -299,12 +313,16 @@ async function startSession() {
   if (runtimeMode !== 'LOCAL' || !modelsReady || (socket && socket.readyState <= WebSocket.OPEN)) return;
   stopDemo(); lastCaptionAt = 0;
   startBtn.disabled = true; setRuntime(false, '连接中…');
-  resetVoiceDetection();
+  setSessionControls(true);
+  pendingAudio = new Float32Array(); audioInFlight = false; skippedAudioSamples = 0;
+  recognitionLanguageStatus.textContent = '等待服务确认';
+  updateInputLevel(new Float32Array());
   audioFrames = 0; audioStatus.textContent = '连接中…'; setDiagnostic('正在连接本地服务');
   sessionStartedAt = Date.now();
   if (!navigator.mediaDevices?.getUserMedia) {
     sessionLabel.textContent = '当前 App 不支持麦克风输入，请检查 macOS 麦克风权限。';
     startBtn.disabled = false;
+    setSessionControls(false);
     setRuntime(false, '不可用');
     return;
   }
@@ -322,22 +340,24 @@ async function startSession() {
         if (error.name !== 'OverconstrainedError' && error.name !== 'NotFoundError') throw error;
         mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
       }
+      // Permission changes macOS device IDs and reveals their human-readable
+      // names. Display the track actually opened, including a default fallback.
+      await loadDevices(mediaStream.getAudioTracks()[0]);
       audioContext = new AudioContext(); const source = audioContext.createMediaStreamSource(mediaStream); processor = audioContext.createScriptProcessor(4096, 1, 1);
       await audioContext.resume();
       processor.onaudioprocess = (event) => {
         if (socket.readyState !== WebSocket.OPEN) return;
         audioFrames += 1;
         if (audioFrames === 1 || audioFrames % 20 === 0) {
-          audioStatus.textContent = `已发送 ${audioFrames} 帧`;
+          audioStatus.textContent = `已采集 ${audioFrames} 帧`;
           if (!lastCaptionAt) setDiagnostic('已收到音频，正在等待语音识别');
         }
         const pcm = downsample(event.inputBuffer.getChannelData(0), audioContext.sampleRate, 16000);
+        updateInputLevel(pcm);
         // Send every short PCM frame and let the server apply the mode-specific
         // silence gate. Browser-side VAD can mistake quiet speech for noise,
         // especially during the first frames after microphone permission.
-        const label = inputDevice.options[inputDevice.selectedIndex]?.textContent || '';
-        const sourceType = /blackhole|loopback|virtual/i.test(label) ? 'meeting_loopback' : 'microphone';
-        socket.send(JSON.stringify({ type: 'audio', session_id: sourceType, audio_base64: encodePcm(pcm), sample_rate: 16000, channels: 1, source: sourceType }));
+        queueAudioFrame(pcm);
       };
       const silentOutput = audioContext.createGain(); silentOutput.gain.value = 0;
       source.connect(processor); processor.connect(silentOutput); silentOutput.connect(audioContext.destination); stopBtn.disabled = false; setDiagnostic(`音频已开启：${sourceStatus.textContent}`); setRuntime(true, '运行中');
@@ -357,12 +377,17 @@ async function startSession() {
       renderCaptions(); updateSummary();
     }
     if (event.type === 'status') setDiagnostic(event.message);
+    if (event.type === 'configured') updateRecognitionLanguage(event.asr_language || event.source_language);
+    if (event.type === 'audio_ack') { audioInFlight = false; sendPendingAudio(); }
+    if (event.type === 'audio_status') {
+      if (event.state === 'rejected') setDiagnostic(event.message);
+    }
     if (event.type === 'error') setDiagnostic(`错误：${event.message}`);
   };
-  socket.onclose = () => { cleanupAudio(); startBtn.disabled = runtimeMode !== 'LOCAL' || !modelsReady; stopBtn.disabled = true; setRuntime(false, '已停止'); };
+  socket.onclose = () => { cleanupAudio(); setSessionControls(false); recognitionLanguageStatus.textContent = '未开始'; startBtn.disabled = runtimeMode !== 'LOCAL' || !modelsReady; stopBtn.disabled = true; setRuntime(false, '已停止'); };
   socket.onerror = () => { setDiagnostic('本地服务连接失败'); setRuntime(false, '连接失败'); };
 }
-function cleanupAudio() { if (processor) processor.disconnect(); if (audioContext) audioContext.close(); if (mediaStream) mediaStream.getTracks().forEach((track) => track.stop()); processor = null; audioContext = null; mediaStream = null; }
+function cleanupAudio() { if (processor) processor.disconnect(); if (audioContext) audioContext.close(); if (mediaStream) mediaStream.getTracks().forEach((track) => track.stop()); processor = null; audioContext = null; mediaStream = null; activeInputLabel = ''; pendingAudio = new Float32Array(); audioInFlight = false; updateInputLevel(new Float32Array()); }
 function stopSession() { stopDemo(); if (socket && socket.readyState <= WebSocket.OPEN) socket.close(); else cleanupAudio(); }
 function exportTranscript() {
   const text = captionRows.map(row => `[${formatTime(row.start_ms)}] ${row.speaker_id}\n${row.original_text}\n${row.translated_text || ''}`).join('\n\n') || '暂无字幕';
@@ -459,6 +484,7 @@ sourceLanguage.addEventListener('change', () => { ensureDifferentLanguages('sour
 targetLanguage.addEventListener('change', () => { ensureDifferentLanguages('target'); updateSummary(); });
 speakerMode.addEventListener('change', updateSummary);
 inputDevice.addEventListener('change', updateSummary);
+navigator.mediaDevices?.addEventListener?.('devicechange', () => loadDevices(mediaStream?.getAudioTracks()[0]));
 swapLanguagesBtn.addEventListener('click', swapLanguages);
 directionButtons.forEach(button => button.addEventListener('click', () => setDirection(button.dataset.source, button.dataset.target)));
 document.addEventListener('keydown', event => {
@@ -474,5 +500,5 @@ fetch('/health').then(response => response.json()).then(updateHealth).catch(() =
 setInterval(() => { fetch('/health').then(response => response.json()).then(updateHealth).catch(() => {}); }, 3000);
 setInterval(() => {
   if (!socket || socket.readyState !== WebSocket.OPEN || !audioFrames || lastCaptionAt) return;
-  if (sessionStartedAt && Date.now() - sessionStartedAt > 7000) setDiagnostic('已收到音频，但暂未检测到语音；请提高音量或检查输入设备');
+  if (sessionStartedAt && Date.now() - sessionStartedAt > 7000) setDiagnostic(lastInputRms < .003 ? '输入静音或音量较低，请检查所选麦克风；线上会议需配置回环音频' : '收到声音但尚无可靠字幕，请检查输入设备和源语言');
 }, 2000);

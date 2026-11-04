@@ -168,7 +168,7 @@ h2 { margin-top: 3px; font-size: 18px; }
 .speaker-chip { min-height: 22px; padding: 0 6px; }
 .side-column { min-height: 0; display: flex; }
 .side-column > .side-panel { display: flex; flex-direction: column; min-height: 0; width: 100%; }
-.status-list { flex: 1; min-height: 0; display: grid; grid-template-rows: repeat(10, minmax(0, 1fr)); padding: 0 16px 8px; }
+.status-list { flex: 1; min-height: 0; display: grid; grid-template-rows: repeat(12, minmax(0, 1fr)); padding: 0 16px 8px; }
 .status-list > div { display: grid; grid-template-columns: 84px minmax(0, 1fr); align-items: center; gap: 8px; min-height: 0; padding: 4px 0; }
 .status-list dt, .status-list dd { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 dt, dd { font-size: 11px; }
@@ -199,7 +199,7 @@ dt, dd { font-size: 11px; }
   .control-strip { grid-template-columns: 1fr; }
   .workspace-grid { grid-template-columns: 1fr; }
   .side-column { display: block; }
-  .status-list { grid-template-rows: repeat(10, minmax(28px, auto)); }
+  .status-list { grid-template-rows: repeat(12, minmax(28px, auto)); }
   .captions { min-height: 200px; max-height: 440px; }
 }
 
@@ -231,3 +231,7 @@ body.floating-mode .speaker-chip { color: #b9d8f8; background: rgba(0,102,204,.4
 body.floating-mode .button-ghost { color: #fff; border-color: rgba(255,255,255,.32); }
 body.floating-mode .empty-state { min-height: 0; height: 100%; color: rgba(255,255,255,.62); }
 body.floating-mode .empty-state strong { color: #fff; }
+
+.input-level { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+.input-level meter { width: 44px; height: 10px; flex: 0 0 44px; accent-color: var(--primary, #0066cc); }
+.input-level span { overflow: hidden; text-overflow: ellipsis; }

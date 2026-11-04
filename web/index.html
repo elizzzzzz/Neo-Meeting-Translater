@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#f5f5f7" />
     <title>Local Interpreter · 实时会议</title>
-    <link rel="stylesheet" href="/web/styles.css?v=0.2.1" />
+    <link rel="stylesheet" href="/web/styles.css?v=0.2.2" />
   </head>
   <body>
     <header class="global-bar">
@@ -42,7 +42,7 @@
         <aside class="side-column">
           <section class="side-panel">
             <div class="panel-header compact"><div><span class="section-label">SESSION</span><h2>当前状态</h2></div></div>
-            <dl class="status-list"><div><dt>输入来源</dt><dd id="sourceStatus">未选择</dd></div><div><dt>方向</dt><dd id="directionStatus">自动 → 中文</dd></div><div><dt>说话人模式</dt><dd id="speakerStatus">稍后区分</dd></div><div><dt>运行模式</dt><dd id="modeStatus">演示</dd></div><div><dt title="语音识别（ASR）">语音识别</dt><dd id="asrStatus">检查中…</dd></div><div><dt title="本地翻译引擎（Ollama）">翻译引擎</dt><dd id="ollamaStatus">检查中…</dd></div><div><dt>翻译模型</dt><dd id="ollamaModelStatus">检查中…</dd></div><div><dt>翻译状态</dt><dd id="translationStatus">检查中…</dd></div><div><dt>音频链路</dt><dd id="audioStatus">未开始</dd></div><div><dt>诊断</dt><dd id="diagnosticStatus">等待启动</dd></div></dl>
+            <dl class="status-list"><div><dt>输入来源</dt><dd id="sourceStatus">未选择</dd></div><div><dt>输入电平</dt><dd class="input-level"><meter id="inputLevelMeter" min="0" max="1" value="0" aria-label="麦克风输入电平"></meter><span id="inputLevelStatus">未开始</span></dd></div><div><dt>识别语言</dt><dd id="recognitionLanguageStatus">未开始</dd></div><div><dt>方向</dt><dd id="directionStatus">自动 → 中文</dd></div><div><dt>说话人模式</dt><dd id="speakerStatus">稍后区分</dd></div><div><dt>运行模式</dt><dd id="modeStatus">演示</dd></div><div><dt title="语音识别（ASR）">语音识别</dt><dd id="asrStatus">检查中…</dd></div><div><dt title="本地翻译引擎（Ollama）">翻译引擎</dt><dd id="ollamaStatus">检查中…</dd></div><div><dt>翻译模型</dt><dd id="ollamaModelStatus">检查中…</dd></div><div><dt>翻译状态</dt><dd id="translationStatus">检查中…</dd></div><div><dt>音频链路</dt><dd id="audioStatus">未开始</dd></div><div><dt>诊断</dt><dd id="diagnosticStatus">等待启动</dd></div></dl>
           </section>
         </aside>
       </section>
@@ -76,6 +76,6 @@
       </section>
     </div>
     <footer class="footer-bar"><span>文字模式 · M3 / 16G 配置</span><span id="footerStatus">服务地址 <span id="serviceAddress">127.0.0.1:8000</span></span></footer>
-    <script src="/web/app.js?v=0.2.1" defer></script>
+    <script src="/web/app.js?v=0.2.2" defer></script>
   </body>
 </html>

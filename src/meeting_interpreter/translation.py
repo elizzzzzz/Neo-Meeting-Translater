@@ -158,6 +158,13 @@ class OllamaTranslationBackend:
         try:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:
                 body = json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            detail = exc.read(4096).decode("utf-8", errors="replace")
+            try:
+                detail = str(json.loads(detail).get("error") or detail)
+            except (ValueError, AttributeError):
+                pass
+            raise RuntimeError(f"Ollama 模型 {self.model} 运行失败（HTTP {exc.code}）：{detail[:500]}") from exc
         except urllib.error.URLError as exc:
             raise RuntimeError(
                 f"无法连接 Ollama（{self.base_url}）。请确认 Ollama 正在运行。"

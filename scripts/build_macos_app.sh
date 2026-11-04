@@ -22,6 +22,7 @@ trap 'rm -rf "$STAGING_DIR"' EXIT
   --target-architecture arm64 \
   --osx-bundle-identifier "com.localmeetinginterpreter.app" \
   --name "LocalMeetingInterpreter" \
+  --paths "$PROJECT_ROOT/src" \
   --icon "$PROJECT_ROOT/$ICON_PATH" \
   --add-data "$PROJECT_ROOT/web:web" \
   --exclude-module "torch" \
@@ -32,6 +33,11 @@ trap 'rm -rf "$STAGING_DIR"' EXIT
   --exclude-module "matplotlib" \
   --exclude-module "PIL" \
   --exclude-module "datasets" \
+  --exclude-module "jax" \
+  --exclude-module "jaxlib" \
+  --exclude-module "pyarrow" \
+  --exclude-module "sklearn" \
+  --exclude-module "tensorflow" \
   --exclude-module "spacy" \
   --exclude-module "thinc" \
   --exclude-module "onnxruntime" \
@@ -56,9 +62,18 @@ BUNDLE="$STAGING_DIR/frozen/LocalMeetingInterpreter.app"
 plutil -replace NSMicrophoneUsageDescription \
   -string "用于采集本地麦克风或会议回环音频，并在本机生成实时字幕。" \
   "$BUNDLE/Contents/Info.plist"
-plutil -replace CFBundleShortVersionString -string "0.2.1" "$BUNDLE/Contents/Info.plist"
+plutil -replace CFBundleShortVersionString -string "0.2.2" "$BUNDLE/Contents/Info.plist"
+# The standalone COLLECT directory is already copied into the self-contained
+# bundle; release it before making the clean delivery copy on a small disk.
+rm -rf "$STAGING_DIR/frozen/LocalMeetingInterpreter" "$STAGING_DIR/work"
 mkdir -p "$STAGING_DIR/delivery" "$STAGING_DIR/packages"
 ditto --noextattr --norsrc "$BUNDLE" "$STAGING_DIR/delivery/LocalMeetingInterpreter.app"
+# COLLECT, BUNDLE and the clean delivery copy contain the same libraries.
+# Release staging must not keep all three while extracting archives to verify.
+rm -rf "$STAGING_DIR/frozen" "$STAGING_DIR/work"
+# MLX locates its default GPU library relative to libmlx.dylib. PyInstaller
+# moves the dylib to Frameworks and the data to Resources; bridge that layout.
+ln -s ../Resources/mlx/lib/mlx.metallib "$STAGING_DIR/delivery/LocalMeetingInterpreter.app/Contents/Frameworks/mlx.metallib"
 codesign --force --deep --sign - "$STAGING_DIR/delivery/LocalMeetingInterpreter.app"
 codesign --verify --deep --strict "$STAGING_DIR/delivery/LocalMeetingInterpreter.app"
 ditto -c -k --norsrc --noextattr --keepParent \

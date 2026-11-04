@@ -42,7 +42,7 @@ class ErrorEvent(BaseModel):
 
 
 class SessionConfig(BaseModel):
-    source_language: str = "auto"
-    target_language: str = "zh"
+    source_language: Literal["auto", "zh", "ja", "en"] = "auto"
+    target_language: Literal["zh", "ja", "en"] = "zh"
     mode: Literal["mock", "local"] = "mock"
     speaker_mode: Literal["none", "pyannote"] = "none"

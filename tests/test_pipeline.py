@@ -1,5 +1,7 @@
 import base64
 import json
+import io
+import urllib.error
 
 import pytest
 
@@ -57,6 +59,44 @@ async def test_ollama_translation_uses_local_generate_api(monkeypatch: pytest.Mo
     assert captured["body"]["model"] == "translategemma:4b"
     assert "Simplified Chinese" in captured["body"]["prompt"]
     assert "Japanese" in captured["body"]["prompt"]
+
+
+@pytest.mark.asyncio
+async def test_ollama_model_crash_preserves_server_error_detail(monkeypatch):
+    def crash(*args, **kwargs):
+        body = io.BytesIO(b'{"error":"llama server process has terminated: signal: bus error"}')
+        raise urllib.error.HTTPError("http://127.0.0.1:11434/api/generate", 500, "Internal Server Error", {}, body)
+    monkeypatch.setattr("urllib.request.urlopen", crash)
+    with pytest.raises(RuntimeError, match="bus error"):
+        await OllamaTranslationBackend().translate("测试", "zh", "ja")
+
+
+def test_loaded_model_list_does_not_hide_warmup_failure(monkeypatch):
+    from fastapi.testclient import TestClient
+    from meeting_interpreter.app import create_app
+    from meeting_interpreter.asr import MLXWhisperBackend
+
+    async def warm_asr(*args):
+        return None
+
+    async def failed_translation(*args):
+        raise RuntimeError("Ollama 模型进程异常：bus error")
+
+    class Response:
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def read(self): return b'{"models":[{"name":"translategemma:4b"}]}'
+
+    monkeypatch.setenv("MEETING_INTERPRETER_MODE", "local")
+    monkeypatch.setenv("MEETING_INTERPRETER_TRANSLATION_BACKEND", "ollama")
+    monkeypatch.setattr(MLXWhisperBackend, "transcribe", warm_asr)
+    monkeypatch.setattr(OllamaTranslationBackend, "translate", failed_translation)
+    monkeypatch.setattr("urllib.request.urlopen", lambda *a, **k: Response())
+    with TestClient(create_app()) as client:
+        health = client.get("/health").json()
+        assert health["models"]["stage"] == "error"
+        assert health["translation"]["status"] == "error"
+        assert "bus error" in health["last_error"]
 
 
 @pytest.mark.asyncio
