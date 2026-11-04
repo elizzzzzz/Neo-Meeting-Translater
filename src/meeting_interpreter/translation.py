@@ -29,6 +29,22 @@ LANGUAGE_NAMES = {
 }
 
 
+def _safe_correction(original: str, candidate: str, language: str) -> bool:
+    """Reject hallucinated correction output before it reaches the transcript."""
+    if len(candidate) > max(96, len(original) * 2 + 24):
+        return False
+    original_digits = re.findall(r"\d+(?:[.,]\d+)?", original)
+    if any(digit not in candidate for digit in original_digits):
+        return False
+    if language.lower().startswith("japanese") or language.lower() in {"ja", "jpn"}:
+        allowed = len(re.findall(r"[\u3040-\u30ff\u3400-\u9fffA-Za-z0-9]", candidate))
+        return allowed >= max(1, len(re.findall(r"[\u3040-\u30ff\u3400-\u9fffA-Za-z0-9]", original)) // 3)
+    if language.lower().startswith("simplified chinese") or language.lower() in {"zh", "zho"}:
+        allowed = len(re.findall(r"[\u3400-\u9fffA-Za-z0-9]", candidate))
+        return allowed >= max(1, len(re.findall(r"[\u3400-\u9fffA-Za-z0-9]", original)) // 3)
+    return True
+
+
 def nllb_language_code(language: str | None) -> str | None:
     if not language:
         return None
@@ -132,6 +148,18 @@ class OllamaTranslationBackend:
             return text
         return await asyncio.to_thread(self._translate_sync, text, source_name, target_name)
 
+    async def correct_source(self, text: str, context: str, language: str) -> str:
+        """Apply a conservative local context pass to a stable ASR chunk.
+
+        The correction prompt is deliberately separate from translation: the
+        model may fix homophones, punctuation and obvious segmentation errors,
+        but it is forbidden from adding facts that were not spoken.
+        """
+        source_name = LANGUAGE_NAMES.get((language or "").strip().lower(), language)
+        if not text or not source_name:
+            return text
+        return await asyncio.to_thread(self._correct_source_sync, text, context, source_name)
+
     def _request(self, text: str, source_name: str, target_name: str, stream: bool):
         prompt = (
             f"Translate the following meeting utterance from {source_name} to {target_name}. "
@@ -155,6 +183,38 @@ class OllamaTranslationBackend:
             headers={"Content-Type": "application/json"},
             method="POST",
         )
+
+    def _correct_source_sync(self, text: str, context: str, source_name: str) -> str:
+        prompt = (
+            f"You are correcting a {source_name} meeting transcript. Return only the corrected transcript. "
+            "Fix likely homophones, missing punctuation, and obvious word boundary errors using the context. "
+            "Keep the meaning, names, numbers, and language. Never add information, explanations, or a translation.\n\n"
+            f"Context from the same meeting:\n{context[-600:]}\n\nCandidate transcript:\n{text}"
+        )
+        payload = {
+            "model": self.model,
+            "prompt": prompt,
+            "stream": False,
+            "keep_alive": self.keep_alive,
+            "options": {"temperature": 0, "num_ctx": 2048, "num_predict": 256},
+        }
+        request = urllib.request.Request(
+            f"{self.base_url}/api/generate",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                body = json.loads(response.read().decode("utf-8"))
+        except (urllib.error.URLError, TimeoutError, ValueError, OSError):
+            return text
+        candidate = re.sub(r"<think>.*?</think>", "", str(body.get("response", "")), flags=re.DOTALL).strip()
+        if candidate.startswith("```") and candidate.endswith("```"):
+            candidate = candidate[3:-3].strip()
+        if not candidate or not _safe_correction(text, candidate, language=source_name):
+            return text
+        return candidate
     def _translate_sync(self, text: str, source_name: str, target_name: str) -> str:
         request = self._request(text, source_name, target_name, False)
         try:

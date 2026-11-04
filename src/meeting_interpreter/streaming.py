@@ -160,11 +160,16 @@ class LiveSession:
                 if stream is not None:
                     text = ''
                     published_at = 0.0
+                    last_published_text = ''
                     async for text in stream(caption.original_text, caption.source_language, caption.target_language):
                         now = time.perf_counter()
-                        if text and now - published_at >= .1:
+                        # Keep the source row stable while Ollama streams. A
+                        # 220 ms commit window is readable in meetings and
+                        # prevents the bilingual column from visibly flickering.
+                        if text and text != last_published_text and now - published_at >= .22:
                             await publish_translation(text, False)
                             published_at = now
+                            last_published_text = text
                     if not text:
                         raise RuntimeError('翻译模型返回了空翻译')
                 else:

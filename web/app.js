@@ -25,8 +25,11 @@ const systemNotice = document.querySelector('#systemNotice');
 const modelDirectory = document.querySelector('#modelDirectory');
 const asrEngine = document.querySelector('#asrEngine');
 const asrEngineHint = document.querySelector('#asrEngineHint');
+const asrModelStatus = document.querySelector('#asrModelStatus');
+const downloadAsrBtn = document.querySelector('#downloadAsrBtn');
 const chooseModelDirectoryBtn = document.querySelector('#chooseModelDirectoryBtn');
 const checkOllamaBtn = document.querySelector('#checkOllamaBtn');
+const installOllamaBtn = document.querySelector('#installOllamaBtn');
 const upgradeOllamaBtn = document.querySelector('#upgradeOllamaBtn');
 const pullModelBtn = document.querySelector('#pullModelBtn');
 const saveSettingsBtn = document.querySelector('#saveSettingsBtn');
@@ -43,6 +46,9 @@ const directionStatus = document.querySelector('#directionStatus');
 const speakerStatus = document.querySelector('#speakerStatus');
 const modeStatus = document.querySelector('#modeStatus');
 const modeBadge = document.querySelector('#modeBadge');
+const captionDisplayMode = document.querySelector('#captionDisplayMode');
+const captionSourceHeader = document.querySelector('#captionSourceHeader');
+const captionTranslationHeader = document.querySelector('#captionTranslationHeader');
 const asrStatus = document.querySelector('#asrStatus');
 const ollamaStatus = document.querySelector('#ollamaStatus');
 const ollamaModelStatus = document.querySelector('#ollamaModelStatus');
@@ -185,7 +191,22 @@ async function openSettings() {
     asrEngine.value = settings.asr_engine || 'whisper';
     asrEngineHint.textContent = settings.sensevoice_available ? 'SenseVoice 模型已连接。中文可对比 SenseVoice；日语可先用 Whisper。切换后重新打开 App 生效。' : 'SenseVoice 模型未连接，暂请选择 Whisper。需要在模型目录的 asr/sensevoice 中放入 model.int8.onnx、tokens.txt 和 silero_vad.onnx。';
   } catch { setDiagnostic('无法读取本地设置'); }
+  await checkAsrModel();
   await checkOllama();
+}
+async function checkAsrModel() {
+  if (!asrModelStatus) return;
+  asrModelStatus.textContent = '正在检查语音模型…';
+  try {
+    const response = await fetch(`/system/models?engine=${encodeURIComponent(asrEngine.value || 'whisper')}`);
+    const info = await response.json();
+    asrModelStatus.textContent = info.installed ? `${info.model} · 已连接` : `${info.model} · 未连接（${info.progress || 0}%）`;
+    downloadAsrBtn.disabled = Boolean(info.installed) || asrEngine.value === 'sensevoice';
+    downloadAsrBtn.textContent = info.installed ? '语音模型已就绪' : asrEngine.value === 'sensevoice' ? '请导入本地文件' : '下载 Whisper 模型';
+  } catch (error) {
+    asrModelStatus.textContent = `检查失败：${error.message || '本地服务不可用'}`;
+    downloadAsrBtn.disabled = true;
+  }
 }
 function describeSystem(info) {
   if (!info.installed) return '尚未检测到 Ollama。安装后可使用本地翻译引擎。';
@@ -210,6 +231,7 @@ async function checkOllama() {
       systemNotice.className = `system-notice ${info.installed && info.recommended_model_present && !info.update_available ? 'good' : 'warn'}`;
     }
     upgradeOllamaBtn.disabled = !info.installed || !info.brew_available;
+    if (installOllamaBtn) installOllamaBtn.disabled = Boolean(info.installed);
     pullModelBtn.disabled = !info.installed || !info.reachable || Boolean(info.recommended_model_present);
     pullModelBtn.textContent = info.recommended_model_present ? '推荐模型已就绪' : '安装推荐模型';
   } catch (error) {
@@ -237,7 +259,7 @@ function setSessionControls(active) {
     control.disabled = active;
     control.title = active ? '停止音频后可更改设置' : '';
   });
-  if (demoBtn) demoBtn.disabled = active;
+  if (demoBtn) demoBtn.disabled = false;
   changeSpeakerBtn.disabled = !active;
 }
 function updateRecognitionLanguage(language) {
@@ -265,6 +287,48 @@ function updateSummary() {
   sourceStatus.textContent = activeInputLabel || inputDevice.options[inputDevice.selectedIndex]?.textContent || '未选择';
   directionButtons.forEach((button) => button.classList.toggle('selected', button.dataset.source === sourceLanguage.value && button.dataset.target === targetLanguage.value));
 }
+
+function displayMode() {
+  return captionDisplayMode?.value || 'both';
+}
+
+function bilingualColumns(chunks, forceZhJa = false) {
+  const languages = new Set(chunks.flatMap(chunk => [chunk.source_language, chunk.target_language]));
+  const isZhJa = forceZhJa || (languages.has('zh') && languages.has('ja'));
+  if (!isZhJa) {
+    return {
+      fixedZhJa: false,
+      leftLanguage: chunks[0]?.source_language || 'source',
+      rightLanguage: chunks[0]?.target_language || 'translation',
+      leftLabel: '源文', rightLabel: '译文',
+      left: chunks.map(chunk => ({ role: '源', text: chunk.original_text, language: chunk.source_language })),
+      right: chunks.map(chunk => ({ role: '译', text: chunk.translated_text, language: chunk.target_language })),
+    };
+  }
+  const left = [], right = [];
+  for (const chunk of chunks) {
+    if (chunk.source_language === 'zh') {
+      left.push({ role: '源', text: chunk.original_text, language: 'zh' });
+      right.push({ role: '译', text: chunk.translated_text, language: 'ja' });
+    } else {
+      left.push({ role: '译', text: chunk.translated_text, language: 'zh' });
+      right.push({ role: '源', text: chunk.original_text, language: 'ja' });
+    }
+  }
+  return { fixedZhJa: true, leftLanguage: 'zh', rightLanguage: 'ja', leftLabel: '中文', rightLabel: '日本語', left, right };
+}
+
+function renderColumn(parts) {
+  return parts.filter(part => part.text || part.role === '源').map(part =>
+    `<span class="caption-part"><b class="caption-role ${part.role === '源' ? 'source-role' : 'translation-role'}">${part.role}</b>${escapeHtml(part.text || '翻译处理中…')} </span>`
+  ).join('');
+}
+
+function updateCaptionHeaders(columns) {
+  if (!captionSourceHeader || !captionTranslationHeader) return;
+  captionSourceHeader.textContent = columns?.leftLabel || '中文';
+  captionTranslationHeader.textContent = columns?.rightLabel || '日本語';
+}
 function ensureDifferentLanguages(changed) {
   if (sourceLanguage.value === 'auto' || sourceLanguage.value !== targetLanguage.value) return;
   if (changed === 'source') targetLanguage.value = sourceLanguage.value === 'zh' ? 'ja' : 'zh';
@@ -291,8 +355,10 @@ function transcriptParagraphs() {
   const paragraphs = [];
   for (const row of captionRows) {
     let paragraph = paragraphs[paragraphs.length - 1];
-    if (!paragraph || paragraph.speaker_id !== row.speaker_id || paragraph.session_id !== row.session_id
-        || paragraph.source_language !== row.source_language || paragraph.target_language !== row.target_language) {
+    // A speaker paragraph can contain both Chinese and Japanese. The speaker
+    // boundary, rather than a decoder language flip, decides when to start a
+    // new paragraph.
+    if (!paragraph || paragraph.speaker_id !== row.speaker_id || paragraph.session_id !== row.session_id) {
       paragraph = {...row, original_text: '', translated_text: '', chunks: []};
       paragraphs.push(paragraph);
     }
@@ -319,7 +385,25 @@ function returnToLatest() {
 function renderCaptions() {
   const scrollTop = captions.scrollTop;
   if (!captionRows.length) { captions.innerHTML = '<div class="empty-state"><strong>还没有字幕</strong><span>选择麦克风或 BlackHole 回环设备后开始会议。</span></div>'; return; }
-  captions.innerHTML = transcriptParagraphs().map(event => `<section class="caption-row"><div class="caption-meta"><span class="speaker-chip">${escapeHtml(speakerLabel(event.speaker_id))}</span><span class="caption-time">${formatTime(event.start_ms)} — ${formatTime(event.end_ms)}</span></div><div class="caption-copy">${event.chunks.map(chunk => `<span>${escapeHtml(chunk.original_text)} </span>`).join('')}</div><div class="caption-copy caption-translation">${event.chunks.map(chunk => `<span>${escapeHtml(chunk.translated_text || '翻译处理中…')} </span>`).join('')}${event.is_final ? '' : '<span class="draft">更新中</span>'}</div></section>`).join('');
+  const paragraphs = transcriptParagraphs();
+  const sessionLanguages = new Set(captionRows.flatMap(row => [row.source_language, row.target_language]));
+  const sessionZhJa = sessionLanguages.has('zh') && sessionLanguages.has('ja');
+  const firstColumns = paragraphs[0] ? bilingualColumns(paragraphs[0].chunks, sessionZhJa) : null;
+  updateCaptionHeaders(firstColumns);
+  const mode = displayMode();
+  captions.dataset.displayMode = mode;
+  captions.innerHTML = paragraphs.map(event => {
+    const columns = bilingualColumns(event.chunks, sessionZhJa);
+    const showSource = mode !== 'translation';
+    const showTranslation = mode !== 'source';
+    const left = columns.left;
+    const right = columns.right;
+    const sourceParts = columns.fixedZhJa ? (columns.leftLanguage === 'zh' ? left : right) : left;
+    const translationParts = columns.fixedZhJa ? (columns.leftLanguage === 'zh' ? right : left) : right;
+    const leftHtml = mode === 'source' ? renderColumn(sourceParts) : mode === 'translation' ? renderColumn(translationParts) : renderColumn(left);
+    const rightHtml = mode === 'source' ? '' : mode === 'translation' ? '' : renderColumn(right);
+    return `<section class="caption-row ${mode === 'source' ? 'single-source' : ''} ${mode === 'translation' ? 'single-translation' : ''}"><div class="caption-meta"><span class="speaker-chip">${escapeHtml(speakerLabel(event.speaker_id))}</span><span class="caption-time">${formatTime(event.start_ms)} — ${formatTime(event.end_ms)}</span></div>${showSource ? `<div class="caption-copy caption-left">${leftHtml}</div>` : ''}${showTranslation ? `<div class="caption-copy caption-right">${rightHtml || renderColumn(translationParts)}${event.is_final ? '' : '<span class="draft">译文更新中</span>'}</div>` : ''}</section>`;
+  }).join('');
   if (followCaptions) captions.scrollTop = captions.scrollHeight;
   else captions.scrollTop = scrollTop;
   latestBtn.hidden = followCaptions;
@@ -518,6 +602,13 @@ function stopSession() {
   } else if (socket?.readyState === WebSocket.CONNECTING) socket.close();
   else cleanupAudio();
 }
+
+function startSubtitleMode() {
+  // Subtitle mode is a real transcript view. It never synthesizes sample
+  // captions and can be entered before or during a meeting.
+  setFloatingMode(!floatingMode);
+  setDiagnostic(floatingMode ? '字幕模式已开启 · 等待真实字幕' : '已退出字幕模式');
+}
 function exportTranscript() {
   const text = transcriptParagraphs().map(row => `[${formatTime(row.start_ms)}] ${speakerLabel(row.speaker_id)}\n${row.original_text}\n${row.translated_text || ''}`).join('\n\n') || '暂无字幕';
   const filename = `meeting-${new Date().toISOString().slice(0, 10)}.txt`;
@@ -580,10 +671,10 @@ async function runSystemAction(button, endpoint, body, busyMessage) {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}),
     });
     const result = await response.json();
-    if (!response.ok || !result.ok) throw new Error(result.message || result.detail || '操作失败');
+    if (!response.ok || (!result.ok && !result.requires_user)) throw new Error(result.message || result.detail || '操作失败');
     await checkOllama();
     systemNotice.textContent = result.message || '操作完成';
-    systemNotice.className = 'system-notice good';
+    systemNotice.className = result.requires_user ? 'system-notice warn' : 'system-notice good';
   } catch (error) {
     systemNotice.className = 'system-notice warn';
     systemNotice.textContent = `操作未完成：${error.message}`;
@@ -591,7 +682,7 @@ async function runSystemAction(button, endpoint, body, busyMessage) {
 }
 startBtn.addEventListener('click', startSession);
 stopBtn.addEventListener('click', stopSession);
-demoBtn?.addEventListener('click', startDemo);
+demoBtn?.addEventListener('click', startSubtitleMode);
 clearBtn.addEventListener('click', () => { stopDemo(); captionRows = []; followCaptions = true; latestBtn.hidden = true; mockCaptionKeys.clear(); renderCaptions(); updateSummary(); });
 captions.addEventListener('scroll', () => {
   followCaptions = captions.scrollHeight - captions.clientHeight - captions.scrollTop < 48;
@@ -601,15 +692,19 @@ latestBtn.addEventListener('click', returnToLatest);
 changeSpeakerBtn.addEventListener('click', requestSpeakerChange);
 exportBtn.addEventListener('click', exportTranscript);
 floatingBtn?.addEventListener('click', () => setFloatingMode(!floatingMode));
+captionDisplayMode?.addEventListener('change', () => { renderCaptions(); });
 tipsBtn?.addEventListener('click', () => toggleModal(tipsModal, true));
 settingsBtn?.addEventListener('click', openSettings);
 closeTipsBtn?.addEventListener('click', closeTips);
 continueTipsBtn?.addEventListener('click', async () => { if (await closeTips()) await openSettings(); });
 closeSettingsBtn?.addEventListener('click', () => toggleModal(settingsModal, false));
 checkOllamaBtn?.addEventListener('click', checkOllama);
+installOllamaBtn?.addEventListener('click', () => runSystemAction(installOllamaBtn, '/system/install', {}, '正在准备安装 Ollama…'));
 upgradeOllamaBtn?.addEventListener('click', () => runSystemAction(upgradeOllamaBtn, '/system/upgrade', {}, '正在尝试升级本地翻译引擎…'));
 pullModelBtn?.addEventListener('click', () => runSystemAction(pullModelBtn, '/system/pull-model', { model: recommendedModelStatus.textContent }, '正在下载推荐翻译模型…'));
 saveSettingsBtn?.addEventListener('click', saveModelDirectory);
+asrEngine?.addEventListener('change', checkAsrModel);
+downloadAsrBtn?.addEventListener('click', () => runSystemAction(downloadAsrBtn, '/system/download-asr', {engine: asrEngine.value || 'whisper'}, '正在下载语音识别模型…').then(checkAsrModel));
 chooseModelDirectoryBtn?.addEventListener('click', () => {
   if (window.webkit?.messageHandlers?.native) window.webkit.messageHandlers.native.postMessage({ type: 'choose_model_directory' });
   else modelDirectory?.focus();
@@ -627,7 +722,7 @@ document.addEventListener('keydown', event => {
   else if (!tipsModal.hidden) closeTips();
   else if (floatingMode) setFloatingMode(false);
 });
-modeStatus.textContent = '演示'; modeBadge.textContent = '演示'; startBtn.disabled = true;
+modeStatus.textContent = '待机'; modeBadge.textContent = '本地'; startBtn.disabled = true;
 renderCaptions(); updateSummary(); loadDevices(); loadPreferences(); checkOllama();
 if (serviceAddress) serviceAddress.textContent = location.host;
 fetch('/health').then(response => response.json()).then(updateHealth).catch(() => { setDiagnostic('本地服务未连接，可先检查 App 状态'); });

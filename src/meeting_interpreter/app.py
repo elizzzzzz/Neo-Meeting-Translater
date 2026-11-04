@@ -18,7 +18,7 @@ from .models import AudioEvent, ErrorEvent, SessionConfig
 from .pipeline import Pipeline
 from .speaker import EmbeddingSpeakerBackend, speaker_model_path
 from .streaming import LiveSession
-from .system import current_model_directory, inspect_ollama, pull_ollama_model, read_preferences, save_preferences, save_model_directory, upgrade_ollama
+from .system import current_model_directory, download_asr_model, inspect_asr_models, inspect_ollama, install_ollama, pull_ollama_model, read_preferences, save_preferences, save_model_directory, upgrade_ollama
 from .translation import OllamaTranslationBackend
 
 ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[2]))
@@ -54,7 +54,7 @@ def create_app() -> FastAPI:
         "speaker_status": "loading" if speaker_model_path().is_file() and mode == "local" else "missing",
         "speaker_message": "声纹模型尚未连接，可手动换人",
     }
-    app = FastAPI(title="Local Meeting Interpreter", version="0.2.4")
+    app = FastAPI(title="Local Meeting Interpreter", version="0.2.5")
     app.mount("/web", StaticFiles(directory=WEB_DIR), name="web")
 
     @app.get("/health")
@@ -99,10 +99,24 @@ def create_app() -> FastAPI:
         """Try a Homebrew Ollama upgrade when the user explicitly requests it."""
         return await asyncio.to_thread(upgrade_ollama)
 
+    @app.post("/system/install")
+    async def system_install() -> dict[str, object]:
+        """Install Ollama after an explicit user action in local settings."""
+        return await asyncio.to_thread(install_ollama)
+
     @app.post("/system/pull-model")
     async def system_pull_model(payload: dict[str, object] | None = None) -> dict[str, object]:
         model = payload.get("model") if isinstance(payload, dict) else None
         return await asyncio.to_thread(pull_ollama_model, model if isinstance(model, str) else "translategemma:4b")
+
+    @app.get("/system/models")
+    async def system_models(engine: str = "whisper") -> dict[str, object]:
+        return await asyncio.to_thread(inspect_asr_models, engine if engine in {"whisper", "sensevoice"} else "whisper")
+
+    @app.post("/system/download-asr")
+    async def system_download_asr(payload: dict[str, object] | None = None) -> dict[str, object]:
+        engine = payload.get("engine") if isinstance(payload, dict) else "whisper"
+        return await asyncio.to_thread(download_asr_model, engine if isinstance(engine, str) else "whisper")
 
     @app.get("/settings")
     async def get_settings() -> dict[str, object]:

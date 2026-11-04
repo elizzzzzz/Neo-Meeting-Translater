@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#f5f5f7" />
     <title>Local Interpreter · 实时会议</title>
-    <link rel="stylesheet" href="/web/styles.css?v=0.2.4" />
+    <link rel="stylesheet" href="/web/styles.css?v=0.2.5" />
   </head>
   <body>
     <header class="global-bar">
@@ -14,7 +14,7 @@
     </header>
     <nav class="sub-bar" aria-label="工作区导航">
       <div><span class="eyebrow">MEETING WORKSPACE</span><strong>实时会议</strong></div>
-      <div class="sub-actions"><span id="modeBadge" class="mode-badge">演示</span><button id="tipsBtn" class="button button-ghost" type="button">使用指南</button><button id="settingsBtn" class="button button-ghost" type="button">本地设置</button><button id="demoBtn" class="button button-ghost" type="button">演示字幕</button><button id="exportBtn" class="button button-ghost" type="button">导出记录</button></div>
+      <div class="sub-actions"><span id="modeBadge" class="mode-badge">本地</span><button id="tipsBtn" class="button button-ghost" type="button">使用指南</button><button id="settingsBtn" class="button button-ghost" type="button">本地设置</button><button id="demoBtn" class="button button-ghost" type="button">字幕模式</button><button id="exportBtn" class="button button-ghost" type="button">导出记录</button></div>
     </nav>
     <main class="page-shell">
       <section class="intro-row">
@@ -36,7 +36,7 @@
       <section class="workspace-grid">
         <article class="transcript-panel">
           <div class="panel-header"><div><span class="section-label">LIVE TRANSCRIPT</span><h2>发言记录</h2></div><div class="panel-header-actions"><span id="sessionLabel" class="session-label">等待音频输入</span><button id="latestBtn" class="button button-primary compact-button" type="button" hidden>回到最新 ↓</button><button id="changeSpeakerBtn" class="button button-ghost compact-button" type="button" disabled title="自动分人不准确时，切换到手动并标记换人">手动换人</button><button id="clearBtn" class="button button-ghost compact-button" type="button">清空</button><button id="floatingBtn" class="button button-ghost compact-button" type="button">字幕浮窗</button></div></div>
-          <div class="transcript-head"><span>原文 · 持续修订</span><span>译文</span></div>
+          <div class="transcript-head"><span id="captionSourceHeader">中文</span><span id="captionTranslationHeader">日本語</span></div>
           <div id="captions" class="captions" role="region" aria-label="双语发言记录，可滚动查看历史" tabindex="0"><div class="empty-state"><strong>还没有字幕</strong><span>选择麦克风或 BlackHole 回环设备后开始会议。</span></div></div>
           <div class="transcript-footnote">同一发言人连续记录 · 向上滚动查看历史，回到底部继续跟随</div>
         </article>
@@ -52,11 +52,11 @@
       <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="tipsTitle">
         <div class="modal-kicker">使用提示</div>
         <h2 id="tipsTitle">三步开始本地会议翻译</h2>
-        <p class="modal-lead">所有音频和模型都留在这台 Mac 上。未连接模型也可以点击“演示字幕”检查界面和浮窗；真实会议需要先连接本地模型。</p>
+        <p class="modal-lead">所有音频和模型都留在这台 Mac 上。字幕模式只显示已经收到的真实原文和译文，不生成模拟内容。</p>
         <div class="tip-grid">
-          <article class="tip-item"><span class="tip-number">01</span><div><strong>选音频</strong><p>麦克风用于现场会议；腾讯会议和 Teams 可选择 BlackHole 回环设备。</p></div></article>
+          <article class="tip-item"><span class="tip-number">01</span><div><strong>选音频</strong><p>麦克风用于现场会议；腾讯会议、Teams 和网页视频请选择 BlackHole、Loopback 等系统回环设备。</p></div></article>
           <article class="tip-item"><span class="tip-number">02</span><div><strong>等模型就绪</strong><p>顶部显示冷启动进度。看到“模型可用 · 热启动”后再开始会议。</p></div></article>
-          <article class="tip-item"><span class="tip-number">03</span><div><strong>需要时开浮窗</strong><p>点击“字幕浮窗”，字幕会置顶、半透明并可拖动到会议窗口空白处。</p></div></article>
+          <article class="tip-item"><span class="tip-number">03</span><div><strong>需要时开浮窗</strong><p>点击“字幕模式”，字幕会置顶、半透明并可拖动、缩放到会议窗口空白处。</p></div></article>
         </div>
         <label class="remember-row"><input id="rememberTips" type="checkbox" />以后不再提醒</label>
         <div class="modal-actions"><button id="closeTipsBtn" class="button button-ghost" type="button">稍后再看</button><button id="continueTipsBtn" class="button button-primary" type="button">开始设置</button></div>
@@ -72,12 +72,14 @@
           <div class="environment-item"><span>模型状态</span><strong id="recommendedModelPresence">检查中…</strong></div>
         </div>
         <div id="systemNotice" class="system-notice" role="status">正在检查 Ollama 和推荐模型…</div>
-        <div class="settings-field"><label for="asrEngine">语音转文字引擎</label><select id="asrEngine"><option value="whisper">Whisper · 多语言识别</option><option value="sensevoice">SenseVoice · 中日快速识别（测试）</option></select><small id="asrEngineHint">切换后重新打开 App 生效；两种引擎均在本机运行。日语可先用 Whisper，中文可对比 SenseVoice。</small></div>
+        <div class="settings-field"><label for="asrEngine">语音转文字引擎</label><select id="asrEngine"><option value="whisper">Whisper · 多语言识别</option><option value="sensevoice">SenseVoice · 中日快速识别（测试）</option></select><div class="model-action-row"><strong id="asrModelStatus">正在检查语音模型…</strong><button id="downloadAsrBtn" class="button button-ghost" type="button">准备语音模型</button></div><small id="asrEngineHint">切换后重新打开 App 生效；两种引擎均在本机运行。日语可先用 Whisper，中文可对比 SenseVoice。</small></div>
+        <div class="settings-field"><label for="captionDisplayMode">字幕显示内容</label><select id="captionDisplayMode"><option value="both">中文 / 日本語：源与译</option><option value="source">仅显示源文</option><option value="translation">仅显示译文</option></select><small>中日互译时固定中文在左、日本語在右；“源 / 译”会随实际识别语言标注。</small></div>
         <div class="settings-field"><label for="modelDirectory">模型保存目录</label><div class="path-picker"><input id="modelDirectory" type="text" spellcheck="false" /><button id="chooseModelDirectoryBtn" class="button button-ghost" type="button">选择目录</button></div><small>此目录用于语音识别模型缓存，更改后重启生效。现有文件不会自动迁移；Ollama 翻译模型目前由其自身管理。</small></div>
-        <div class="modal-actions settings-actions"><button id="checkOllamaBtn" class="button button-ghost" type="button">重新检查</button><button id="upgradeOllamaBtn" class="button button-ghost" type="button">尝试升级 Ollama</button><button id="pullModelBtn" class="button button-primary" type="button">安装推荐模型</button><button id="saveSettingsBtn" class="button button-dark" type="button">保存设置</button></div>
+        <div class="settings-field"><label>在线会议 / 网页视频音频</label><div class="audio-source-note">系统音频捕获需要 macOS 音频回环设备。安装 BlackHole 或 Loopback 后，在主界面的“音频输入”中选择对应设备；应用不会把会议音频上传到网络。</div></div>
+        <div class="modal-actions settings-actions"><button id="checkOllamaBtn" class="button button-ghost" type="button">重新检查</button><button id="installOllamaBtn" class="button button-ghost" type="button">安装 Ollama</button><button id="upgradeOllamaBtn" class="button button-ghost" type="button">升级 Ollama</button><button id="pullModelBtn" class="button button-primary" type="button">安装推荐模型</button><button id="saveSettingsBtn" class="button button-dark" type="button">保存设置</button></div>
       </section>
     </div>
     <footer class="footer-bar"><span>文字模式 · M3 / 16G 配置</span><span id="footerStatus">服务地址 <span id="serviceAddress">127.0.0.1:8000</span></span></footer>
-    <script src="/web/app.js?v=0.2.4" defer></script>
+    <script src="/web/app.js?v=0.2.5" defer></script>
   </body>
 </html>

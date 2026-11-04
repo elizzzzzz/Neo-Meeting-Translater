@@ -12,6 +12,8 @@ from pathlib import Path
 
 
 RECOMMENDED_OLLAMA_MODEL = "translategemma:4b"
+OLLAMA_DOWNLOAD_URL = "https://ollama.com/download/mac"
+RECOMMENDED_ASR_MODEL = "mlx-community/whisper-medium-mlx-8bit"
 _VERSION_RE = re.compile(r"(?:ollama version is |ollama version )?(v?\d+\.\d+\.\d+)", re.I)
 
 
@@ -142,6 +144,31 @@ def upgrade_ollama(timeout: float = 120.0) -> dict[str, object]:
     return {"ok": result.returncode == 0, "message": output[-1200:] or ("Ollama 已升级" if result.returncode == 0 else "Ollama 升级失败")}
 
 
+def install_ollama(timeout: float = 600.0) -> dict[str, object]:
+    """Install Ollama only after an explicit UI click.
+
+    Homebrew is the unattended path. Without Homebrew we open the official
+    installer page so macOS can apply its normal administrator approval flow.
+    """
+    if _ollama_path():
+        return {"ok": True, "installed": True, "message": "Ollama 已安装，无需重复安装。"}
+    brew = shutil.which("brew")
+    if brew:
+        try:
+            result = subprocess.run([brew, "install", "ollama"], capture_output=True, text=True, timeout=timeout, check=False)
+        except (OSError, subprocess.SubprocessError) as exc:
+            return {"ok": False, "message": f"安装命令启动失败：{exc}"}
+        output = (result.stdout or result.stderr or "").strip()
+        if result.returncode == 0 and _ollama_path():
+            return {"ok": True, "installed": True, "message": output[-1200:] or "Ollama 已安装，请重新检查服务状态。"}
+        return {"ok": False, "message": output[-1200:] or "Ollama 安装失败。"}
+    try:
+        subprocess.Popen(["open", OLLAMA_DOWNLOAD_URL], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except OSError as exc:
+        return {"ok": False, "message": f"无法打开 Ollama 官方安装页面：{exc}"}
+    return {"ok": False, "requires_user": True, "message": "未检测到 Homebrew，已打开 Ollama 官方安装页面。完成安装后返回此处重新检查。"}
+
+
 def pull_ollama_model(model: str = RECOMMENDED_OLLAMA_MODEL, timeout: float = 1800.0) -> dict[str, object]:
     path = _ollama_path()
     if not path:
@@ -206,3 +233,31 @@ def current_model_directory() -> str:
     if configured:
         return str(Path(configured).expanduser())
     return str(Path.home() / "Library/Application Support/LocalMeetingInterpreter/models")
+
+
+def inspect_asr_models(engine: str = "whisper") -> dict[str, object]:
+    root = Path(current_model_directory()).expanduser()
+    if engine == "sensevoice":
+        folder = root / "asr" / "sensevoice"
+        required = ["model.int8.onnx", "tokens.txt", "silero_vad.onnx"]
+        present = [name for name in required if (folder / name).is_file()]
+        return {"engine": engine, "model": "SenseVoice-Small", "installed": len(present) == len(required), "progress": round(len(present) / len(required) * 100), "path": str(folder), "missing": [name for name in required if name not in present], "message": "已连接，可使用" if len(present) == len(required) else "需要 model.int8.onnx、tokens.txt、silero_vad.onnx"}
+    cache = root / "huggingface"
+    marker = cache / "hub" / ("models--" + RECOMMENDED_ASR_MODEL.replace("/", "--"))
+    installed = marker.is_dir() and any(marker.rglob("*.safetensors"))
+    return {"engine": "whisper", "model": RECOMMENDED_ASR_MODEL, "installed": installed, "progress": 100 if installed else 0, "path": str(cache), "missing": [] if installed else ["Whisper 权重"], "message": "已连接，可使用" if installed else "尚未下载 Whisper 权重"}
+
+
+def download_asr_model(engine: str = "whisper", timeout: float = 3600.0) -> dict[str, object]:
+    if engine != "whisper":
+        return {"ok": False, "message": "SenseVoice 权重需要导入本地 ONNX 文件；为避免下载错误版本，当前请在设置中指定模型目录。"}
+    root = Path(current_model_directory()).expanduser()
+    try:
+        from huggingface_hub import snapshot_download
+    except ImportError:
+        return {"ok": False, "message": "当前安装包缺少 huggingface_hub，请重新安装本地语音组件。"}
+    try:
+        snapshot_download(RECOMMENDED_ASR_MODEL, cache_dir=str(root / "huggingface"), local_files_only=False)
+    except Exception as exc:
+        return {"ok": False, "message": f"Whisper 模型下载失败：{exc}"}
+    return {"ok": True, "engine": engine, "model": RECOMMENDED_ASR_MODEL, "message": "Whisper 语音模型已下载到本地模型目录。"}

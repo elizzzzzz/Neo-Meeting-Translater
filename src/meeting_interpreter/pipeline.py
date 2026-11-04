@@ -64,6 +64,18 @@ def text_matches_language(text: str, language: str) -> bool:
     return True
 
 
+def normalize_language(language: str | None) -> str:
+    """Normalize decoder language labels used by SenseVoice/Whisper."""
+    value = (language or "auto").strip().lower().replace("_", "-")
+    if value.startswith("zh") or value in {"cmn", "zho", "chinese"}:
+        return "zh"
+    if value.startswith("ja") or value in {"jpn", "japanese"}:
+        return "ja"
+    if value.startswith("en") or value in {"eng", "english"}:
+        return "en"
+    return value or "auto"
+
+
 class Pipeline:
     """Streaming pipeline boundary.
 
@@ -94,6 +106,7 @@ class Pipeline:
         self._last_infer_ms: dict[str, int] = {}
         self._last_text: dict[str, str] = {}
         self._context_text: dict[str, str] = {}
+        self._paragraph_text: dict[str, str] = {}
         self._last_voice_ms: dict[str, int] = {}
         self._voice_duration_ms: dict[str, float] = {}
         self.audio_status: dict[str, object] = {"state": "silent", "rms": 0.0, "peak": 0.0, "message": "等待声音输入"}
@@ -101,6 +114,7 @@ class Pipeline:
         self._active_start_ms: dict[str, int] = {}
         self._mock_last_audio_at: dict[str, float] = {}
         self._mock_phrase_emitted: dict[str, bool] = {}
+        self.context_correction_enabled = os.getenv("MEETING_INTERPRETER_CONTEXT_CORRECTION", "1").lower() not in {"0", "false", "no"}
         if self.mode == "local":
             self.asr: ASRBackend = (asr_backend.for_language(source_language) if isinstance(asr_backend, (MLXWhisperBackend, SenseVoiceBackend)) else asr_backend) or create_asr_backend(source_language)
             translation_backend = os.getenv("MEETING_INTERPRETER_TRANSLATION_BACKEND", "nllb").lower()
@@ -291,7 +305,8 @@ class Pipeline:
         if result is None:
             self.audio_status.update(state="rejected", message="未识别到可靠语音，请检查输入设备或靠近麦克风")
             return
-        if self.source_language != "auto" and (result.language != self.source_language or not text_matches_language(result.text, self.source_language)):
+        result_language = normalize_language(result.language)
+        if self.source_language != "auto" and (result_language != self.source_language or not text_matches_language(result.text, self.source_language)):
             language = {"zh": "中文", "ja": "日语", "en": "英语"}.get(self.source_language, self.source_language)
             self.audio_status.update(state="rejected", message=f"已忽略与锁定{language}不符的识别内容，请检查音频输入；多语混说可选自动识别")
             return
@@ -313,6 +328,22 @@ class Pipeline:
             # CTC subword boundaries are not spaces in Chinese/Japanese prose.
             # Clean display/translation after applying word timestamps.
             result = replace(result, text=re.sub(r"(?<=[0-9\u3040-\u30ff\u3400-\u9fff])\s+(?=[0-9\u3040-\u30ff\u3400-\u9fff])", "", result.text))
+        result = replace(result, language=result_language)
+        stable = commit_before_ms is not None
+        correct_source = getattr(self.translator, "correct_source", None)
+        if stable and self.context_correction_enabled and correct_source is not None and result.text:
+            try:
+                corrected = await correct_source(
+                    result.text,
+                    self._paragraph_text.get(event.session_id, self._context_text.get(event.session_id, "")),
+                    result.language,
+                )
+                if corrected:
+                    result = replace(result, text=corrected)
+            except Exception:
+                # Recognition and translation remain usable when the optional
+                # semantic correction request is unavailable or times out.
+                pass
         speaker_id = self._speaker_ids.get(event.session_id, "SPEAKER_PENDING")
         if result.text == self._last_text.get(event.session_id):
             previous = self._latest_caption.get(event.session_id)
@@ -322,6 +353,7 @@ class Pipeline:
                 yield updated
                 return
         self._last_text[event.session_id] = result.text
+        self._paragraph_text[event.session_id] = (self._paragraph_text.get(event.session_id, "") + " " + result.text).strip()[-600:]
         translated_text = result.text if self.translator is None or result.language == self.target_language else ""
         caption = CaptionEvent(
             session_id=event.session_id,

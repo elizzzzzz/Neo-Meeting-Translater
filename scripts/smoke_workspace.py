@@ -9,7 +9,8 @@ from playwright.sync_api import sync_playwright
 root=Path(__file__).resolve().parents[1]
 out=root/'artifacts/ui-review';out.mkdir(parents=True,exist_ok=True)
 with socket.socket() as s:s.bind(('127.0.0.1',0));port=s.getsockname()[1]
-proc=subprocess.Popen([sys.executable,'-m','uvicorn','meeting_interpreter.app:app','--host','127.0.0.1','--port',str(port),'--log-level','error'],cwd=root,env=dict(os.environ,MEETING_INTERPRETER_MODE='mock',MEETING_INTERPRETER_TRANSLATION_BACKEND='nllb'),stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+smoke_env = dict(os.environ, PYTHONPATH=str(root / 'src'), MEETING_INTERPRETER_MODE='mock', MEETING_INTERPRETER_TRANSLATION_BACKEND='nllb')
+proc=subprocess.Popen([sys.executable,'-m','uvicorn','meeting_interpreter.app:app','--host','127.0.0.1','--port',str(port),'--log-level','error'],cwd=root,env=smoke_env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 try:
  for i in range(100):
   try:urllib.request.urlopen(f'http://127.0.0.1:{port}/health',timeout=.3);break
@@ -40,9 +41,9 @@ try:
   assert page.locator('#modelDirectory').input_value()=='/Volumes/我的硬盘/会议模型'
   page.screenshot(path=str(out/'settings.png'))
   page.keyboard.press('Escape');page.locator('#demoBtn').click()
-  page.wait_for_timeout(1800)
-  assert page.locator('.caption-row').count()==1
-  page.locator('#floatingBtn').click();page.set_viewport_size({'width':900,'height':260})
+  assert page.locator('body').evaluate("e=>e.classList.contains('floating-mode')")
+  assert page.locator('.caption-row').count()==0
+  page.set_viewport_size({'width':900,'height':260})
   page.screenshot(path=str(out/'floating.png'))
   assert page.locator('body').evaluate("e=>e.classList.contains('floating-mode')")
   page.keyboard.press('Escape')
