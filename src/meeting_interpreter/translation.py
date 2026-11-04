@@ -132,7 +132,7 @@ class OllamaTranslationBackend:
             return text
         return await asyncio.to_thread(self._translate_sync, text, source_name, target_name)
 
-    def _translate_sync(self, text: str, source_name: str, target_name: str) -> str:
+    def _request(self, text: str, source_name: str, target_name: str, stream: bool):
         prompt = (
             f"Translate the following meeting utterance from {source_name} to {target_name}. "
             "Output only the translation. Preserve names, numbers, and punctuation.\n\n"
@@ -141,7 +141,7 @@ class OllamaTranslationBackend:
         payload = {
             "model": self.model,
             "prompt": prompt,
-            "stream": False,
+            "stream": stream,
             "keep_alive": self.keep_alive,
             "options": {
                 "temperature": 0,
@@ -149,12 +149,14 @@ class OllamaTranslationBackend:
                 "num_predict": 256,
             },
         }
-        request = urllib.request.Request(
+        return urllib.request.Request(
             f"{self.base_url}/api/generate",
             data=json.dumps(payload).encode("utf-8"),
             headers={"Content-Type": "application/json"},
             method="POST",
         )
+    def _translate_sync(self, text: str, source_name: str, target_name: str) -> str:
+        request = self._request(text, source_name, target_name, False)
         try:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:
                 body = json.loads(response.read().decode("utf-8"))
@@ -183,3 +185,46 @@ class OllamaTranslationBackend:
         if not result:
             raise RuntimeError(f"Ollama 模型 {self.model} 返回了空翻译。")
         return result
+
+    async def stream_translate(self, text: str, source_language: str, target_language: str):
+        """Yield accumulating translation as local Ollama generates tokens."""
+        source_name = LANGUAGE_NAMES.get(source_language)
+        target_name = LANGUAGE_NAMES.get(target_language)
+        if not text or not source_name or not target_name or source_language == target_language:
+            yield text
+            return
+        response = None
+        result = ''
+        done = False
+        request = self._request(text, source_name, target_name, True)
+        try:
+            response = await asyncio.to_thread(urllib.request.urlopen, request, timeout=self.timeout)
+            while True:
+                line = await asyncio.to_thread(response.readline, 1024 * 1024)
+                if not line:
+                    break
+                body = json.loads(line)
+                if body.get('error'):
+                    raise RuntimeError(f"Ollama 翻译失败：{body['error']}")
+                token = str(body.get('response', ''))
+                if token:
+                    result += token
+                    yield result.strip()
+                if body.get('done'):
+                    done = True
+                    break
+        except urllib.error.HTTPError as exc:
+            detail = exc.read(4096).decode('utf-8', errors='replace')
+            raise RuntimeError(f'Ollama 翻译失败（HTTP {exc.code}）：{detail}') from exc
+        except urllib.error.URLError as exc:
+            raise RuntimeError(f'无法连接 Ollama（{self.base_url}）：{exc}') from exc
+        except TimeoutError as exc:
+            raise RuntimeError(f'Ollama 翻译超时（{self.timeout:.0f}s）') from exc
+        finally:
+            if response is not None:
+                # Close this recording's HTTP stream on completion/disconnect.
+                await asyncio.to_thread(response.close)
+        if not done:
+            raise RuntimeError('Ollama 翻译流中断，译文尚未完成，请核对原文')
+        if not result.strip():
+            raise RuntimeError(f'Ollama 模型 {self.model} 返回了空翻译。')

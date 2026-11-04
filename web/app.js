@@ -61,6 +61,8 @@ let audioContext;
 let mediaStream;
 let activeInputLabel = '';
 let pendingAudio = new Float32Array();
+let queuedAudioMs = 0;
+let pendingTranslations = 0;
 let audioInFlight = false;
 let pendingBoundaryAudio = null;
 let pendingSpeakerBoundary = false;
@@ -68,7 +70,6 @@ let sessionEnding = false;
 let finishSent = false;
 let captureSessionId = '';
 let captureSessionSequence = 0;
-let skippedAudioSamples = 0;
 let processor;
 let captionRows = [];
 let followCaptions = true;
@@ -140,9 +141,9 @@ function updateHealth(health) {
     ollamaModelStatus.textContent = `已安装，尚未加载 · ${formatModel(health.translation?.model)}`;
   }
   const responseMs = health.translation?.last_response_ms ? ` · 最近响应 ${health.translation.last_response_ms} ms` : '';
-  translationStatus.textContent = `${statusText(health.translation?.status)}${responseMs}`;
+  translationStatus.textContent = `${statusText(health.translation?.status)}${responseMs}${pendingTranslations ? ` · 待处理 ${pendingTranslations} 段` : ""}`;
   const frames = Number(health.audio?.frames || 0);
-  if (frames > audioFrames) audioStatus.textContent = `已收到 ${frames} 帧`;
+  if (frames > audioFrames && !(socket && socket.readyState <= WebSocket.OPEN)) audioStatus.textContent = `已收到 ${frames} 帧`;
   if (health.last_error) diagnosticStatus.textContent = health.last_error;
   document.querySelectorAll('.status-list dd').forEach(value => { value.title = value.textContent; });
 }
@@ -337,7 +338,7 @@ function encodePcm(buffer) {
 function sendPendingAudio() {
   if (audioInFlight || !socket || socket.readyState !== WebSocket.OPEN) return;
   let pcm;
-  if (pendingBoundaryAudio?.length) { pcm = pendingBoundaryAudio; pendingBoundaryAudio = null; }
+  if (pendingBoundaryAudio?.length) { pcm = pendingBoundaryAudio.subarray(0, 12800); pendingBoundaryAudio = pendingBoundaryAudio.length > 12800 ? pendingBoundaryAudio.slice(12800) : null; }
   else if (pendingSpeakerBoundary) {
     pendingSpeakerBoundary = false; pendingBoundaryAudio = null; audioInFlight = true;
     socket.send(JSON.stringify({type:'speaker_change'})); return;
@@ -346,7 +347,7 @@ function sendPendingAudio() {
       if (sessionEnding && !finishSent) { finishSent = true; audioInFlight = true; socket.send(JSON.stringify({type:'finish'})); }
       return;
     }
-    pcm = pendingAudio; pendingAudio = new Float32Array();
+    pcm = pendingAudio.subarray(0, 12800); pendingAudio = pendingAudio.slice(pcm.length);
   }
   audioInFlight = true;
   const sourceType = /blackhole|loopback|virtual/i.test(activeInputLabel) ? 'meeting_loopback' : 'microphone';
@@ -360,14 +361,17 @@ function requestSpeakerChange() {
   sendPendingAudio();
 }
 function queueAudioFrame(pcm) {
-  // Bound pending capture audio to four seconds. Keep
-  // the newest sound when inference cannot keep pace with the microphone.
-  skippedAudioSamples += Math.max(0, pendingAudio.length + pcm.length - 64000);
-  const frame = pcm.length > 64000 ? pcm.subarray(pcm.length - 64000) : pcm;
-  const retained = pendingAudio.subarray(Math.max(0, pendingAudio.length - (64000 - frame.length)));
-  const next = new Float32Array(retained.length + frame.length);
-  next.set(retained); next.set(frame, retained.length); pendingAudio = next;
-  if (skippedAudioSamples) audioStatus.textContent = `保持实时 · 已跳过 ${(skippedAudioSamples / 16000).toFixed(1)} 秒积压`;
+  // The server acknowledges after writing PCM to its local spool, independently
+  // of inference. Keep every sample during a temporary service stall.
+  if (pendingAudio.length + pcm.length > 16000 * 30) {
+    stopCapture(); sessionEnding = true;
+    setRuntime(false, '收音已暂停');
+    setDiagnostic('服务积压超过 30 秒，已暂停收音；已接收音频继续处理，请稍后重新开始');
+  }
+  const next = new Float32Array(pendingAudio.length + pcm.length);
+  next.set(pendingAudio); next.set(pcm, pendingAudio.length); pendingAudio = next;
+  if (pendingAudio.length > 16000) audioStatus.textContent = `音频待送 ${(pendingAudio.length / 16000).toFixed(1)} 秒 · 完整保留`;
+
   sendPendingAudio();
 }
 function updateInputLevel(buffer) {
@@ -398,7 +402,7 @@ async function startSession() {
   stopDemo(); lastCaptionAt = 0;
   startBtn.disabled = true; setRuntime(false, '连接中…');
   setSessionControls(true);
-  pendingAudio = new Float32Array(); audioInFlight = false; skippedAudioSamples = 0; pendingBoundaryAudio = null; pendingSpeakerBoundary = false; sessionEnding = false; finishSent = false;
+  pendingAudio = new Float32Array(); queuedAudioMs = 0; pendingTranslations = 0; audioInFlight = false; pendingBoundaryAudio = null; pendingSpeakerBoundary = false; sessionEnding = false; finishSent = false;
   recognitionLanguageStatus.textContent = '等待服务确认';
   updateInputLevel(new Float32Array());
   audioFrames = 0; audioStatus.textContent = '连接中…'; setDiagnostic('正在连接本地服务');
@@ -412,29 +416,46 @@ async function startSession() {
     return;
   }
   socket = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
+  const sessionSocket = socket;
+  let configuration = null;
   socket.onopen = async () => {
     try {
-      socket.send(JSON.stringify({ type: 'config', source_language: sourceLanguage.value, target_language: targetLanguage.value, speaker_mode: speakerMode.value }));
+      setRuntime(false, '准备收音…'); stopBtn.disabled = false;
+      setDiagnostic('正在准备所选识别语言，完成后开启麦克风');
+      await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('识别语言准备超时，请检查模型状态')), 180000);
+        configuration = { resolve: () => { clearTimeout(timer); resolve(); }, reject: error => { clearTimeout(timer); reject(error); } };
+        socket.send(JSON.stringify({ type: 'config', source_language: sourceLanguage.value, target_language: targetLanguage.value, speaker_mode: speakerMode.value }));
+      });
+      configuration = null;
+      if (socket !== sessionSocket || sessionSocket.readyState !== WebSocket.OPEN) return;
       const audio = { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true };
       if (inputDevice.value) audio.deviceId = { exact: inputDevice.value };
+      let selectedStream;
       try {
-        mediaStream = await navigator.mediaDevices.getUserMedia({ audio });
+        selectedStream = await navigator.mediaDevices.getUserMedia({ audio });
       } catch (error) {
         // Device IDs can change when macOS grants microphone permission. Retry
         // with the default input instead of ending the whole session.
         if (error.name !== 'OverconstrainedError' && error.name !== 'NotFoundError') throw error;
-        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+        selectedStream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
       }
       // Permission changes macOS device IDs and reveals their human-readable
       // names. Display the track actually opened, including a default fallback.
+      if (socket !== sessionSocket || sessionSocket.readyState !== WebSocket.OPEN) {
+        selectedStream.getTracks().forEach(track => track.stop()); return;
+      }
+      mediaStream = selectedStream;
+      sessionStartedAt = Date.now();
       await loadDevices(mediaStream.getAudioTracks()[0]);
+      if (socket !== sessionSocket || sessionSocket.readyState !== WebSocket.OPEN) return;
       audioContext = new AudioContext(); const source = audioContext.createMediaStreamSource(mediaStream); processor = audioContext.createScriptProcessor(4096, 1, 1);
       await audioContext.resume();
       processor.onaudioprocess = (event) => {
         if (socket.readyState !== WebSocket.OPEN) return;
         audioFrames += 1;
         if (audioFrames === 1 || audioFrames % 20 === 0) {
-          audioStatus.textContent = `已采集 ${audioFrames} 帧`;
+          if (queuedAudioMs <= 1500 && pendingAudio.length <= 16000) audioStatus.textContent = `已采集 ${audioFrames} 帧`;
           if (!lastCaptionAt) setDiagnostic('已收到音频，正在等待语音识别');
         }
         const pcm = downsample(event.inputBuffer.getChannelData(0), audioContext.sampleRate, 16000);
@@ -446,7 +467,7 @@ async function startSession() {
       };
       const silentOutput = audioContext.createGain(); silentOutput.gain.value = 0;
       source.connect(processor); processor.connect(silentOutput); silentOutput.connect(audioContext.destination); stopBtn.disabled = false; setDiagnostic(`音频已开启：${sourceStatus.textContent}`); setRuntime(true, '运行中');
-    } catch (error) { cleanupAudio(); audioStatus.textContent = '失败'; setDiagnostic(`音频输入失败：${error.message || '请检查系统麦克风权限'}`); if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) socket.close(); }
+    } catch (error) { if (sessionSocket.readyState > WebSocket.OPEN) return; cleanupAudio(); audioStatus.textContent = '失败'; setDiagnostic(`音频输入失败：${error.message || '请检查系统麦克风权限'}`); if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) socket.close(); }
   };
   socket.onmessage = (message) => {
     const event = JSON.parse(message.data);
@@ -460,26 +481,38 @@ async function startSession() {
       renderCaptions(); updateSummary();
     }
     if (event.type === 'status') setDiagnostic(event.message);
-    if (event.type === 'configured') updateRecognitionLanguage(event.asr_language || event.source_language);
+    if (event.type === 'configured') { updateRecognitionLanguage(event.asr_language || event.source_language); configuration?.resolve(); }
     if (event.type === 'speaker_changed') {
       speakerMode.value = 'none'; speakerChoiceMade = true; updateSummary(); setDiagnostic(event.message);
       changeSpeakerBtn.disabled = sessionEnding; audioInFlight = false; sendPendingAudio();
     }
     if (event.type === 'audio_ack') { audioInFlight = false; sendPendingAudio(); }
+    if (event.type === 'translation_status') {
+      if (Number.isFinite(event.pending_translations)) pendingTranslations = event.pending_translations;
+      translationStatus.textContent = `${statusText(event.state)}${pendingTranslations ? ` · 待处理 ${pendingTranslations} 段` : ''}`;
+    }
     if (event.type === 'audio_status') {
+      if (Number.isFinite(event.pending_translations)) pendingTranslations = event.pending_translations;
+      if (Number.isFinite(event.queued_audio_ms)) queuedAudioMs = event.queued_audio_ms;
+      if (Number.isFinite(event.queued_audio_ms)) audioStatus.textContent = event.queued_audio_ms > 1500 ? `识别积压 ${(event.queued_audio_ms / 1000).toFixed(1)} 秒 · 音频完整保留` : '音频接收正常 · 无跳过';
       if (event.state === 'rejected') setDiagnostic(event.message);
     }
-    if (event.type === 'error') setDiagnostic(`错误：${event.message}`);
-    if (event.type === 'session_finished') setDiagnostic('本次发言已完整收尾，可导出记录');
+    if (event.type === 'capture_paused') {
+      stopCapture(); sessionEnding = true; setRuntime(false, '收音已暂停'); setDiagnostic(event.message); sendPendingAudio();
+    }
+    if (event.type === 'error') { setDiagnostic(`错误：${event.message}`); configuration?.reject(new Error(event.message)); }
+    if (event.type === 'session_finished') setDiagnostic(event.rejected_samples ? '录音已收尾，但有音频未接收，请核对记录' : '本次发言已完整收尾，可导出记录');
   };
-  socket.onclose = () => { cleanupAudio(); setSessionControls(false); recognitionLanguageStatus.textContent = '未开始'; startBtn.disabled = runtimeMode !== 'LOCAL' || !modelsReady; stopBtn.disabled = true; setRuntime(false, '已停止'); };
-  socket.onerror = () => { setDiagnostic('本地服务连接失败'); setRuntime(false, '连接失败'); };
+  socket.onclose = () => { configuration?.reject(new Error('录音准备已取消')); cleanupAudio(); setSessionControls(false); recognitionLanguageStatus.textContent = '未开始'; startBtn.disabled = runtimeMode !== 'LOCAL' || !modelsReady; stopBtn.disabled = true; setRuntime(false, '已停止'); };
+  socket.onerror = () => { configuration?.reject(new Error('本地服务连接失败')); setDiagnostic('本地服务连接失败'); setRuntime(false, '连接失败'); };
 }
 function stopCapture() { if (processor) processor.disconnect(); if (audioContext) audioContext.close(); if (mediaStream) mediaStream.getTracks().forEach((track) => track.stop()); processor = null; audioContext = null; mediaStream = null; updateInputLevel(new Float32Array()); }
 function cleanupAudio() { stopCapture(); activeInputLabel = ''; pendingAudio = new Float32Array(); audioInFlight = false; pendingBoundaryAudio = null; pendingSpeakerBoundary = false; sessionEnding = false; finishSent = false; }
 function stopSession() {
   stopDemo();
-  if (socket?.readyState === WebSocket.OPEN) {
+  if (socket?.readyState === WebSocket.OPEN && !mediaStream && !processor && !pendingAudio.length && !audioInFlight && !audioFrames) {
+    socket.close();
+  } else if (socket?.readyState === WebSocket.OPEN) {
     stopCapture(); sessionEnding = true; stopBtn.disabled = true; changeSpeakerBtn.disabled = true;
     setRuntime(false, '正在收尾'); setDiagnostic('正在保留最后一段发言，请稍候…'); sendPendingAudio();
   } else if (socket?.readyState === WebSocket.CONNECTING) socket.close();

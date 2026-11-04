@@ -140,3 +140,26 @@ async def test_pipeline_rejects_invalid_audio() -> None:
     event = AudioEvent(session_id="test", audio_base64="not-base64")
     with pytest.raises(ValueError, match="valid base64"):
         _ = [caption async for caption in Pipeline().process_audio(event)]
+
+
+@pytest.mark.asyncio
+async def test_ollama_stream_yields_partial_text_and_closes_response(monkeypatch):
+    response = io.BytesIO(b'{"response":"one","done":false}\n{"response":" two","done":false}\n{"response":"","done":true}\n')
+    requests=[]
+    def open_stream(request,timeout):
+        requests.append(json.loads(request.data))
+        return response
+    monkeypatch.setattr('urllib.request.urlopen', open_stream)
+    values=[t async for t in OllamaTranslationBackend().stream_translate('测试','zh','ja')]
+    assert values==['one','one two']
+    assert requests[0]['stream'] is True
+    assert response.closed
+
+
+@pytest.mark.asyncio
+async def test_incomplete_ollama_stream_is_not_marked_as_completed(monkeypatch):
+    response=io.BytesIO(b'{"response":"unfinished","done":false}\n')
+    monkeypatch.setattr('urllib.request.urlopen',lambda *a,**k:response)
+    with pytest.raises(RuntimeError,match='中断'):
+        _=[t async for t in OllamaTranslationBackend().stream_translate('测试','zh','ja')]
+    assert response.closed

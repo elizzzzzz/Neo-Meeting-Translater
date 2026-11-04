@@ -2,9 +2,11 @@
 
 本地运行的中英 / 中日多人会议实时字幕翻译 MVP。当前目标设备是 16G 统一内存的 Apple M3：文字输出优先，语音合成作为可选插件，不依赖云端 API。
 
+0.2.4 修复音频积压时丢弃旧音频和轻声误判静音，解耦收音、识别与翻译，译文生成时逐步显示。已增加长段中日自然语音的按时钟回放评估；“原文约 1 秒、译文再约 1 秒”仍有超时情况，详见 [0.2.4 实测](docs/asr-evaluation-0.2.4.md) 与 [版本说明](docs/release-0.2.4.md)。
+
 0.2.3 增加同一发言人的连续双栏记录、历史滚动与“回到最新”、手动换人及本地声纹自动分人（测试）。已完成的识别片段保留，当前片段可修订；停止录音会补齐尾句。记录保留在当前 App 会话内，退出前请导出。
 
-“本地设置 → 语音转文字引擎”可选择 Whisper 或 SenseVoice（测试），保存并重开 App 生效。SenseVoice 需要本地 `asr/sensevoice/model.int8.onnx`、`tokens.txt`、`silero_vad.onnx`，不自动下载；原有 Whisper 配置保留。中日样本的实际结果、整句漏识别修复和限制见 [中日语音识别评估](docs/asr-evaluation-0.2.3.md) 与 [0.2.3 说明](docs/release-0.2.3.md)。自然多人会议准确率尚未验收，自动分人不能获得腾讯会议或 Teams 的真实姓名。
+“本地设置 → 语音转文字引擎”可选择 Whisper 或 SenseVoice（测试），保存并重开 App 生效。SenseVoice 需要本地 `asr/sensevoice/model.int8.onnx`、`tokens.txt`、`silero_vad.onnx`，不自动下载；原有 Whisper 配置保留。中日样本的实际结果、整句漏识别修复和限制见 [中日语音识别评估](docs/asr-evaluation-0.2.3.md) 与 [0.2.3 说明](docs/release-0.2.3.md)。真实麦克风、腾讯会议与 Teams 回环采集，以及自动分人准确率仍需独立验收；自动分人不能获得会议软件中的真实姓名。
 
 ## 当前范围
 

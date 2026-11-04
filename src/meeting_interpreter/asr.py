@@ -77,6 +77,15 @@ class LocalSpeechDetector:
             config.sample_rate = 16000
             config.num_threads = 1
             self._vad = sherpa_onnx.VoiceActivityDetector(config, buffer_size_in_seconds=60)
+        # Far-field meetings can be clearly intelligible at -40dBFS while
+        # Silero rejects the unscaled signal. Normalize only its detector input;
+        # keep the decoder's audio and the original silence/noise gates intact.
+        level = float(np.std(waveform)) if len(waveform) else 0.0
+        if .003 <= level < .04:
+            peak = float(np.max(np.abs(waveform)))
+            gain = min(4.0, .04 / level, .95 / max(peak, 1e-6))
+            if gain > 1:
+                waveform = waveform * gain
         self._vad.reset()
         self._vad.accept_waveform(np.concatenate((waveform, np.zeros(8000, dtype=np.float32))))
         self._vad.flush()
@@ -99,6 +108,9 @@ class SenseVoiceBackend:
     def for_language(self, language: str) -> SenseVoiceBackend:
         backend = SenseVoiceBackend(self.model, language)
         backend._recognizers = self._recognizers
+        # All detector access is under _inference_lock and each call resets it.
+        # Reuse the startup-warmed detector instead of loading ONNX per session.
+        backend._speech_detector = self._speech_detector
         return backend
 
     def _load(self):

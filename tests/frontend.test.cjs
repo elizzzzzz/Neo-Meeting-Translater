@@ -144,16 +144,15 @@ test('recording locks language controls and displays the server-confirmed decode
   assert.equal(app.elements.get('#sourceLanguage').disabled,false);
 });
 
-test('slow inference keeps one audio packet in flight and a bounded recent window', () => {
-  const app=loadApp();const sent=[];
-  app.context.sent=sent;
-  app.run("socket={readyState:WebSocket.OPEN, send:message=>sent.push(JSON.parse(message))}; activeInputLabel='MacBook 麦克风'");
+test('slow inference preserves every captured sample and reports backlog', () => {
+  const app=loadApp();const sent=[];app.context.sent=sent;
+  app.run("socket={readyState:WebSocket.OPEN,send:message=>sent.push(JSON.parse(message))};activeInputLabel='MacBook 麦克风'");
   app.run('for(let i=0;i<100;i++) queueAudioFrame(new Float32Array(1600).fill(.03));');
   assert.equal(sent.length,1);
-  assert.ok(app.run('pendingAudio.length') <= 64000);
-  assert.match(app.elements.get('#audioStatus').textContent,/已跳过/);
-  app.run('audioInFlight=false;sendPendingAudio()');
-  assert.equal(sent.length,2);
+  assert.equal(app.run('pendingAudio.length'),158400);
+  assert.doesNotMatch(app.elements.get('#audioStatus').textContent,/已跳过/);
+  for(let i=0;i<100;i++) app.run('audioInFlight=false;sendPendingAudio()');
+  assert.equal(sent.reduce((n,e)=>n+Buffer.from(e.audio_base64,'base64').length/2,0),160000);
   assert.equal(app.run('pendingAudio.length'),0);
 });
 
@@ -239,4 +238,48 @@ test('manual speaker changes remain available when no audio is waiting', () => {
   const app=loadApp();const sent=[];app.context.sent=sent;
   app.run("socket={readyState:WebSocket.OPEN,send:message=>sent.push(JSON.parse(message))};requestSpeakerChange();audioInFlight=false;requestSpeakerChange();");
   assert.deepEqual(sent.map(e=>e.type),['speaker_change','speaker_change']);
+});
+
+test('backlog remains visible across health refreshes instead of claiming realtime', async () => {
+  const app=loadApp();
+  app.context.navigator.mediaDevices={getUserMedia:async()=>{}};
+  app.context.WebSocket=class {static OPEN=1;static CONNECTING=0;constructor(){this.readyState=1;}};
+  app.run("runtimeMode='LOCAL';modelsReady=true");await app.run('startSession()');
+  app.run("socket.onmessage({data:JSON.stringify({type:'audio_status',state:'sound',queued_audio_ms:3200})})");
+  app.run("socket.onmessage({data:JSON.stringify({type:'translation_status',state:'processing',pending_translations:4})})");
+  app.run("updateHealth({mode:'local',models:{ready:true,progress:100},asr:{status:'ready'},translation:{status:'processing'},audio:{frames:999}})");
+  assert.match(app.elements.get('#audioStatus').textContent,/3\.2 秒/);
+  assert.match(app.elements.get('#translationStatus').textContent,/4 段/);
+});
+
+
+test('microphone opens only after the selected language has finished warming', async () => {
+  const app=loadApp(); let opened=0;
+  app.context.navigator.mediaDevices={getUserMedia:async()=>{opened++;throw new Error('test permission');}};
+  app.context.WebSocket=class {
+    static OPEN=1;static CONNECTING=0;
+    constructor(){this.readyState=1;} send(){} close(){this.readyState=3;}
+  };
+  app.run("runtimeMode='LOCAL';modelsReady=true;sourceLanguage.value='zh';targetLanguage.value='ja'");
+  await app.run('startSession()');
+  const opening=app.run('socket.onopen()');
+  await Promise.resolve();
+  assert.equal(opened,0,'language setup must not record speech into a cold recognizer');
+  app.run("socket.onmessage({data:JSON.stringify({type:'configured',asr_language:'zh'})})");
+  await opening;
+  assert.equal(opened,1);
+});
+
+
+test('canceling language warmup never opens the microphone', async () => {
+  const app=loadApp(); let opened=0;
+  app.context.navigator.mediaDevices={getUserMedia:async()=>{opened++;}};
+  app.context.WebSocket=class {
+    static OPEN=1;static CONNECTING=0;
+    constructor(){this.readyState=1;} send(){} close(){this.readyState=3;this.onclose();}
+  };
+  app.run("runtimeMode='LOCAL';modelsReady=true"); await app.run('startSession()');
+  const opening=app.run('socket.onopen()');
+  app.run('stopSession()'); await opening;
+  assert.equal(opened,0); assert.equal(app.elements.get('#sourceLanguage').disabled,false);
 });

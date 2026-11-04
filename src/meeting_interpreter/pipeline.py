@@ -71,7 +71,8 @@ class Pipeline:
     Real adapters should replace `process_audio` while preserving CaptionEvent semantics.
     """
 
-    def __init__(self, source_language: str = "auto", target_language: str = "zh", mode: str | None = None, speaker_mode: str | None = None, asr_backend: ASRBackend | None = None, translator_backend: TranslationBackend | None = None, speaker_backend: EmbeddingSpeakerBackend | None = None) -> None:
+    def __init__(self, source_language: str = "auto", target_language: str = "zh", mode: str | None = None, speaker_mode: str | None = None, asr_backend: ASRBackend | None = None, translator_backend: TranslationBackend | None = None, speaker_backend: EmbeddingSpeakerBackend | None = None, translate_inline: bool = True) -> None:
+        self.translate_inline = translate_inline
         self.source_language = source_language
         self.target_language = target_language
         self.mode = mode or os.getenv("MEETING_INTERPRETER_MODE", "mock")
@@ -79,6 +80,7 @@ class Pipeline:
         self._clock_ms = 0
         self._buffers: dict[str, bytearray] = {}
         self._audio_ms: dict[str, int] = {}
+        self._audio_samples: dict[str, int] = {}
         self._buffer_start_ms: dict[str, int] = {}
         self._committed_until_ms: dict[str, int] = {}
         self._decoded_boundary_ms: dict[str, int] = {}
@@ -133,7 +135,7 @@ class Pipeline:
             self.translator = None
             self.speaker = PendingSpeakerBackend()
 
-    async def process_audio(self, event: AudioEvent) -> AsyncIterator[CaptionEvent]:
+    async def process_audio(self, event: AudioEvent, defer_partial: bool = False) -> AsyncIterator[CaptionEvent]:
         # Decode now so malformed input is rejected before real model inference is added.
         try:
             raw_audio = base64.b64decode(event.audio_base64, validate=True)
@@ -141,7 +143,7 @@ class Pipeline:
             raise ValueError("audio_base64 is not valid base64") from exc
 
         if self.mode == "local":
-            async for yield_event in self._process_local(event, raw_audio):
+            async for yield_event in self._process_local(event, raw_audio, defer_partial):
                 yield yield_event
             return
 
@@ -179,7 +181,7 @@ class Pipeline:
             end_ms=self._clock_ms,
         )
 
-    async def _process_local(self, event: AudioEvent, raw_audio: bytes) -> AsyncIterator[CaptionEvent]:
+    async def _process_local(self, event: AudioEvent, raw_audio: bytes, defer_partial: bool = False) -> AsyncIterator[CaptionEvent]:
         if event.channels != 1:
             raise ValueError("语音识别需要单声道音频")
         rms, peak, active_ms = pcm16_activity(raw_audio, event.sample_rate)
@@ -188,9 +190,9 @@ class Pipeline:
         session = event.session_id
         self._last_events[session] = event
         buffer = self._buffers.setdefault(session, bytearray())
-        chunk_ms = round(len(raw_audio) / 2 / event.sample_rate * 1000)
         previous_audio_ms = self._audio_ms.get(session, 0)
-        audio_ms = previous_audio_ms + chunk_ms
+        self._audio_samples[session] = self._audio_samples.get(session, 0) + len(raw_audio) // 2
+        audio_ms = round(self._audio_samples[session] / event.sample_rate * 1000)
         self._audio_ms[session] = audio_ms
         previous_voice_ms = self._last_voice_ms.get(session)
         new_turn = active_ms and (previous_voice_ms is None or previous_audio_ms - previous_voice_ms >= 1200)
@@ -269,8 +271,10 @@ class Pipeline:
             self._last_infer_ms[session] = end_ms
         if self._voice_duration_ms.get(session, 0) < 160 or len(buffer) < round(event.sample_rate * 2 * .6):
             return
+        if defer_partial and active_ms:
+            return
         last_infer_ms = self._last_infer_ms.get(session)
-        if active_ms and last_infer_ms is not None and audio_ms - last_infer_ms < 900:
+        if active_ms and last_infer_ms is not None and audio_ms - last_infer_ms < 600:
             return
         self._last_infer_ms[session] = audio_ms
         async for caption in self._decode_window(event, bytes(buffer), self._buffer_start_ms.get(session, previous_audio_ms)):
@@ -305,6 +309,10 @@ class Pipeline:
                 boundary = words[-1].end_ms
                 self._decoded_boundary_ms[event.session_id] = boundary
                 result = replace(result, end_ms=boundary)
+        if result.language in {"zh", "ja"}:
+            # CTC subword boundaries are not spaces in Chinese/Japanese prose.
+            # Clean display/translation after applying word timestamps.
+            result = replace(result, text=re.sub(r"(?<=[0-9\u3040-\u30ff\u3400-\u9fff])\s+(?=[0-9\u3040-\u30ff\u3400-\u9fff])", "", result.text))
         speaker_id = self._speaker_ids.get(event.session_id, "SPEAKER_PENDING")
         if result.text == self._last_text.get(event.session_id):
             previous = self._latest_caption.get(event.session_id)
@@ -331,7 +339,7 @@ class Pipeline:
         # transcript responsive while a cold Ollama model is loading.
         self._latest_caption[event.session_id] = caption
         yield caption
-        if not translated_text and self.translator is not None:
+        if self.translate_inline and not translated_text and self.translator is not None:
             translated_text = await self.translator.translate(result.text, result.language, self.target_language)
             caption = caption.model_copy(update={"translated_text": translated_text, "is_final": True})
             self._latest_caption[event.session_id] = caption

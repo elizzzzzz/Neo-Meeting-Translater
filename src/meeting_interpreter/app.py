@@ -17,6 +17,7 @@ from .asr import MLXWhisperBackend, SenseVoiceBackend, create_asr_backend, sense
 from .models import AudioEvent, ErrorEvent, SessionConfig
 from .pipeline import Pipeline
 from .speaker import EmbeddingSpeakerBackend, speaker_model_path
+from .streaming import LiveSession
 from .system import current_model_directory, inspect_ollama, pull_ollama_model, read_preferences, save_preferences, save_model_directory, upgrade_ollama
 from .translation import OllamaTranslationBackend
 
@@ -53,7 +54,7 @@ def create_app() -> FastAPI:
         "speaker_status": "loading" if speaker_model_path().is_file() and mode == "local" else "missing",
         "speaker_message": "声纹模型尚未连接，可手动换人",
     }
-    app = FastAPI(title="Local Meeting Interpreter", version="0.2.3")
+    app = FastAPI(title="Local Meeting Interpreter", version="0.2.4")
     app.mount("/web", StaticFiles(directory=WEB_DIR), name="web")
 
     @app.get("/health")
@@ -222,92 +223,96 @@ def create_app() -> FastAPI:
     async def websocket_endpoint(websocket: WebSocket) -> None:
         await websocket.accept()
         await websocket.send_json({"type": "status", "stage": "service", "message": f"本地服务已连接；ASR：{asr_model}；翻译：{translation_model}"})
-        pipeline = Pipeline(mode=mode, asr_backend=runtime.get("asr_backend"), translator_backend=runtime.get("translator_backend_instance"))
+        send_lock = asyncio.Lock()
+
+        async def send(payload):
+            async with send_lock:
+                if payload['type'] == 'caption':
+                    runtime['asr_status'] = 'ready'
+                elif payload['type'] == 'translation_status':
+                    runtime['translation_status'] = payload['state']
+                    if 'last_response_ms' in payload:
+                        runtime['last_translation_ms'] = payload['last_response_ms']
+                elif payload['type'] == 'capture_paused':
+                    runtime['asr_status'] = 'error'
+                    runtime['last_error'] = payload['message']
+                await websocket.send_json(payload)
+
+        pipeline = Pipeline(mode=mode, asr_backend=runtime.get('asr_backend'), translator_backend=runtime.get('translator_backend_instance'), translate_inline=False)
+        session = LiveSession(pipeline, send)
+        started = False
+        rejected_samples = 0
         try:
             while True:
+                await asyncio.sleep(0)
                 payload = json.loads(await websocket.receive_text())
-                if payload.get("type") == "ping":
-                    await websocket.send_json({"type": "pong"})
+                kind = payload.get('type')
+                if kind == 'ping':
+                    await send({'type': 'pong'})
                     continue
-                if payload.get("type") == "config":
-                    config = SessionConfig.model_validate(payload)
-                    if config.speaker_mode == "embedding" and runtime["speaker_backend"] is None:
-                        await websocket.send_json(ErrorEvent(message=runtime["speaker_message"]).model_dump(mode="json"))
+                if kind == 'config':
+                    if started:
+                        await send(ErrorEvent(message='请先停止录音再更改识别设置').model_dump(mode='json'))
                         continue
-                    pipeline = Pipeline(
-                        source_language=config.source_language,
-                        target_language=config.target_language,
-                        mode=mode,
-                        speaker_mode=config.speaker_mode,
-                        asr_backend=runtime.get("asr_backend"),
-                        translator_backend=runtime.get("translator_backend_instance"),
-                        speaker_backend=runtime.get("speaker_backend"),
-                    )
-                    effective_language = getattr(pipeline.asr, "language", None) or "auto"
-                    await websocket.send_json({"type": "configured", "source_language": config.source_language, "asr_language": effective_language, "target_language": config.target_language})
-                    language_label = {"zh": "锁定中文", "ja": "锁定日语", "en": "锁定英语", "auto": "自动识别"}.get(effective_language, effective_language)
-                    await websocket.send_json({"type": "status", "stage": "models", "message": f"语音识别已配置：{language_label}；翻译模型状态：{runtime['translation_status']}"})
-                    continue
-                if payload.get("type") == "speaker_change":
-                    async for caption in pipeline.change_speaker():
-                        await websocket.send_json(caption.model_dump(mode="json"))
-                    await websocket.send_json({"type": "speaker_changed", "message": "已标记换人，当前使用手动分段"})
-                    continue
-                if payload.get("type") == "finish":
-                    try:
-                        async for caption in pipeline.flush_audio():
-                            await websocket.send_json(caption.model_dump(mode="json"))
-                        await websocket.send_json({"type": "session_finished"})
-                    except Exception as exc:
+                    config = SessionConfig.model_validate(payload)
+                    if config.speaker_mode == 'embedding' and runtime['speaker_backend'] is None:
+                        await send(ErrorEvent(message=runtime['speaker_message']).model_dump(mode='json'))
+                        continue
+                    await session.close()
+                    pipeline = Pipeline(source_language=config.source_language, target_language=config.target_language,
+                        mode=mode, speaker_mode=config.speaker_mode, asr_backend=runtime.get('asr_backend'),
+                        translator_backend=runtime.get('translator_backend_instance'), speaker_backend=runtime.get('speaker_backend'),
+                        translate_inline=False)
+                    session = LiveSession(pipeline, send)
+                    effective_language = getattr(pipeline.asr, 'language', None) or 'auto'
+                    if mode == 'local' and isinstance(pipeline.asr, SenseVoiceBackend):
+                        language_name = {'zh': '中文', 'ja': '日语', 'en': '英语', 'auto': '自动识别'}.get(effective_language, effective_language)
+                        await send({'type': 'status', 'stage': 'preparing', 'message': f'正在准备{language_name}识别；完成后开启收音，请稍候…'})
                         try:
-                            await websocket.send_json(ErrorEvent(message=f"收尾识别失败：{exc}").model_dump(mode="json"))
-                        except (WebSocketDisconnect, RuntimeError):
-                            pass
-                    finally:
-                        await websocket.close()
+                            await asyncio.to_thread(pipeline.asr.warmup)
+                        except Exception as exc:
+                            runtime['last_error'] = str(exc)
+                            await send(ErrorEvent(message=f'所选语言准备失败，尚未开启收音：{exc}').model_dump(mode='json'))
+                            continue
+                    await send({'type': 'configured', 'source_language': config.source_language, 'asr_language': effective_language, 'target_language': config.target_language})
+                    language_label = {'zh': '锁定中文', 'ja': '锁定日语', 'en': '锁定英语', 'auto': '自动识别'}.get(effective_language, effective_language)
+                    await send({'type': 'status', 'stage': 'models', 'message': f'语音识别已配置：{language_label}；翻译模型状态：{runtime["translation_status"]}'})
+                    continue
+                if not started:
+                    session.start()
+                    started = True
+                if kind == 'speaker_change':
+                    session.change_speaker()
+                    await send({'type': 'speaker_changed', 'message': '已标记换人，上一段音频将按顺序完整处理'})
+                    continue
+                if kind == 'finish':
+                    try:
+                        await session.finish()
+                        await send({'type': 'session_finished', **session.metrics(), 'rejected_samples': rejected_samples})
+                    except Exception as exc:
+                        await send(ErrorEvent(message=f'收尾识别失败：{exc}').model_dump(mode='json'))
+                    await websocket.close()
                     return
                 try:
                     event = AudioEvent.model_validate(payload)
-                    runtime["audio_frames"] = int(runtime["audio_frames"]) + 1
-                    runtime["last_audio_at"] = time.time()
-                    if int(runtime["audio_frames"]) == 1 or int(runtime["audio_frames"]) % 20 == 0:
-                        await websocket.send_json({"type": "status", "stage": "audio", "message": f"已收到音频帧：{runtime['audio_frames']}"})
-                    translation_started_at = None
-                    async for caption in pipeline.process_audio(event):
-                        runtime["asr_status"] = "ready"
-                        if not caption.translated_text:
-                            translation_started_at = time.perf_counter()
-                            runtime["translation_status"] = "processing"
-                        elif translation_started_at is not None:
-                            runtime["last_translation_ms"] = round((time.perf_counter() - translation_started_at) * 1000)
-                        try:
-                            await websocket.send_json(caption.model_dump(mode="json"))
-                        except (WebSocketDisconnect, RuntimeError):
-                            return
-                    if translation_backend == "ollama" and runtime["translation_status"] == "processing":
-                        runtime["translation_status"] = "running"
-                    if pipeline.audio_status["state"] == "rejected" or int(runtime["audio_frames"]) % 20 == 0:
-                        await websocket.send_json({"type": "audio_status", **pipeline.audio_status})
-                except Exception as exc:  # Surface errors to the UI without dropping the session.
-                    runtime["last_error"] = str(exc)
-                    if "Ollama" in str(exc) or "翻译" in str(exc):
-                        runtime["translation_status"] = "error"
+                    session.feed(event)
+                    runtime['audio_frames'] = int(runtime['audio_frames']) + 1
+                    runtime['last_audio_at'] = time.time()
+                    # ACK means safely ingested, never waits for ASR or translation.
+                    await send({'type': 'audio_ack', 'accepted': True, **session.metrics()})
+                except (ValueError, BufferError, OSError) as exc:
+                    runtime['last_error'] = str(exc)
+                    if isinstance(exc, (BufferError, OSError)):
+                        import base64
+                        rejected_samples += len(base64.b64decode(payload.get('audio_base64', ''))) // 2
+                        await send({'type': 'capture_paused', 'message': f'{exc}；最后一包未接收，本次记录可能不完整'})
                     else:
-                        runtime["asr_status"] = "error"
-                    try:
-                        await websocket.send_json({"type": "status", "stage": "error", "message": str(exc)})
-                        await websocket.send_json(ErrorEvent(message=str(exc)).model_dump(mode="json"))
-                    except (WebSocketDisconnect, RuntimeError):
-                        return
-                finally:
-                    # Acknowledge after inference/translation so the client can
-                    # coalesce recent audio instead of flooding a slow model.
-                    try:
-                        await websocket.send_json({"type": "audio_ack"})
-                    except (WebSocketDisconnect, RuntimeError):
-                        return
-        except WebSocketDisconnect:
+                        await send(ErrorEvent(message=str(exc)).model_dump(mode='json'))
+                    await send({'type': 'audio_ack', 'accepted': False})
+        except (WebSocketDisconnect, RuntimeError):
             return
+        finally:
+            await session.close()
 
     return app
 

@@ -110,3 +110,36 @@ async def test_decoder_returns_absolute_word_times_for_nonduplicating_chunk_over
     assert decoder.options['word_timestamps'] is True
     assert result.words[0].start_ms == 7200
     assert result.words[-1].end_ms == 8000
+
+
+@pytest.mark.asyncio
+async def test_quiet_meeting_speech_is_kept_while_silence_and_noise_stay_rejected():
+    """Optional real-model regression; no recording/model downloads in pytest."""
+    import os
+    import wave
+    from pathlib import Path
+    import numpy as np
+    from meeting_interpreter.asr import SenseVoiceBackend
+    recording = os.getenv('LMI_TEST_MEETING_WAV')
+    model = os.getenv('LMI_TEST_SENSEVOICE_MODEL')
+    if not recording or not model or not Path(recording).is_file():
+        pytest.skip('Set LMI_TEST_MEETING_WAV and LMI_TEST_SENSEVOICE_MODEL for AISHELL-4 regression')
+    with wave.open(recording) as f:
+        f.setpos(round(89.06 * 16000))
+        pcm = f.readframes(round(5.54 * 16000))
+    backend = SenseVoiceBackend(model, 'zh')
+    result = await backend.transcribe(pcm, 16000, 89060)
+    assert result is not None, 'Audible, annotated speech was incorrectly rejected by VAD'
+    assert '工作' in result.text and '汇报' in result.text
+    assert await backend.transcribe(bytes(160000), 16000, 0) is None
+    noise = (np.random.default_rng(7).normal(0,.01,80000)*32768).astype(np.int16).tobytes()
+    assert await backend.transcribe(noise,16000,0) is None
+
+
+def test_sensevoice_language_sessions_reuse_the_warmed_speech_detector(tmp_path):
+    from meeting_interpreter.asr import SenseVoiceBackend
+    backend = SenseVoiceBackend(str(tmp_path))
+    chinese, japanese = backend.for_language('zh'), backend.for_language('ja')
+    assert chinese._speech_detector is backend._speech_detector
+    assert japanese._speech_detector is backend._speech_detector
+    assert chinese.language == 'zh' and japanese.language == 'ja'

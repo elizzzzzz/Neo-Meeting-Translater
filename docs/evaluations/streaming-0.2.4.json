@@ -1,0 +1,587 @@
+{
+  "schema_version": 1,
+  "version": "0.2.4",
+  "date": "2026-11-04",
+  "hardware": "Apple M3, 16 GB unified memory",
+  "inference": "local only; SenseVoice int8 + local Ollama translategemma:4b",
+  "protocol": "200ms mono PCM16/16kHz frames through packaged native app loopback WebSocket",
+  "automatic_speaker_diarization": false,
+  "real_microphone_and_meeting_loopback_tested": false,
+  "source_latency_method": "Exact normalized 8-12 character reference-line suffix, relative to reference line end; matched lines only; not manually word-aligned.",
+  "translation_latency_method": "First visible generation and completion, relative to first display of the corresponding exact source revision; not human translation-quality evaluation.",
+  "target_met_consistently": false,
+  "recordings": [
+    {
+      "language": "zh",
+      "identifier": "S_R004S01C01",
+      "reference_kind": "official_TextGrid_verbatim_annotations",
+      "source": {
+        "dataset": "AISHELL/AISHELL-4",
+        "identifier": "S_R004S01C01",
+        "channel": 0,
+        "clip_seconds": 180,
+        "license": "CC-BY-SA-4.0",
+        "audio_url": "https://huggingface.co/datasets/AISHELL/AISHELL-4/resolve/main/test/wav/S_R004S01C01.flac",
+        "reference_url": "https://huggingface.co/datasets/AISHELL/AISHELL-4/resolve/main/test/TextGrid/S_R004S01C01.TextGrid"
+      },
+      "pcm_wav_sha256": "1a6a21da412f91d6888de92d37eacabfdbe09d42570652f0c92c71cf30300eca",
+      "attribution": "Yihui Fu et al., AISHELL-4 (Interspeech 2021); Beijing Shell Shell Technology Co., Ltd. and dataset contributors"
+    },
+    {
+      "language": "ja",
+      "identifier": "Y0wyvkJ18U0",
+      "reference_kind": "dataset_subtitles_not_independently_verified",
+      "source": "espnet/yodas2 ja000 shard 00000000, Y0wyvkJ18U0, CC-BY-3.0, Japanese public policy speech",
+      "pcm_wav_sha256": "1ab7ed2462b203cac5fbcf265b5870e7c85caab838919142cf501c4cf324267c",
+      "dataset": "espnet/yodas2",
+      "revision": "631fc446cb1a41ee93a1d390a167c6e08c2597a3",
+      "subset": "ja000",
+      "shard": "00000000",
+      "license": "CC-BY-3.0",
+      "attribution": "Xinjian Li et al., YODAS (ASRU 2023), espnet contributors and original CC video creators"
+    },
+    {
+      "language": "zh",
+      "identifier": "1R_ektyh3oA",
+      "reference_kind": "dataset_subtitles_not_independently_verified",
+      "source": "espnet/yodas2 zh000 shard 00000000, 1R_ektyh3oA, CC-BY-3.0, workplace management spoken presentation",
+      "pcm_wav_sha256": "cbf0688bd2d95b9c194a507271312bbd27726ebb2c086d8a319adc802426acc9",
+      "dataset": "espnet/yodas2",
+      "revision": "631fc446cb1a41ee93a1d390a167c6e08c2597a3",
+      "subset": "zh000",
+      "shard": "00000000",
+      "license": "CC-BY-3.0",
+      "attribution": "Xinjian Li et al., YODAS (ASRU 2023), espnet contributors and original CC video creators",
+      "accuracy_excluded_reason": "Edited/abridged subtitles are not a verbatim reference; queue stress only."
+    }
+  ],
+  "final_native_runs": {
+    "zh": {
+      "engine": "sensevoice",
+      "provenance": {
+        "dataset": "AISHELL/AISHELL-4",
+        "identifier": "S_R004S01C01",
+        "channel": 0,
+        "clip_seconds": 180,
+        "license": "CC-BY-SA-4.0",
+        "audio_url": "https://huggingface.co/datasets/AISHELL/AISHELL-4/resolve/main/test/wav/S_R004S01C01.flac",
+        "reference_url": "https://huggingface.co/datasets/AISHELL/AISHELL-4/resolve/main/test/TextGrid/S_R004S01C01.TextGrid"
+      },
+      "reference_kind": "official_TextGrid_verbatim_annotations",
+      "audio_seconds": 180.0,
+      "session_configuration_seconds": 9.281,
+      "elapsed_seconds": 183.719,
+      "drain_seconds": 3.719,
+      "wall_clock_paced": true,
+      "scoring_after_playback": true,
+      "feed_lateness": {
+        "n": 900,
+        "p50_ms": 4,
+        "p95_ms": 5,
+        "max_ms": 37
+      },
+      "translation_enabled": true,
+      "native_websocket_replay": true,
+      "normalization": "NFKC, lowercase, punctuation/space removal; optional Chinese t2s; no numeral conversion",
+      "cer": 0.08902077151335312,
+      "reference_characters": 674,
+      "deletions": 7,
+      "insertions": 6,
+      "substitutions": 47,
+      "raw_script_cer": 0.08902077151335312,
+      "chinese_script_normalized": true,
+      "reference_timing_overrun_ms": 0,
+      "matched_subtitle_lines": 11,
+      "eligible_subtitle_lines": 13,
+      "source_line_end_latency_estimate": {
+        "n": 11,
+        "p50_ms": 964,
+        "p95_ms": 2441,
+        "max_ms": 2441
+      },
+      "source_line_stable_latency_estimate": {
+        "n": 10,
+        "p50_ms": 1337,
+        "p95_ms": 2908,
+        "max_ms": 2908
+      },
+      "translation_after_source_latency": {
+        "n": 132,
+        "p50_ms": 1391,
+        "p95_ms": 4267,
+        "max_ms": 6264
+      },
+      "translation_first_visible_after_source": {
+        "n": 132,
+        "p50_ms": 667,
+        "p95_ms": 2738,
+        "max_ms": 4015
+      },
+      "max_queued_audio_ms": 6800,
+      "received_samples": 2880000,
+      "processed_samples": 2880000,
+      "queued_audio_ms": 0,
+      "dropped_samples": 0,
+      "pending_translations": 0,
+      "rejected_samples": 0,
+      "peak_rss_bytes": 59342848,
+      "peak_rss_scope": "replay_client_only",
+      "load_average": [
+        6.04931640625,
+        5.27734375,
+        7.044921875
+      ],
+      "errors": []
+    },
+    "ja": {
+      "engine": "sensevoice",
+      "provenance": "espnet/yodas2 ja000 shard 00000000, Y0wyvkJ18U0, CC-BY-3.0, Japanese public policy speech",
+      "reference_kind": "dataset_subtitles_not_independently_verified",
+      "audio_seconds": 192.569625,
+      "session_configuration_seconds": 12.388,
+      "elapsed_seconds": 197.334,
+      "drain_seconds": 4.765,
+      "wall_clock_paced": true,
+      "scoring_after_playback": true,
+      "feed_lateness": {
+        "n": 963,
+        "p50_ms": 4,
+        "p95_ms": 5,
+        "max_ms": 147
+      },
+      "translation_enabled": true,
+      "native_websocket_replay": true,
+      "normalization": "NFKC, lowercase, punctuation/space removal; optional Chinese t2s; no numeral conversion",
+      "cer": 0.11800172265288544,
+      "reference_characters": 1161,
+      "deletions": 58,
+      "insertions": 35,
+      "substitutions": 44,
+      "raw_script_cer": 0.11800172265288544,
+      "chinese_script_normalized": false,
+      "reference_timing_overrun_ms": 860,
+      "matched_subtitle_lines": 27,
+      "eligible_subtitle_lines": 43,
+      "source_line_end_latency_estimate": {
+        "n": 27,
+        "p50_ms": 1274,
+        "p95_ms": 2503,
+        "max_ms": 3247
+      },
+      "source_line_stable_latency_estimate": {
+        "n": 24,
+        "p50_ms": 1201,
+        "p95_ms": 5033,
+        "max_ms": 5846
+      },
+      "translation_after_source_latency": {
+        "n": 130,
+        "p50_ms": 1964,
+        "p95_ms": 4016,
+        "max_ms": 5450
+      },
+      "translation_first_visible_after_source": {
+        "n": 130,
+        "p50_ms": 1091,
+        "p95_ms": 2352,
+        "max_ms": 3177
+      },
+      "max_queued_audio_ms": 5000,
+      "received_samples": 3081114,
+      "processed_samples": 3081114,
+      "queued_audio_ms": 0,
+      "dropped_samples": 0,
+      "pending_translations": 0,
+      "rejected_samples": 0,
+      "peak_rss_bytes": 57114624,
+      "peak_rss_scope": "replay_client_only",
+      "load_average": [
+        9.35595703125,
+        7.0390625,
+        7.35009765625
+      ],
+      "errors": []
+    }
+  },
+  "offline_20s_quality_comparison": {
+    "zh": [
+      {
+        "language": "zh",
+        "engine": "sensevoice-20s",
+        "audio_seconds": 180.0,
+        "total_decode_seconds": 10.893761833780445,
+        "max_chunk_decode_seconds": 7.104560291045345,
+        "cer": 0.08902077151335312,
+        "reference_characters": 674,
+        "deletions": 14,
+        "insertions": 5,
+        "substitutions": 41,
+        "not_realtime": true
+      },
+      {
+        "language": "zh",
+        "engine": "whisper-turbo-20s",
+        "audio_seconds": 180.0,
+        "total_decode_seconds": 27.537551708868705,
+        "max_chunk_decode_seconds": 4.9181278749601915,
+        "cer": 0.23590504451038577,
+        "reference_characters": 674,
+        "deletions": 108,
+        "insertions": 5,
+        "substitutions": 46,
+        "not_realtime": true
+      }
+    ],
+    "ja": [
+      {
+        "language": "ja",
+        "engine": "sensevoice-20s",
+        "audio_seconds": 192.569625,
+        "total_decode_seconds": 11.521515249973163,
+        "max_chunk_decode_seconds": 7.5161295420257375,
+        "cer": 0.11024978466838932,
+        "reference_characters": 1161,
+        "deletions": 68,
+        "insertions": 18,
+        "substitutions": 42,
+        "not_realtime": true
+      },
+      {
+        "language": "ja",
+        "engine": "whisper-turbo-20s",
+        "audio_seconds": 192.569625,
+        "total_decode_seconds": 27.90211778995581,
+        "max_chunk_decode_seconds": 5.172410208033398,
+        "cer": 0.08785529715762273,
+        "reference_characters": 1161,
+        "deletions": 50,
+        "insertions": 17,
+        "substitutions": 35,
+        "not_realtime": true
+      }
+    ]
+  },
+  "exploratory_runs": {
+    "zh_before_quiet_VAD_fix": {
+      "note": "Local CLI, before detector gain; different runtime/load and scorer, not a controlled latency comparison.",
+      "metrics": {
+        "engine": "sensevoice",
+        "provenance": {
+          "dataset": "AISHELL/AISHELL-4",
+          "identifier": "S_R004S01C01",
+          "channel": 0,
+          "clip_seconds": 180,
+          "license": "CC-BY-SA-4.0",
+          "audio_url": "https://huggingface.co/datasets/AISHELL/AISHELL-4/resolve/main/test/wav/S_R004S01C01.flac",
+          "reference_url": "https://huggingface.co/datasets/AISHELL/AISHELL-4/resolve/main/test/TextGrid/S_R004S01C01.TextGrid"
+        },
+        "reference_kind": "official_TextGrid_verbatim_annotations",
+        "audio_seconds": 180.0,
+        "elapsed_seconds": 182.047,
+        "drain_seconds": 2.047,
+        "wall_clock_paced": true,
+        "translation_enabled": true,
+        "normalization": "NFKC, lowercase, punctuation/space removal; no script or numeral conversion",
+        "cer": 0.14836795252225518,
+        "reference_characters": 674,
+        "deletions": 52,
+        "insertions": 6,
+        "substitutions": 42,
+        "raw_script_cer": 0.14836795252225518,
+        "chinese_script_normalized": true,
+        "reference_timing_overrun_ms": 0,
+        "matched_subtitle_lines": 10,
+        "eligible_subtitle_lines": 13,
+        "source_line_end_latency_estimate": {
+          "n": 10,
+          "p50_ms": 313,
+          "p95_ms": 1884,
+          "max_ms": 1884
+        },
+        "source_line_stable_latency_estimate": {
+          "n": 9,
+          "p50_ms": 417,
+          "p95_ms": 1884,
+          "max_ms": 1884
+        },
+        "translation_after_source_latency": {
+          "n": 88,
+          "p50_ms": 2245,
+          "p95_ms": 5954,
+          "max_ms": 8564
+        },
+        "translation_first_visible_after_source": {
+          "n": 88,
+          "p50_ms": 1056,
+          "p95_ms": 3391,
+          "max_ms": 5068
+        },
+        "max_queued_audio_ms": 2000,
+        "received_samples": 2880000,
+        "processed_samples": 2880000,
+        "queued_audio_ms": 0,
+        "dropped_samples": 0,
+        "pending_translations": 0,
+        "peak_rss_bytes": 622034944,
+        "load_average": [
+          24.5400390625,
+          28.09375,
+          26.4072265625
+        ],
+        "errors": []
+      }
+    },
+    "zh_before_session_preparation": {
+      "note": "Native packaged app before VAD reuse/configuration warmup; scoring still ran during replay. Severe tail must not be omitted.",
+      "metrics": {
+        "engine": "sensevoice",
+        "provenance": {
+          "dataset": "AISHELL/AISHELL-4",
+          "identifier": "S_R004S01C01",
+          "channel": 0,
+          "clip_seconds": 180,
+          "license": "CC-BY-SA-4.0",
+          "audio_url": "https://huggingface.co/datasets/AISHELL/AISHELL-4/resolve/main/test/wav/S_R004S01C01.flac",
+          "reference_url": "https://huggingface.co/datasets/AISHELL/AISHELL-4/resolve/main/test/TextGrid/S_R004S01C01.TextGrid"
+        },
+        "reference_kind": "official_TextGrid_verbatim_annotations",
+        "audio_seconds": 180.0,
+        "elapsed_seconds": 218.184,
+        "drain_seconds": 38.184,
+        "wall_clock_paced": true,
+        "translation_enabled": true,
+        "native_websocket_replay": true,
+        "normalization": "NFKC, lowercase, punctuation/space removal; optional Chinese t2s; no numeral conversion",
+        "cer": 0.09050445103857567,
+        "reference_characters": 674,
+        "deletions": 8,
+        "insertions": 9,
+        "substitutions": 44,
+        "raw_script_cer": 0.09050445103857567,
+        "chinese_script_normalized": true,
+        "reference_timing_overrun_ms": 0,
+        "matched_subtitle_lines": 10,
+        "eligible_subtitle_lines": 13,
+        "source_line_end_latency_estimate": {
+          "n": 10,
+          "p50_ms": 1427,
+          "p95_ms": 31363,
+          "max_ms": 31363
+        },
+        "source_line_stable_latency_estimate": {
+          "n": 10,
+          "p50_ms": 1427,
+          "p95_ms": 31363,
+          "max_ms": 31363
+        },
+        "translation_after_source_latency": {
+          "n": 113,
+          "p50_ms": 942,
+          "p95_ms": 7617,
+          "max_ms": 17488
+        },
+        "translation_first_visible_after_source": {
+          "n": 113,
+          "p50_ms": 318,
+          "p95_ms": 1292,
+          "max_ms": 17013
+        },
+        "max_queued_audio_ms": 14400,
+        "received_samples": 2880000,
+        "processed_samples": 2880000,
+        "queued_audio_ms": 0,
+        "dropped_samples": 0,
+        "pending_translations": 0,
+        "rejected_samples": 0,
+        "peak_rss_bytes": 58392576,
+        "peak_rss_scope": "replay_client_only",
+        "load_average": [
+          11.96240234375,
+          8.3046875,
+          13.06982421875
+        ],
+        "errors": []
+      }
+    },
+    "ja_before_session_preparation": {
+      "note": "Native packaged app before VAD reuse/configuration warmup; scoring still ran during replay.",
+      "metrics": {
+        "engine": "sensevoice",
+        "provenance": "espnet/yodas2 ja000 shard 00000000, Y0wyvkJ18U0, CC-BY-3.0, Japanese public policy speech",
+        "reference_kind": "dataset_subtitles_not_independently_verified",
+        "audio_seconds": 192.569625,
+        "elapsed_seconds": 198.749,
+        "drain_seconds": 6.18,
+        "wall_clock_paced": true,
+        "translation_enabled": true,
+        "native_websocket_replay": true,
+        "normalization": "NFKC, lowercase, punctuation/space removal; optional Chinese t2s; no numeral conversion",
+        "cer": 0.11800172265288544,
+        "reference_characters": 1161,
+        "deletions": 58,
+        "insertions": 35,
+        "substitutions": 44,
+        "raw_script_cer": 0.11800172265288544,
+        "chinese_script_normalized": false,
+        "reference_timing_overrun_ms": 860,
+        "matched_subtitle_lines": 27,
+        "eligible_subtitle_lines": 43,
+        "source_line_end_latency_estimate": {
+          "n": 27,
+          "p50_ms": 2264,
+          "p95_ms": 13027,
+          "max_ms": 13222
+        },
+        "source_line_stable_latency_estimate": {
+          "n": 24,
+          "p50_ms": 3526,
+          "p95_ms": 13027,
+          "max_ms": 13222
+        },
+        "translation_after_source_latency": {
+          "n": 100,
+          "p50_ms": 1786,
+          "p95_ms": 4098,
+          "max_ms": 4752
+        },
+        "translation_first_visible_after_source": {
+          "n": 100,
+          "p50_ms": 852,
+          "p95_ms": 2630,
+          "max_ms": 3853
+        },
+        "max_queued_audio_ms": 18000,
+        "received_samples": 3081114,
+        "processed_samples": 3081114,
+        "queued_audio_ms": 0,
+        "dropped_samples": 0,
+        "pending_translations": 0,
+        "rejected_samples": 0,
+        "peak_rss_bytes": 49496064,
+        "peak_rss_scope": "replay_client_only",
+        "load_average": [
+          7.96533203125,
+          7.66357421875,
+          11.6640625
+        ],
+        "errors": []
+      }
+    },
+    "ja_with_concurrent_model_diagnostics": {
+      "note": "Stress run with concurrent model diagnostics; not normal latency acceptance.",
+      "metrics": {
+        "engine": "sensevoice",
+        "provenance": "espnet/yodas2 ja000 shard 00000000, Y0wyvkJ18U0, CC-BY-3.0, Japanese public policy speech",
+        "reference_kind": "dataset_subtitles_not_independently_verified",
+        "audio_seconds": 192.569625,
+        "elapsed_seconds": 197.122,
+        "drain_seconds": 4.552,
+        "wall_clock_paced": true,
+        "translation_enabled": true,
+        "native_websocket_replay": true,
+        "normalization": "NFKC, lowercase, punctuation/space removal; optional Chinese t2s; no numeral conversion",
+        "cer": 0.11800172265288544,
+        "reference_characters": 1161,
+        "deletions": 58,
+        "insertions": 35,
+        "substitutions": 44,
+        "raw_script_cer": 0.11800172265288544,
+        "chinese_script_normalized": false,
+        "reference_timing_overrun_ms": 860,
+        "matched_subtitle_lines": 25,
+        "eligible_subtitle_lines": 43,
+        "source_line_end_latency_estimate": {
+          "n": 25,
+          "p50_ms": 1510,
+          "p95_ms": 32060,
+          "max_ms": 32231
+        },
+        "source_line_stable_latency_estimate": {
+          "n": 24,
+          "p50_ms": 1591,
+          "p95_ms": 32060,
+          "max_ms": 32231
+        },
+        "translation_after_source_latency": {
+          "n": 103,
+          "p50_ms": 1461,
+          "p95_ms": 6038,
+          "max_ms": 17194
+        },
+        "translation_first_visible_after_source": {
+          "n": 102,
+          "p50_ms": 725,
+          "p95_ms": 4448,
+          "max_ms": 9584
+        },
+        "max_queued_audio_ms": 30000,
+        "received_samples": 3081114,
+        "processed_samples": 3081114,
+        "queued_audio_ms": 0,
+        "dropped_samples": 0,
+        "pending_translations": 0,
+        "rejected_samples": 0,
+        "peak_rss_bytes": 60112896,
+        "peak_rss_scope": "replay_client_only",
+        "load_average": [
+          8.17333984375,
+          13.01416015625,
+          19.2109375
+        ],
+        "errors": []
+      }
+    },
+    "zh_403s_stress": {
+      "note": "Edited subtitles: CER and reference matching excluded; use for audio queue completeness only.",
+      "metrics": {
+        "engine": "sensevoice",
+        "provenance": "espnet/yodas2 zh000 shard 00000000, 1R_ektyh3oA, CC-BY-3.0, workplace management spoken presentation",
+        "reference_kind": "dataset_subtitles_not_independently_verified",
+        "audio_seconds": 403.23775,
+        "elapsed_seconds": 409.016,
+        "drain_seconds": 5.779,
+        "wall_clock_paced": true,
+        "translation_enabled": true,
+        "normalization": "NFKC, lowercase, punctuation/space removal; no script or numeral conversion",
+        "chinese_script_normalized": true,
+        "reference_timing_overrun_ms": 0,
+        "translation_after_source_latency": {
+          "n": 178,
+          "p50_ms": 2025,
+          "p95_ms": 37555,
+          "max_ms": 41682
+        },
+        "translation_first_visible_after_source": {
+          "n": 178,
+          "p50_ms": 891,
+          "p95_ms": 33395,
+          "max_ms": 36984
+        },
+        "max_queued_audio_ms": 5800,
+        "received_samples": 6451804,
+        "processed_samples": 6451804,
+        "queued_audio_ms": 0,
+        "dropped_samples": 0,
+        "pending_translations": 0,
+        "peak_rss_bytes": 571441152,
+        "load_average": [
+          72.69580078125,
+          39.162109375,
+          27.58935546875
+        ],
+        "errors": [],
+        "rescored_same_timeline": true
+      }
+    }
+  },
+  "validation": {
+    "python_tests": 67,
+    "frontend_tests": 21,
+    "real_quiet_speech_regression": true,
+    "portable_zip_extracted": true,
+    "dmg_mounted": true,
+    "arm64": true,
+    "strict_ad_hoc_signature": true,
+    "apple_notarized": false
+  }
+}

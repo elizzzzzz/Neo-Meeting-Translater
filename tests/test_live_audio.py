@@ -69,7 +69,7 @@ async def test_continuous_audio_does_not_infer_on_every_packet():
     pipeline.translator = Translator()
     for _ in range(50):
         _ = [c async for c in pipeline.process_audio(audio([2000, -2000] * 800))]
-    assert 1 <= len(pipeline.asr.windows) <= 7
+    assert 1 <= len(pipeline.asr.windows) <= 9
 
 
 @pytest.mark.asyncio
@@ -147,10 +147,11 @@ async def test_chinese_lock_rejects_english_hallucination_before_translation():
     assert "中文" in pipeline.audio_status["message"]
 
 
-def test_websocket_chinese_config_applies_to_warmed_decoder(monkeypatch):
+def test_websocket_chinese_config_applies_to_warmed_decoder(monkeypatch, tmp_path):
     from fastapi.testclient import TestClient
     from meeting_interpreter.app import create_app
 
+    monkeypatch.setattr("meeting_interpreter.app.speaker_model_path", lambda: tmp_path / "absent.onnx")
     languages = []
 
     def recognize(self, pcm, start_ms):
@@ -309,3 +310,66 @@ async def test_decoder_without_usable_word_times_does_not_replay_overlap():
         _ = [c async for c in pipeline.process_audio(audio([1000,-1000]*8000))]
     assert pipeline._buffer_start_ms['mic'] == 8000
     assert len(pipeline._buffers['mic']) == 32000
+
+
+@pytest.mark.asyncio
+async def test_audio_clock_counts_samples_without_rounding_each_capture_frame():
+    pipeline = Pipeline(mode='local', source_language='zh', target_language='zh', asr_backend=Recognizer())
+    event = audio([0] * 1365)  # common 48kHz capture -> 16kHz frame length
+    for _ in range(1000):
+        _ = [c async for c in pipeline.process_audio(event)]
+    assert pipeline._audio_ms['mic'] == round(1365 * 1000 / 16000 * 1000)
+
+
+@pytest.mark.asyncio
+async def test_partial_recognition_refreshes_every_six_hundred_ms():
+    recognizer = Recognizer()
+    pipeline = Pipeline(mode='local', source_language='zh', target_language='zh', asr_backend=recognizer)
+    for _ in range(7):
+        _ = [c async for c in pipeline.process_audio(audio([1000, -1000] * 1600))]
+    assert [len(pcm) // 32 for pcm in recognizer.windows] == [600, 1200]
+
+
+@pytest.mark.asyncio
+async def test_japanese_token_spacing_does_not_pollute_source_or_translation():
+    class JapaneseRecognizer:
+        async def transcribe(self, pcm, rate, start):
+            return ASRResult('会議 の 開始 は 3 月 6 日 です。GPU memory は確認。', 'ja', start, start + 1000)
+    pipeline = Pipeline(mode='local', source_language='ja', target_language='ja', asr_backend=JapaneseRecognizer())
+    captions = [c async for c in pipeline.process_audio(audio([1000,-1000] * 8000))]
+    assert captions[-1].original_text == '会議の開始は3月6日です。GPU memory は確認。'
+
+
+@pytest.mark.asyncio
+async def test_coalescing_does_not_erase_a_short_utterance_before_the_next_turn():
+    recognizer = Recognizer()
+    pipeline = Pipeline(mode='local', source_language='zh', target_language='zh', asr_backend=recognizer)
+    _ = [c async for c in pipeline.process_audio(audio([1000,-1000]*4800), defer_partial=True)]
+    closed = [c async for c in pipeline.process_audio(audio([0]*22400), defer_partial=True)]
+    assert closed, 'The short speech must be decoded on its following silence before a new turn clears the buffer'
+    assert 1000 in memoryview(recognizer.windows[-1]).cast('h')
+
+
+def test_selected_sensevoice_language_is_warm_before_configuration_ack(monkeypatch, tmp_path):
+    from fastapi.testclient import TestClient
+    from meeting_interpreter.app import create_app
+    from meeting_interpreter.asr import SenseVoiceBackend
+    warmed=[]
+    monkeypatch.setenv('MEETING_INTERPRETER_MODE','local')
+    monkeypatch.setenv('MEETING_INTERPRETER_ASR_BACKEND','sensevoice')
+    monkeypatch.setenv('MEETING_INTERPRETER_TRANSLATION_BACKEND','nllb')
+    monkeypatch.setattr('meeting_interpreter.app.speaker_model_path',lambda:tmp_path/'absent')
+    monkeypatch.setattr(SenseVoiceBackend,'warmup',lambda self:warmed.append(self.language))
+    with TestClient(create_app()) as client:
+        for _ in range(100):
+            if client.get('/health').json()['models']['ready']: break
+        else: pytest.fail('startup did not finish')
+        with client.websocket_connect('/ws') as ws:
+            ws.receive_json()
+            ws.send_json(dict(type='config',source_language='ja',target_language='zh'))
+            while True:
+                event=ws.receive_json()
+                if event['type']=='configured': break
+                assert event['type'] != 'error'
+            assert warmed == [None,'ja']
+            assert event['asr_language']=='ja'
