@@ -19,3 +19,5 @@
 验证：50 项 Python 测试、18 项前端测试通过；桌面多尺寸布局、双栏历史滚动、原生半透明浮窗检查通过。包内 SenseVoice、Silero、声纹和 Ollama 实际加载完成，并回放合成中文→日语、日语→中文，检查手动换人、停止收尾、静音无字幕及第二次启动沿用现有实例。ZIP 解压与 DMG 挂载均通过 arm64、依赖文件和签名验证。回放链路可用不代表译文语义和识别准确率完全验收；尚未完成真人麦克风和腾讯会议/Teams 实际会议测试。机器负载高时音频积压仍会触发实时优先策略，并在界面提示跳过的秒数。
 
 最终包内也已实测 Whisper medium + Silero 的中文金额样本与日语→中文链路，确认原先错误拒绝的整句能显示。两种引擎在当前分段回放中均仍有错字和遗漏，日语“訳文”的同音识错会影响译文；详见评估记录。
+
+本机项目位于 iCloud 管理的 Documents 目录，该目录会给 `.app` 自动添加 Finder 元数据，影响严格签名验证。ZIP/DMG 仍独立可分发；本机已验证的运行副本保存在 `~/Library/Application Support/LocalMeetingInterpreter/releases/0.2.3/LocalMeetingInterpreter.app`，`dist/LocalMeetingInterpreter.app` 是它的启动链接。旧发布包已保留到 `dist/previous-*`。在其他机器使用 ZIP 时，建议解压到非 iCloud 的本地目录，再双击 App；不需要安装器或写入 Applications。
