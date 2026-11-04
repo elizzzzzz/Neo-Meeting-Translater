@@ -3,7 +3,7 @@ import struct
 
 import pytest
 
-from meeting_interpreter.asr import ASRResult
+from meeting_interpreter.asr import ASRResult, ASRWord
 from meeting_interpreter.models import AudioEvent
 from meeting_interpreter.pipeline import Pipeline
 from meeting_interpreter.asr import MLXWhisperBackend
@@ -204,3 +204,108 @@ async def test_stopping_during_inference_does_not_report_an_asr_failure(monkeypa
                 raise RuntimeError('Cannot call "send" once a close message has been sent.')
 
     await endpoint(ClosedSocket())
+
+
+@pytest.mark.asyncio
+async def test_long_speech_keeps_completed_chunks_instead_of_overwriting_history():
+    class TimedRecognizer:
+        async def transcribe(self, pcm, sample_rate, start_ms):
+            duration = round(len(pcm) / 32)
+            return ASRResult(f"发言从{start_ms}到{start_ms + duration}。", "zh", start_ms, start_ms + duration)
+
+    pipeline = Pipeline(mode="local", source_language="zh", target_language="zh", asr_backend=TimedRecognizer())
+    latest = {}
+    for _ in range(20):
+        for caption in [c async for c in pipeline.process_audio(audio([2000, -2000] * 8000))]:
+            latest[caption.segment_id] = caption
+    assert len(latest) >= 3
+    assert next(iter(latest.values())).start_ms == 0
+    assert next(iter(latest.values())).end_ms <= 8000
+    assert max(c.end_ms for c in latest.values()) == 20000
+    assert sum(c.end_ms - c.start_ms for c in latest.values()) >= 20000
+
+
+@pytest.mark.asyncio
+async def test_speaker_change_closes_old_audio_before_starting_the_next_paragraph():
+    class Speakers:
+        changed_at_ms = 4000
+        async def identify(self, pcm, sample_rate, start_ms):
+            return 'SPEAKER_00' if start_ms < 4000 else 'SPEAKER_01'
+
+    pipeline=Pipeline(mode='local',source_language='zh',target_language='zh',asr_backend=Recognizer())
+    pipeline.speaker=Speakers()
+    latest={}
+    for _ in range(8):
+        for c in [c async for c in pipeline.process_audio(audio([2000,-2000]*8000))]:
+            latest[c.segment_id]=c
+    ordered=list(latest.values())
+    assert [c.speaker_id for c in ordered]==['SPEAKER_00','SPEAKER_01']
+    assert ordered[0].end_ms==4000
+    assert ordered[1].start_ms==4000
+
+
+@pytest.mark.asyncio
+async def test_manual_change_flushes_the_old_speaker_and_keeps_audio_out_of_next_speech():
+    pipeline=Pipeline(mode='local',source_language='zh',target_language='zh',asr_backend=Recognizer())
+    first=[c async for c in pipeline.process_audio(audio([1000,-1000]*8000))]
+    _=[c async for c in pipeline.change_speaker()]
+    second=[c async for c in pipeline.process_audio(audio([2000,-2000]*8000))]
+    assert first[0].segment_id != second[0].segment_id
+    assert first[0].speaker_id != second[0].speaker_id
+    assert 1000 not in memoryview(pipeline.asr.windows[-1]).cast('h')
+
+
+@pytest.mark.asyncio
+async def test_stop_flushes_the_last_audio_that_has_not_reached_the_inference_interval():
+    pipeline=Pipeline(mode='local',source_language='zh',target_language='zh',asr_backend=Recognizer())
+    for samples in ([1000,-1000]*8000,[2000,-2000]*2400):
+        _=[c async for c in pipeline.process_audio(audio(samples))]
+    assert len(pipeline.asr.windows[-1])==32000
+    final=[c async for c in pipeline.flush_audio()]
+    assert len(pipeline.asr.windows[-1])==41600
+    assert final[-1].end_ms==1300
+
+
+@pytest.mark.asyncio
+async def test_unstable_current_text_is_not_fed_back_as_its_own_recognition_prompt():
+    class ContextRecognizer(Recognizer):
+        def __init__(self):
+            super().__init__()
+            self.prompts=[]
+        def set_context(self,text):
+            self.prompts.append(text)
+
+    recognizer=ContextRecognizer()
+    pipeline=Pipeline(mode='local',source_language='zh',target_language='zh',asr_backend=recognizer)
+    for _ in range(3):
+        _=[c async for c in pipeline.process_audio(audio([1000,-1000]*8000))]
+    assert recognizer.prompts==['','','']
+
+
+@pytest.mark.asyncio
+async def test_chunk_boundary_does_not_commit_a_word_cut_in_half():
+    class WordRecognizer:
+        supports_timestamps=True
+        async def transcribe(self,pcm,sample_rate,start_ms):
+            end_ms=start_ms+round(len(pcm)/32)
+            words=[ASRWord('之前的发言。',0,min(6800,end_ms))]
+            if end_ms>=8000:
+                words.append(ASRWord('时间安排。' if end_ms>=10000 else '时',7600,min(10000,end_ms)))
+            return ASRResult(''.join(w.text for w in words),'zh',start_ms,end_ms,tuple(words))
+    pipeline=Pipeline(mode='local',source_language='zh',target_language='zh',asr_backend=WordRecognizer())
+    latest={}
+    for _ in range(10):
+        for c in [c async for c in pipeline.process_audio(audio([1000,-1000]*8000))]:latest[c.segment_id]=c
+    assert ''.join(c.original_text for c in latest.values())=='之前的发言。时间安排。'
+
+
+@pytest.mark.asyncio
+async def test_decoder_without_usable_word_times_does_not_replay_overlap():
+    class UntimedRecognizer(Recognizer):
+        supports_timestamps = True
+    recognizer = UntimedRecognizer()
+    pipeline = Pipeline(mode='local', source_language='zh', target_language='zh', asr_backend=recognizer)
+    for _ in range(9):
+        _ = [c async for c in pipeline.process_audio(audio([1000,-1000]*8000))]
+    assert pipeline._buffer_start_ms['mic'] == 8000
+    assert len(pipeline._buffers['mic']) == 32000

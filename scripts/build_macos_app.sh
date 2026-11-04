@@ -14,7 +14,7 @@ STAGING_DIR="$(mktemp -d /private/tmp/local-meeting-interpreter.XXXXXX)"
 PYTHON_CMD=(/usr/bin/arch -arm64 "$PYTHON_BIN")
 trap 'rm -rf "$STAGING_DIR"' EXIT
 
-"${PYTHON_CMD[@]}" -c 'import PyInstaller, AppKit, WebKit, mlx_whisper'
+"${PYTHON_CMD[@]}" -c 'import PyInstaller, AppKit, WebKit, mlx_whisper, sherpa_onnx'
 "${PYTHON_CMD[@]}" -m PyInstaller --noconfirm --clean --windowed \
   --distpath "$STAGING_DIR/frozen" \
   --workpath "$STAGING_DIR/work" \
@@ -56,13 +56,14 @@ trap 'rm -rf "$STAGING_DIR"' EXIT
   --hidden-import "mlx_whisper" \
   --collect-all "mlx_whisper" \
   --collect-all "mlx" \
+  --collect-all "sherpa_onnx" \
   "$PROJECT_ROOT/src/meeting_interpreter/desktop.py"
 
 BUNDLE="$STAGING_DIR/frozen/LocalMeetingInterpreter.app"
 plutil -replace NSMicrophoneUsageDescription \
   -string "用于采集本地麦克风或会议回环音频，并在本机生成实时字幕。" \
   "$BUNDLE/Contents/Info.plist"
-plutil -replace CFBundleShortVersionString -string "0.2.2" "$BUNDLE/Contents/Info.plist"
+plutil -replace CFBundleShortVersionString -string "0.2.3" "$BUNDLE/Contents/Info.plist"
 # The standalone COLLECT directory is already copied into the self-contained
 # bundle; release it before making the clean delivery copy on a small disk.
 rm -rf "$STAGING_DIR/frozen/LocalMeetingInterpreter" "$STAGING_DIR/work"

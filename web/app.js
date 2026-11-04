@@ -23,6 +23,8 @@ const recommendedModelStatus = document.querySelector('#recommendedModelStatus')
 const recommendedModelPresence = document.querySelector('#recommendedModelPresence');
 const systemNotice = document.querySelector('#systemNotice');
 const modelDirectory = document.querySelector('#modelDirectory');
+const asrEngine = document.querySelector('#asrEngine');
+const asrEngineHint = document.querySelector('#asrEngineHint');
 const chooseModelDirectoryBtn = document.querySelector('#chooseModelDirectoryBtn');
 const checkOllamaBtn = document.querySelector('#checkOllamaBtn');
 const upgradeOllamaBtn = document.querySelector('#upgradeOllamaBtn');
@@ -30,6 +32,8 @@ const pullModelBtn = document.querySelector('#pullModelBtn');
 const saveSettingsBtn = document.querySelector('#saveSettingsBtn');
 const captions = document.querySelector('#captions');
 const captionCount = document.querySelector('#captionCount');
+const latestBtn = document.querySelector('#latestBtn');
+const changeSpeakerBtn = document.querySelector('#changeSpeakerBtn');
 const runtimeDot = document.querySelector('#runtimeDot');
 const runtimeText = document.querySelector('#runtimeText');
 const modelReadiness = document.querySelector('#modelReadiness');
@@ -58,9 +62,17 @@ let mediaStream;
 let activeInputLabel = '';
 let pendingAudio = new Float32Array();
 let audioInFlight = false;
+let pendingBoundaryAudio = null;
+let pendingSpeakerBoundary = false;
+let sessionEnding = false;
+let finishSent = false;
+let captureSessionId = '';
+let captureSessionSequence = 0;
 let skippedAudioSamples = 0;
 let processor;
 let captionRows = [];
+let followCaptions = true;
+let speakerChoiceMade = false;
 let runtimeMode = 'MOCK';
 const mockCaptionKeys = new Set();
 let audioFrames = 0;
@@ -90,6 +102,7 @@ function updateHealth(health) {
   modeStatus.textContent = modeLabel;
   modeBadge.textContent = modeLabel;
   const models = health.models || {};
+  const wasModelsReady = modelsReady;
   if (modelReadiness) {
     modelsReady = Boolean(models.ready);
     modelReadiness.textContent = runtimeMode === 'MOCK' ? '界面演示 · 不使用真实模型' : models.ready ? '模型可用 · 热启动' : `${Math.round(Number(models.progress || 0))}% · ${models.message || '模型未就绪'}`;
@@ -99,7 +112,14 @@ function updateHealth(health) {
   startBtn.disabled = runtimeMode !== 'LOCAL' || !models.ready || Boolean(socket && socket.readyState <= WebSocket.OPEN) || Boolean(demoTimer);
   startBtn.title = runtimeMode !== 'LOCAL' ? '尚未连接真实模型，可先演示字幕和浮窗' : !models.ready ? '模型未就绪，请先检查本地设置' : '';
   if (runtimeMode === 'LOCAL' && !models.ready && !demoTimer) setDiagnostic(models.message || '模型未连接，可先演示字幕');
+  if (runtimeMode === 'LOCAL' && models.ready && !wasModelsReady && !demoTimer && !(socket && socket.readyState <= WebSocket.OPEN)) setDiagnostic(models.message || '模型已就绪，可开始会议');
   asrStatus.textContent = `${statusText(health.asr?.status)} · ${formatModel(health.asr?.model)}`;
+  const speakerOption = speakerMode.querySelector('option[value="embedding"]');
+  if (speakerOption) speakerOption.disabled = !health.speaker?.available;
+  speakerMode.title = health.speaker?.message || '未连接声纹模型，可手动换人';
+  if (health.speaker?.available && !speakerChoiceMade && !(socket && socket.readyState <= WebSocket.OPEN)) {
+    speakerMode.value = 'embedding'; speakerChoiceMade = true; updateSummary();
+  }
   if (!health.ollama?.configured) {
     ollamaStatus.textContent = '未启用';
     ollamaModelStatus.textContent = '当前使用其他翻译后端';
@@ -161,26 +181,29 @@ async function openSettings() {
     const response = await fetch('/settings');
     const settings = await response.json();
     if (!modelDirectory.value) modelDirectory.value = settings.model_dir || '';
+    asrEngine.value = settings.asr_engine || 'whisper';
+    asrEngineHint.textContent = settings.sensevoice_available ? 'SenseVoice 模型已连接。中文可对比 SenseVoice；日语可先用 Whisper。切换后重新打开 App 生效。' : 'SenseVoice 模型未连接，暂请选择 Whisper。需要在模型目录的 asr/sensevoice 中放入 model.int8.onnx、tokens.txt 和 silero_vad.onnx。';
   } catch { setDiagnostic('无法读取本地设置'); }
   await checkOllama();
 }
 function describeSystem(info) {
   if (!info.installed) return '尚未检测到 Ollama。安装后可使用本地翻译引擎。';
   if (info.update_available) return `发现 Ollama 新版本 ${info.latest_version}，可点击“尝试升级 Ollama”。`;
-  if (!info.reachable) return '已检测到 Ollama，但服务尚未运行。打开 Ollama 后点击重新检查。';
+  if (!info.reachable) return '已检测到 Ollama，暂时无法连接服务。请检查 Ollama 是否运行，稍后点击重新检查。';
   if (!info.recommended_model_present) return `Ollama 已运行，推荐模型 ${info.recommended_model} 尚未下载。`;
   return `Ollama 已安装并运行，推荐模型 ${info.recommended_model} 可用。`;
 }
 async function checkOllama() {
   if (systemNotice) { systemNotice.className = 'system-notice'; systemNotice.textContent = '正在检查 Ollama 和推荐模型…'; }
+  ollamaInstallStatus.textContent = '检查中…'; ollamaVersionStatus.textContent = '检查中…'; recommendedModelPresence.textContent = '检查中…';
   try {
     const response = await fetch('/system/check');
     const info = await response.json();
     const recommended = info.recommended_model || 'translategemma:4b';
-    ollamaInstallStatus.textContent = info.installed ? (info.reachable ? '已安装并运行' : '已安装，服务未运行') : '未安装';
+    ollamaInstallStatus.textContent = info.installed ? (info.reachable ? '已安装并运行' : '已安装，暂未连接') : '未安装';
     ollamaVersionStatus.textContent = info.version ? `${info.version} · ${info.version_check || '待核对'}` : '未检测到版本';
     recommendedModelStatus.textContent = recommended;
-    recommendedModelPresence.textContent = info.recommended_model_present ? '已下载，可直接使用' : '尚未下载';
+    recommendedModelPresence.textContent = !info.reachable ? '服务未连接，无法核对' : info.recommended_model_present ? '已下载，可直接使用' : '尚未下载';
     if (systemNotice) {
       systemNotice.textContent = describeSystem(info);
       systemNotice.className = `system-notice ${info.installed && info.recommended_model_present && !info.update_available ? 'good' : 'warn'}`;
@@ -197,11 +220,11 @@ async function saveModelDirectory() {
   if (!value) return;
   saveSettingsBtn.disabled = true;
   try {
-    const response = await fetch('/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model_dir: value }) });
+    const response = await fetch('/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model_dir: value, asr_engine: asrEngine.value || 'whisper' }) });
     const result = await response.json();
     if (!response.ok) throw new Error(result.detail || '保存失败');
-    setDiagnostic('模型目录已保存，重新打开 App 后生效');
-    if (systemNotice) { systemNotice.className = 'system-notice good'; systemNotice.textContent = `已保存：${result.model_dir}。重新打开 App 后加载新目录。`; }
+    setDiagnostic('识别引擎与模型目录已保存，重新打开 App 后生效');
+    if (systemNotice) { systemNotice.className = 'system-notice good'; systemNotice.textContent = `已保存识别设置与目录：${result.model_dir}。重新打开 App 后生效。`; }
   } catch (error) {
     if (systemNotice) { systemNotice.className = 'system-notice warn'; systemNotice.textContent = `保存失败：${error.message}`; }
   } finally { saveSettingsBtn.disabled = false; }
@@ -214,6 +237,7 @@ function setSessionControls(active) {
     control.title = active ? '停止音频后可更改设置' : '';
   });
   if (demoBtn) demoBtn.disabled = active;
+  changeSpeakerBtn.disabled = !active;
 }
 function updateRecognitionLanguage(language) {
   const name = ({zh:'中文',ja:'日语',en:'英语'})[language];
@@ -230,7 +254,7 @@ function setFloatingMode(enabled) {
   }
 }
 function updateSummary() {
-  captionCount.textContent = String(captionRows.length);
+  captionCount.textContent = String(transcriptParagraphs().length);
   const sourceLabel = sourceLanguage.options[sourceLanguage.selectedIndex]?.textContent || '自动识别';
   const targetLabel = targetLanguage.options[targetLanguage.selectedIndex]?.textContent || '中文（简体）';
   const direction = `${sourceLabel} → ${targetLabel}`;
@@ -253,10 +277,51 @@ function swapLanguages() {
 }
 function formatTime(milliseconds) { const totalSeconds = Math.max(0, Math.round(milliseconds / 1000)); return `${String(Math.floor(totalSeconds / 60)).padStart(2, '0')}:${String(totalSeconds % 60).padStart(2, '0')}`; }
 function escapeHtml(value) { return String(value).replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character])); }
-function renderCaptions() {
-  if (!captionRows.length) { captions.innerHTML = '<div class="empty-state"><strong>还没有字幕</strong><span>选择麦克风或 BlackHole 回环设备后开始会议。</span></div>'; return; }
-  captions.innerHTML = captionRows.map((event) => `<div class="caption-row"><span class="caption-time">${formatTime(event.start_ms)}</span><span><span class="speaker-chip">${escapeHtml(event.speaker_id)}</span></span><span class="caption-copy">${escapeHtml(event.original_text)}${event.is_final ? '' : '<span class="draft">临时</span>'}</span><span class="caption-copy caption-translation">${escapeHtml(event.translated_text || '翻译处理中…')}</span></div>`).join('');
+function upsertCaption(event) {
+  const index = captionRows.findIndex(row => row.session_id === event.session_id && row.segment_id === event.segment_id);
+  if (index < 0) captionRows.push(event);
+  else {
+    const previous = captionRows[index];
+    // Keep the last translation visible while its corrected source is translated.
+    captionRows[index] = {...event, translated_text: event.translated_text || previous.translated_text || ''};
+  }
+}
+function transcriptParagraphs() {
+  const paragraphs = [];
+  for (const row of captionRows) {
+    let paragraph = paragraphs[paragraphs.length - 1];
+    if (!paragraph || paragraph.speaker_id !== row.speaker_id || paragraph.session_id !== row.session_id
+        || paragraph.source_language !== row.source_language || paragraph.target_language !== row.target_language) {
+      paragraph = {...row, original_text: '', translated_text: '', chunks: []};
+      paragraphs.push(paragraph);
+    }
+    paragraph.chunks.push(row);
+    paragraph.original_text = paragraph.chunks.map(chunk => chunk.original_text).filter(Boolean).join(' ');
+    paragraph.translated_text = paragraph.chunks.map(chunk => chunk.translated_text).filter(Boolean).join(' ');
+    paragraph.end_ms = row.end_ms;
+    paragraph.is_final = paragraph.chunks.every(chunk => chunk.is_final);
+  }
+  return paragraphs;
+}
+function speakerLabel(id) {
+  if (id === 'SPEAKER_PENDING') return '当前发言 · 未分人';
+  const match = /^SPEAKER_(\d+)$/.exec(id);
+  const manual = /^MANUAL_(\d+)$/.exec(id);
+  if (manual) return `发言段 ${manual[1]} · 手动`;
+  return match ? `发言人 ${Number(match[1]) + 1}` : id;
+}
+function returnToLatest() {
+  followCaptions = true;
   captions.scrollTop = captions.scrollHeight;
+  latestBtn.hidden = true;
+}
+function renderCaptions() {
+  const scrollTop = captions.scrollTop;
+  if (!captionRows.length) { captions.innerHTML = '<div class="empty-state"><strong>还没有字幕</strong><span>选择麦克风或 BlackHole 回环设备后开始会议。</span></div>'; return; }
+  captions.innerHTML = transcriptParagraphs().map(event => `<section class="caption-row"><div class="caption-meta"><span class="speaker-chip">${escapeHtml(speakerLabel(event.speaker_id))}</span><span class="caption-time">${formatTime(event.start_ms)} — ${formatTime(event.end_ms)}</span></div><div class="caption-copy">${event.chunks.map(chunk => `<span>${escapeHtml(chunk.original_text)} </span>`).join('')}</div><div class="caption-copy caption-translation">${event.chunks.map(chunk => `<span>${escapeHtml(chunk.translated_text || '翻译处理中…')} </span>`).join('')}${event.is_final ? '' : '<span class="draft">更新中</span>'}</div></section>`).join('');
+  if (followCaptions) captions.scrollTop = captions.scrollHeight;
+  else captions.scrollTop = scrollTop;
+  latestBtn.hidden = followCaptions;
 }
 function downsample(buffer, inputRate, outputRate) {
   if (outputRate === inputRate) return buffer;
@@ -270,13 +335,32 @@ function encodePcm(buffer) {
   const bytes = new Uint8Array(pcm.buffer); let binary = ''; for (const byte of bytes) binary += String.fromCharCode(byte); return btoa(binary);
 }
 function sendPendingAudio() {
-  if (audioInFlight || !pendingAudio.length || !socket || socket.readyState !== WebSocket.OPEN) return;
-  const pcm = pendingAudio; pendingAudio = new Float32Array(); audioInFlight = true;
+  if (audioInFlight || !socket || socket.readyState !== WebSocket.OPEN) return;
+  let pcm;
+  if (pendingBoundaryAudio?.length) { pcm = pendingBoundaryAudio; pendingBoundaryAudio = null; }
+  else if (pendingSpeakerBoundary) {
+    pendingSpeakerBoundary = false; pendingBoundaryAudio = null; audioInFlight = true;
+    socket.send(JSON.stringify({type:'speaker_change'})); return;
+  } else {
+    if (!pendingAudio.length) {
+      if (sessionEnding && !finishSent) { finishSent = true; audioInFlight = true; socket.send(JSON.stringify({type:'finish'})); }
+      return;
+    }
+    pcm = pendingAudio; pendingAudio = new Float32Array();
+  }
+  audioInFlight = true;
   const sourceType = /blackhole|loopback|virtual/i.test(activeInputLabel) ? 'meeting_loopback' : 'microphone';
-  socket.send(JSON.stringify({type:'audio',session_id:sourceType,audio_base64:encodePcm(pcm),sample_rate:16000,channels:1,source:sourceType}));
+  socket.send(JSON.stringify({type:'audio',session_id:captureSessionId,audio_base64:encodePcm(pcm),sample_rate:16000,channels:1,source:sourceType}));
+}
+function requestSpeakerChange() {
+  if (!socket || socket.readyState !== WebSocket.OPEN || pendingSpeakerBoundary || pendingBoundaryAudio) return;
+  changeSpeakerBtn.disabled = true;
+  pendingBoundaryAudio = pendingAudio; pendingAudio = new Float32Array(); pendingSpeakerBoundary = true;
+  setDiagnostic('正在保留上一段发言并标记换人…');
+  sendPendingAudio();
 }
 function queueAudioFrame(pcm) {
-  // Bound pending audio to the same four-second window as the decoder. Keep
+  // Bound pending capture audio to four seconds. Keep
   // the newest sound when inference cannot keep pace with the microphone.
   skippedAudioSamples += Math.max(0, pendingAudio.length + pcm.length - 64000);
   const frame = pcm.length > 64000 ? pcm.subarray(pcm.length - 64000) : pcm;
@@ -314,11 +398,12 @@ async function startSession() {
   stopDemo(); lastCaptionAt = 0;
   startBtn.disabled = true; setRuntime(false, '连接中…');
   setSessionControls(true);
-  pendingAudio = new Float32Array(); audioInFlight = false; skippedAudioSamples = 0;
+  pendingAudio = new Float32Array(); audioInFlight = false; skippedAudioSamples = 0; pendingBoundaryAudio = null; pendingSpeakerBoundary = false; sessionEnding = false; finishSent = false;
   recognitionLanguageStatus.textContent = '等待服务确认';
   updateInputLevel(new Float32Array());
   audioFrames = 0; audioStatus.textContent = '连接中…'; setDiagnostic('正在连接本地服务');
   sessionStartedAt = Date.now();
+  captureSessionId = `capture-${sessionStartedAt}-${++captureSessionSequence}`;
   if (!navigator.mediaDevices?.getUserMedia) {
     sessionLabel.textContent = '当前 App 不支持麦克风输入，请检查 macOS 麦克风权限。';
     startBtn.disabled = false;
@@ -369,28 +454,39 @@ async function startSession() {
       const captionKey = `${event.original_text || ''}\u0000${event.translated_text || ''}`;
       if (runtimeMode === 'MOCK' && mockCaptionKeys.has(captionKey)) return;
       if (runtimeMode === 'MOCK') mockCaptionKeys.add(captionKey);
-      const existingIndex = captionRows.findIndex((row) => row.session_id === event.session_id && row.segment_id === event.segment_id);
-      if (existingIndex >= 0) captionRows[existingIndex] = event;
-      else captionRows.push(event);
+      upsertCaption(event);
       lastCaptionAt = Date.now();
       setDiagnostic(event.is_final ? '已识别并翻译字幕' : '已识别原文，翻译处理中');
       renderCaptions(); updateSummary();
     }
     if (event.type === 'status') setDiagnostic(event.message);
     if (event.type === 'configured') updateRecognitionLanguage(event.asr_language || event.source_language);
+    if (event.type === 'speaker_changed') {
+      speakerMode.value = 'none'; speakerChoiceMade = true; updateSummary(); setDiagnostic(event.message);
+      changeSpeakerBtn.disabled = sessionEnding; audioInFlight = false; sendPendingAudio();
+    }
     if (event.type === 'audio_ack') { audioInFlight = false; sendPendingAudio(); }
     if (event.type === 'audio_status') {
       if (event.state === 'rejected') setDiagnostic(event.message);
     }
     if (event.type === 'error') setDiagnostic(`错误：${event.message}`);
+    if (event.type === 'session_finished') setDiagnostic('本次发言已完整收尾，可导出记录');
   };
   socket.onclose = () => { cleanupAudio(); setSessionControls(false); recognitionLanguageStatus.textContent = '未开始'; startBtn.disabled = runtimeMode !== 'LOCAL' || !modelsReady; stopBtn.disabled = true; setRuntime(false, '已停止'); };
   socket.onerror = () => { setDiagnostic('本地服务连接失败'); setRuntime(false, '连接失败'); };
 }
-function cleanupAudio() { if (processor) processor.disconnect(); if (audioContext) audioContext.close(); if (mediaStream) mediaStream.getTracks().forEach((track) => track.stop()); processor = null; audioContext = null; mediaStream = null; activeInputLabel = ''; pendingAudio = new Float32Array(); audioInFlight = false; updateInputLevel(new Float32Array()); }
-function stopSession() { stopDemo(); if (socket && socket.readyState <= WebSocket.OPEN) socket.close(); else cleanupAudio(); }
+function stopCapture() { if (processor) processor.disconnect(); if (audioContext) audioContext.close(); if (mediaStream) mediaStream.getTracks().forEach((track) => track.stop()); processor = null; audioContext = null; mediaStream = null; updateInputLevel(new Float32Array()); }
+function cleanupAudio() { stopCapture(); activeInputLabel = ''; pendingAudio = new Float32Array(); audioInFlight = false; pendingBoundaryAudio = null; pendingSpeakerBoundary = false; sessionEnding = false; finishSent = false; }
+function stopSession() {
+  stopDemo();
+  if (socket?.readyState === WebSocket.OPEN) {
+    stopCapture(); sessionEnding = true; stopBtn.disabled = true; changeSpeakerBtn.disabled = true;
+    setRuntime(false, '正在收尾'); setDiagnostic('正在保留最后一段发言，请稍候…'); sendPendingAudio();
+  } else if (socket?.readyState === WebSocket.CONNECTING) socket.close();
+  else cleanupAudio();
+}
 function exportTranscript() {
-  const text = captionRows.map(row => `[${formatTime(row.start_ms)}] ${row.speaker_id}\n${row.original_text}\n${row.translated_text || ''}`).join('\n\n') || '暂无字幕';
+  const text = transcriptParagraphs().map(row => `[${formatTime(row.start_ms)}] ${speakerLabel(row.speaker_id)}\n${row.original_text}\n${row.translated_text || ''}`).join('\n\n') || '暂无字幕';
   const filename = `meeting-${new Date().toISOString().slice(0, 10)}.txt`;
   if (window.webkit?.messageHandlers?.native) {
     window.webkit.messageHandlers.native.postMessage({ type: 'export_transcript', filename, text });
@@ -421,8 +517,7 @@ function advanceDemo() {
     original_text: final ? text[source] : text[source].slice(0, Math.max(3, Math.floor(text[source].length * .55))),
     translated_text: final ? text[targetLanguage.value] : '', is_final: final,
   };
-  const existing = captionRows.findIndex(row => row.session_id === demoSession && row.segment_id === event.segment_id);
-  if (existing >= 0) captionRows[existing] = event; else captionRows.push(event);
+  upsertCaption(event);
   demoStep += 1;
   renderCaptions(); updateSummary();
   setDiagnostic('示例字幕演示 · 可打开浮窗、移动窗口或导出记录');
@@ -464,7 +559,13 @@ async function runSystemAction(button, endpoint, body, busyMessage) {
 startBtn.addEventListener('click', startSession);
 stopBtn.addEventListener('click', stopSession);
 demoBtn?.addEventListener('click', startDemo);
-clearBtn.addEventListener('click', () => { stopDemo(); captionRows = []; mockCaptionKeys.clear(); renderCaptions(); updateSummary(); });
+clearBtn.addEventListener('click', () => { stopDemo(); captionRows = []; followCaptions = true; latestBtn.hidden = true; mockCaptionKeys.clear(); renderCaptions(); updateSummary(); });
+captions.addEventListener('scroll', () => {
+  followCaptions = captions.scrollHeight - captions.clientHeight - captions.scrollTop < 48;
+  latestBtn.hidden = followCaptions || !captionRows.length;
+}, {passive: true});
+latestBtn.addEventListener('click', returnToLatest);
+changeSpeakerBtn.addEventListener('click', requestSpeakerChange);
 exportBtn.addEventListener('click', exportTranscript);
 floatingBtn?.addEventListener('click', () => setFloatingMode(!floatingMode));
 tipsBtn?.addEventListener('click', () => toggleModal(tipsModal, true));
@@ -482,7 +583,7 @@ chooseModelDirectoryBtn?.addEventListener('click', () => {
 });
 sourceLanguage.addEventListener('change', () => { ensureDifferentLanguages('source'); updateSummary(); });
 targetLanguage.addEventListener('change', () => { ensureDifferentLanguages('target'); updateSummary(); });
-speakerMode.addEventListener('change', updateSummary);
+speakerMode.addEventListener('change', () => { speakerChoiceMade = true; updateSummary(); });
 inputDevice.addEventListener('change', updateSummary);
 navigator.mediaDevices?.addEventListener?.('devicechange', () => loadDevices(mediaStream?.getAudioTracks()[0]));
 swapLanguagesBtn.addEventListener('click', swapLanguages);

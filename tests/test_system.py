@@ -31,6 +31,16 @@ def test_save_model_directory_writes_cache_locations(monkeypatch, tmp_path: Path
     assert f"HF_HOME={tmp_path / 'models' / 'huggingface'}" in text
 
 
+def test_speech_engine_setting_persists_without_changing_translation(monkeypatch, tmp_path):
+    config = tmp_path / '.env'
+    config.write_text('MEETING_INTERPRETER_OLLAMA_MODEL=translategemma:4b\n')
+    monkeypatch.setattr(system, 'user_config_path', lambda: config)
+    system.save_model_directory(str(tmp_path / 'models'), 'sensevoice')
+    text = config.read_text()
+    assert 'MEETING_INTERPRETER_ASR_BACKEND=sensevoice' in text
+    assert 'MEETING_INTERPRETER_OLLAMA_MODEL=translategemma:4b' in text
+
+
 def test_default_model_directory_is_application_support(monkeypatch, tmp_path: Path):
     monkeypatch.delenv("MEETING_INTERPRETER_MODEL_DIR", raising=False)
     monkeypatch.setattr(system.Path, "home", lambda: tmp_path)

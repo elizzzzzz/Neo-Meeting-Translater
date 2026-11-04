@@ -13,9 +13,10 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from .asr import MLXWhisperBackend
+from .asr import MLXWhisperBackend, SenseVoiceBackend, create_asr_backend, sensevoice_model_directory
 from .models import AudioEvent, ErrorEvent, SessionConfig
 from .pipeline import Pipeline
+from .speaker import EmbeddingSpeakerBackend, speaker_model_path
 from .system import current_model_directory, inspect_ollama, pull_ollama_model, read_preferences, save_preferences, save_model_directory, upgrade_ollama
 from .translation import OllamaTranslationBackend
 
@@ -27,6 +28,9 @@ def create_app() -> FastAPI:
     mode = os.getenv("MEETING_INTERPRETER_MODE", "mock")
     translation_backend = os.getenv("MEETING_INTERPRETER_TRANSLATION_BACKEND", "nllb").lower()
     asr_model = os.getenv("MEETING_INTERPRETER_ASR_MODEL", "mlx-community/whisper-medium-mlx-8bit")
+    asr_engine = os.getenv('MEETING_INTERPRETER_ASR_BACKEND', 'whisper')
+    if asr_engine == 'sensevoice':
+        asr_model = f'SenseVoice · {sensevoice_model_directory()}'
     translation_model = os.getenv("MEETING_INTERPRETER_OLLAMA_MODEL", "translategemma:4b") if translation_backend == "ollama" else os.getenv("MEETING_INTERPRETER_TRANSLATION_MODEL", "facebook/nllb-200-distilled-600M")
     runtime = {
         "asr_status": "loading" if mode == "local" else "mock",
@@ -45,8 +49,11 @@ def create_app() -> FastAPI:
         "startup_ready": mode != "local",
         "asr_backend": None,
         "translator_backend_instance": None,
+        "speaker_backend": None,
+        "speaker_status": "loading" if speaker_model_path().is_file() and mode == "local" else "missing",
+        "speaker_message": "声纹模型尚未连接，可手动换人",
     }
-    app = FastAPI(title="Local Meeting Interpreter", version="0.2.2")
+    app = FastAPI(title="Local Meeting Interpreter", version="0.2.3")
     app.mount("/web", StaticFiles(directory=WEB_DIR), name="web")
 
     @app.get("/health")
@@ -79,7 +86,7 @@ def create_app() -> FastAPI:
                 runtime["translation_status"] = "running"
             elif runtime["translation_status"] not in {"processing", "loading", "error"}:
                 runtime["translation_status"] = "ready"
-        return {"status": "ok", "mode": mode, "asr": {"status": runtime["asr_status"], "model": asr_model}, "translation": {"status": runtime["translation_status"], "backend": translation_backend, "model": translation_model, "last_response_ms": runtime["last_translation_ms"]}, "ollama": ollama, "audio": {"frames": runtime["audio_frames"], "last_audio_at": runtime["last_audio_at"]}, "models": {"stage": runtime["warmup_stage"], "message": runtime["warmup_message"], "progress": runtime["warmup_progress"], "ready": runtime["startup_ready"]}, "settings": {"model_dir": current_model_directory()}, "last_error": runtime["last_error"], "checked_at": runtime["last_health_at"]}
+        return {"status": "ok", "mode": mode, "asr": {"status": runtime["asr_status"], "model": asr_model}, "speaker": {"available": runtime["speaker_backend"] is not None, "status": runtime["speaker_status"], "message": runtime["speaker_message"]}, "translation": {"status": runtime["translation_status"], "backend": translation_backend, "model": translation_model, "last_response_ms": runtime["last_translation_ms"]}, "ollama": ollama, "audio": {"frames": runtime["audio_frames"], "last_audio_at": runtime["last_audio_at"]}, "models": {"stage": runtime["warmup_stage"], "message": runtime["warmup_message"], "progress": runtime["warmup_progress"], "ready": runtime["startup_ready"]}, "settings": {"model_dir": current_model_directory()}, "last_error": runtime["last_error"], "checked_at": runtime["last_health_at"]}
 
     @app.get("/system/check")
     async def system_check() -> dict[str, object]:
@@ -98,7 +105,8 @@ def create_app() -> FastAPI:
 
     @app.get("/settings")
     async def get_settings() -> dict[str, object]:
-        return {"model_dir": current_model_directory()}
+        return {"model_dir": current_model_directory(), "asr_engine": asr_engine,
+                "sensevoice_available": all((sensevoice_model_directory() / name).is_file() for name in ('model.int8.onnx', 'tokens.txt', 'silero_vad.onnx'))}
 
     @app.get("/preferences")
     async def get_preferences() -> dict[str, bool]:
@@ -117,7 +125,7 @@ def create_app() -> FastAPI:
         if not isinstance(model_dir, str) or not model_dir.strip():
             raise HTTPException(status_code=400, detail="请提供模型保存目录。")
         try:
-            return await asyncio.to_thread(save_model_directory, model_dir.strip())
+            return await asyncio.to_thread(save_model_directory, model_dir.strip(), payload.get('asr_engine'))
         except (OSError, ValueError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -132,11 +140,14 @@ def create_app() -> FastAPI:
             runtime["warmup_progress"] = 10
             await asyncio.sleep(0)
             try:
-                backend = MLXWhisperBackend(model=asr_model, language=None)
+                backend = create_asr_backend()
                 runtime["warmup_message"] = "正在执行首次本地识别，建立热缓存…"
                 runtime["warmup_progress"] = 35
                 await asyncio.sleep(0)
-                await backend.transcribe(b"\x00" * (16_000 * 2), 16_000, 0)
+                if isinstance(backend, SenseVoiceBackend):
+                    await asyncio.to_thread(backend.warmup)
+                else:
+                    await backend.transcribe(b"\x00" * (16_000 * 2), 16_000, 0)
                 runtime["asr_backend"] = backend
                 runtime["asr_status"] = "ready"
                 runtime["warmup_progress"] = 60
@@ -178,6 +189,19 @@ def create_app() -> FastAPI:
         async def warm_all() -> None:
             try:
                 await warm_asr()
+                if speaker_model_path().is_file():
+                    runtime["warmup_stage"] = "speaker"
+                    runtime["warmup_message"] = "正在加载本地声纹模型，用于区分发言人…"
+                    runtime["warmup_progress"] = 65
+                    try:
+                        speaker = EmbeddingSpeakerBackend()
+                        await asyncio.to_thread(speaker.load)
+                        runtime["speaker_backend"] = speaker
+                        runtime["speaker_status"] = "ready"
+                        runtime["speaker_message"] = "本地声纹已就绪 · 自动分人（测试功能）"
+                    except Exception as exc:
+                        runtime["speaker_status"] = "error"
+                        runtime["speaker_message"] = f"声纹加载失败，可手动换人：{exc}"
                 await warm_translation()
             except Exception:
                 return
@@ -207,6 +231,9 @@ def create_app() -> FastAPI:
                     continue
                 if payload.get("type") == "config":
                     config = SessionConfig.model_validate(payload)
+                    if config.speaker_mode == "embedding" and runtime["speaker_backend"] is None:
+                        await websocket.send_json(ErrorEvent(message=runtime["speaker_message"]).model_dump(mode="json"))
+                        continue
                     pipeline = Pipeline(
                         source_language=config.source_language,
                         target_language=config.target_language,
@@ -214,12 +241,31 @@ def create_app() -> FastAPI:
                         speaker_mode=config.speaker_mode,
                         asr_backend=runtime.get("asr_backend"),
                         translator_backend=runtime.get("translator_backend_instance"),
+                        speaker_backend=runtime.get("speaker_backend"),
                     )
                     effective_language = getattr(pipeline.asr, "language", None) or "auto"
                     await websocket.send_json({"type": "configured", "source_language": config.source_language, "asr_language": effective_language, "target_language": config.target_language})
                     language_label = {"zh": "锁定中文", "ja": "锁定日语", "en": "锁定英语", "auto": "自动识别"}.get(effective_language, effective_language)
                     await websocket.send_json({"type": "status", "stage": "models", "message": f"语音识别已配置：{language_label}；翻译模型状态：{runtime['translation_status']}"})
                     continue
+                if payload.get("type") == "speaker_change":
+                    async for caption in pipeline.change_speaker():
+                        await websocket.send_json(caption.model_dump(mode="json"))
+                    await websocket.send_json({"type": "speaker_changed", "message": "已标记换人，当前使用手动分段"})
+                    continue
+                if payload.get("type") == "finish":
+                    try:
+                        async for caption in pipeline.flush_audio():
+                            await websocket.send_json(caption.model_dump(mode="json"))
+                        await websocket.send_json({"type": "session_finished"})
+                    except Exception as exc:
+                        try:
+                            await websocket.send_json(ErrorEvent(message=f"收尾识别失败：{exc}").model_dump(mode="json"))
+                        except (WebSocketDisconnect, RuntimeError):
+                            pass
+                    finally:
+                        await websocket.close()
+                    return
                 try:
                     event = AudioEvent.model_validate(payload)
                     runtime["audio_frames"] = int(runtime["audio_frames"]) + 1

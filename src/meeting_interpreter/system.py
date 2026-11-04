@@ -156,7 +156,9 @@ def pull_ollama_model(model: str = RECOMMENDED_OLLAMA_MODEL, timeout: float = 18
     return {"ok": result.returncode == 0, "model": model, "message": output[-1600:] or ("推荐模型已准备好" if result.returncode == 0 else "推荐模型下载失败")}
 
 
-def save_model_directory(model_dir: str) -> dict[str, object]:
+def save_model_directory(model_dir: str, asr_engine: object = None) -> dict[str, object]:
+    if asr_engine is not None and asr_engine not in ('whisper', 'sensevoice'):
+        raise ValueError('请选择有效的语音识别引擎。')
     if any(char in model_dir for char in "\r\n\x00"):
         raise ValueError("模型目录不能包含换行或空字符。")
     path = Path(model_dir).expanduser()
@@ -174,6 +176,8 @@ def save_model_directory(model_dir: str) -> dict[str, object]:
         "HUGGINGFACE_HUB_CACHE": str(path / "huggingface" / "hub"),
         "TRANSFORMERS_CACHE": str(path / "huggingface" / "transformers"),
     }
+    if asr_engine is not None:
+        values['MEETING_INTERPRETER_ASR_BACKEND'] = str(asr_engine)
     seen: set[str] = set()
     output: list[str] = []
     for line in existing:

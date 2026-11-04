@@ -5,6 +5,56 @@ import pytest
 from meeting_interpreter.asr import MLXWhisperBackend
 
 
+@pytest.mark.asyncio
+async def test_sensevoice_silence_never_reaches_decoder(tmp_path):
+    from meeting_interpreter.asr import SenseVoiceBackend
+    backend = SenseVoiceBackend(str(tmp_path), 'zh')
+    assert await backend.transcribe(bytes(32000), 16000, 0) is None
+
+
+@pytest.mark.asyncio
+async def test_sensevoice_returns_chinese_and_japanese_with_token_times(tmp_path):
+    from types import SimpleNamespace
+    from meeting_interpreter.asr import SenseVoiceBackend
+    class Stream:
+        def accept_waveform(self, rate, waveform): assert rate == 16000
+        result = SimpleNamespace(text='今日は会議です。', lang='<|ja|>', event='<|Speech|>',
+                                 tokens=['今日', 'は', '会議', 'です', '。'], timestamps=[.1, .2, .3, .4, .5])
+    class Recognizer:
+        def create_stream(self): return Stream()
+        def decode_stream(self, stream): pass
+    backend = SenseVoiceBackend(str(tmp_path), 'ja')
+    backend._recognizer = Recognizer()
+    backend._has_speech = lambda waveform: True
+    result = await backend.transcribe(struct.pack('<hh', 2000, -2000) * 4800, 16000, 7000)
+    assert result.text == '今日は会議です。'
+    assert result.language == 'ja'
+    assert result.words[0].start_ms == 7100
+    assert result.words[-1].end_ms == 7600
+    assert backend.for_language('zh').language == 'zh'
+    assert backend.language == 'ja'
+
+
+@pytest.mark.asyncio
+async def test_sensevoice_noise_rejected_by_speech_detector_never_becomes_a_caption(tmp_path):
+    from meeting_interpreter.asr import SenseVoiceBackend
+    backend = SenseVoiceBackend(str(tmp_path), 'zh')
+    backend._has_speech = lambda waveform: False
+    assert await backend.transcribe(struct.pack('<hh', 350, -350)*32000, 16000, 0) is None
+
+
+def test_asr_selection_defaults_to_whisper_and_can_select_local_sensevoice(monkeypatch, tmp_path):
+    from meeting_interpreter.asr import create_asr_backend, SenseVoiceBackend
+    monkeypatch.delenv('MEETING_INTERPRETER_ASR_BACKEND', raising=False)
+    assert isinstance(create_asr_backend('ja'), MLXWhisperBackend)
+    monkeypatch.setenv('MEETING_INTERPRETER_ASR_BACKEND', 'sensevoice')
+    monkeypatch.delenv('MEETING_INTERPRETER_SENSEVOICE_MODEL', raising=False)
+    monkeypatch.setenv('MEETING_INTERPRETER_MODEL_DIR', str(tmp_path))
+    backend = create_asr_backend('zh')
+    assert isinstance(backend, SenseVoiceBackend)
+    assert backend.model == str(tmp_path / 'asr/sensevoice')
+
+
 class Decoder:
     def __init__(self, segments):
         self.segments = segments
@@ -38,3 +88,25 @@ async def test_valid_chinese_keeps_mixed_english_names_and_excludes_bad_segments
     result = await backend.transcribe(struct.pack("<h", 1000) * 9600, 16000, 0)
     assert result.text == "今天用 Teams 开会。"
     assert decoder.options["language"] == "zh"
+
+
+@pytest.mark.asyncio
+async def test_detected_speech_is_not_dropped_for_whisper_no_speech_score_alone(tmp_path):
+    decoder = Decoder([{'text':'我补充一点，预算三万元。','no_speech_prob':.87,'avg_logprob':-.28,'compression_ratio':1.03}])
+    backend = MLXWhisperBackend('cached-model','zh')
+    backend._mlx_whisper = decoder
+    backend._speech_detector = lambda waveform: True
+    result = await backend.transcribe(struct.pack('<hh',2000,-2000)*8000,16000,0)
+    assert result.text == '我补充一点，预算三万元。'
+
+
+@pytest.mark.asyncio
+async def test_decoder_returns_absolute_word_times_for_nonduplicating_chunk_overlap():
+    decoder = Decoder([{'text':'今天开会。','no_speech_prob':.01,'avg_logprob':-.2,
+                        'words':[{'word':'今天','start':.2,'end':.5},{'word':'开会。','start':.5,'end':1.0}]}])
+    backend=MLXWhisperBackend('cached-model','zh')
+    backend._mlx_whisper=decoder
+    result=await backend.transcribe(struct.pack('<h',1000)*16000,16000,7000)
+    assert decoder.options['word_timestamps'] is True
+    assert result.words[0].start_ms == 7200
+    assert result.words[-1].end_ms == 8000

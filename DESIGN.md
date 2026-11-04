@@ -13,3 +13,9 @@ Preserve the Apple reference at revision `3b605329240ce735b510037cca322f1831fdd7
 ## Audio diagnostics
 
 Show the microphone's actual track name after permission, a compact native input meter with Chinese signal labels, and the server-confirmed recognition language. The meter indicates sound energy, not proof of recognized speech. Keep all twelve status rows within the existing single-screen panel. Lock input and language controls during recording so the visible settings match the active decoder; stop recording to change them. Rejected recognition is explained in the diagnostic row and never inserted as a subtitle.
+
+## Persistent bilingual speech
+
+Use one paragraph per consecutive speaker turn, with a compact speaker/time line above equal-width source and translation columns. Keep the columns side by side in the main window and floating window. A bounded recognition chunk can be revised without replacing completed chunks. Keep the previous translation visible while a correction is pending. Retain every paragraph until the user clears the transcript; export uses the same grouping. The transcript alone scrolls, and following pauses when the user scrolls into history. A small blue “回到最新” action resumes following. Automatic voice identification is explicitly marked as experimental and is only selectable when its local model has loaded; otherwise show manual boundaries in plain Chinese.
+
+Keep the optional speech-engine choice inside local settings. Use the Chinese description “语音转文字引擎”; display the SenseVoice model's local availability and state that applying settings requires reopening the App. Keep Whisper available for Japanese comparisons. Model selection never downloads weights implicitly.

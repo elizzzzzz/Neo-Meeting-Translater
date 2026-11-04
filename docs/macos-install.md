@@ -10,7 +10,7 @@
 cd local-meeting-interpreter
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -e '.[apple,translation]'
+pip install -e '.[apple,translation,speaker]'
 python -m meeting_interpreter.desktop
 ```
 
@@ -41,6 +41,7 @@ EOF
 
 ```bash
 cd local-meeting-interpreter
+pip install -e '.[apple,installer,speaker]'
 ./scripts/build_macos_app.sh
 ```
 
@@ -50,7 +51,7 @@ cd local-meeting-interpreter
 MEETING_INTERPRETER_BUILD_PYTHON=/opt/homebrew/bin/python3 ./scripts/build_macos_app.sh
 ```
 
-构建产物：
+构建脚本会解压 ZIP、挂载 DMG 并检查依赖、arm64 和签名，通过后发布两个归档；App 可从 ZIP 解压得到：
 
 - `dist/LocalMeetingInterpreter.app`
 - `dist/LocalMeetingInterpreter.dmg`
@@ -64,6 +65,8 @@ MEETING_INTERPRETER_ICON_VARIANT=c ./scripts/build_macos_app.sh
 ```
 
 首次打开会出现三步使用提示。顶部“使用指南”可以再次查看；勾选“以后不再提醒”后，App 不会再次自动弹出。顶部“本地设置”会检查 Ollama 安装状态、运行状态、当前版本、最新版本和推荐模型，并提供升级、安装推荐模型和选择模型目录的入口。默认模型目录是 `~/Library/Application Support/LocalMeetingInterpreter/models`，更改后重新打开 App 生效。
+
+0.2.3 的“语音转文字引擎”提供 Whisper 与 SenseVoice（测试），保存设置并重新打开 App 生效。SenseVoice 需要所选模型目录下 `asr/sensevoice/model.int8.onnx`、`tokens.txt`、`silero_vad.onnx` 三个文件，运行时不下载；可用 `MEETING_INTERPRETER_SENSEVOICE_MODEL` 指定独立目录。日语可先保持 Whisper，中文可用相同录音对比 SenseVoice。详情见 [中日识别评估](asr-evaluation-0.2.3.md)。
 
 安装后第一次使用本地模型时仍需要准备模型缓存。不要把模型权重提交到 GitHub；可以在目标机器上下载，也可以把已验证的模型缓存复制到本机缓存目录。
 

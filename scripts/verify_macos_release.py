@@ -24,6 +24,7 @@ def verify_bundle(app: Path) -> None:
     assert b'arm64' in run('lipo', '-archs', str(executable)), 'Wrong app architecture'
     assert (app / 'Contents/Resources/web/index.html').is_file(), 'Missing embedded UI'
     assert (app / 'Contents/Frameworks/mlx.metallib').is_file(), 'Missing MLX GPU library beside libmlx.dylib; native ASR startup would crash'
+    assert (app / 'Contents/Frameworks/sherpa_onnx/lib/libonnxruntime.dylib').is_file(), 'Missing local speech/voice runtime library'
     info = plistlib.loads((app / 'Contents/Info.plist').read_bytes())
     assert info.get('NSMicrophoneUsageDescription'), 'Missing microphone usage description'
     assert info.get('CFBundleIdentifier') == 'com.localmeetinginterpreter.app', 'Wrong bundle identifier'

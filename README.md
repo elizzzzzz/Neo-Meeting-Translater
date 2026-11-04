@@ -2,6 +2,10 @@
 
 本地运行的中英 / 中日多人会议实时字幕翻译 MVP。当前目标设备是 16G 统一内存的 Apple M3：文字输出优先，语音合成作为可选插件，不依赖云端 API。
 
+0.2.3 增加同一发言人的连续双栏记录、历史滚动与“回到最新”、手动换人及本地声纹自动分人（测试）。已完成的识别片段保留，当前片段可修订；停止录音会补齐尾句。记录保留在当前 App 会话内，退出前请导出。
+
+“本地设置 → 语音转文字引擎”可选择 Whisper 或 SenseVoice（测试），保存并重开 App 生效。SenseVoice 需要本地 `asr/sensevoice/model.int8.onnx`、`tokens.txt`、`silero_vad.onnx`，不自动下载；原有 Whisper 配置保留。中日样本的实际结果、整句漏识别修复和限制见 [中日语音识别评估](docs/asr-evaluation-0.2.3.md) 与 [0.2.3 说明](docs/release-0.2.3.md)。自然多人会议准确率尚未验收，自动分人不能获得腾讯会议或 Teams 的真实姓名。
+
 ## 当前范围
 
 - 麦克风或在线会议回环音频接入的后端接口
@@ -13,9 +17,7 @@
 - 可切换半透明、置顶、可移动的字幕浮窗，覆盖在腾讯会议或 Teams 上方
 - `mock` 模式用于在未下载模型时验证端到端流程
 
-真实模型适配器预留给后续迭代：Apple Silicon 优先使用 MLX/whisper.cpp，翻译使用本地 NLLB，VoxCPM2 只在需要语音输出时按需加载。
-
-当前已经接入 MLX Whisper 和 NLLB 适配器；默认仍是 `mock`，设置 `MEETING_INTERPRETER_MODE=local` 后才加载本地模型。
+已接入 MLX Whisper、SenseVoice 和本地 Ollama/NLLB 适配器。语音输出尚未接入；当前以文字为主。未设置运行模式时仍默认 `mock`，设置 `MEETING_INTERPRETER_MODE=local` 后才加载本地模型。
 
 如果已安装 Ollama，推荐使用 `translategemma:4b` 做本地翻译。先执行 `ollama pull translategemma:4b`，再使用以下配置：
 
@@ -40,7 +42,7 @@ python -m meeting_interpreter --mock
 在 M3 上安装真实 ASR 适配器：
 
 ```bash
-pip install -e '.[apple,translation]'
+pip install -e '.[apple,translation,speaker]'
 export MEETING_INTERPRETER_MODE=local
 export MEETING_INTERPRETER_ASR_MODEL=mlx-community/whisper-medium-mlx-8bit
 export MEETING_INTERPRETER_TRANSLATION_MODEL=facebook/nllb-200-distilled-600M

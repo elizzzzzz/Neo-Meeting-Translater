@@ -45,4 +45,4 @@ class SessionConfig(BaseModel):
     source_language: Literal["auto", "zh", "ja", "en"] = "auto"
     target_language: Literal["zh", "ja", "en"] = "zh"
     mode: Literal["mock", "local"] = "mock"
-    speaker_mode: Literal["none", "pyannote"] = "none"
+    speaker_mode: Literal["none", "embedding", "pyannote"] = "none"

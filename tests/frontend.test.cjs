@@ -44,6 +44,15 @@ test('health refresh preserves a folder the user is editing', () => {
   assert.equal(app.elements.get('#modelDirectory').value, '/Volumes/外置硬盘/我的模型');
 });
 
+test('local settings save the selected speech engine with its model directory', async () => {
+  const app = loadApp();
+  app.elements.get('#modelDirectory').value = '/models';
+  app.elements.get('#asrEngine').value = 'sensevoice';
+  await app.run('saveModelDirectory()');
+  const request = app.requests.find(r=>r.url==='/settings' && r.options?.method==='POST');
+  assert.deepEqual(JSON.parse(request.options.body), {model_dir:'/models',asr_engine:'sensevoice'});
+});
+
 test('preview never reports hot models and local warmup failure disables recording', () => {
   const app = loadApp();
   app.run("updateHealth({mode:'mock', models:{ready:true}})");
@@ -51,6 +60,15 @@ test('preview never reports hot models and local warmup failure disables recordi
   app.elements.get('#startBtn').disabled=false;
   app.run("updateHealth({mode:'local', models:{ready:false,stage:'error',message:'模型未连接'}})");
   assert.equal(app.elements.get('#startBtn').disabled, true);
+});
+
+test('warmup completion clears the loading diagnostic while preserving later session messages', () => {
+  const app = loadApp();
+  app.run("updateHealth({mode:'local',models:{ready:false,message:'正在启动翻译模型'}})");
+  app.run("updateHealth({mode:'local',models:{ready:true,message:'模型已就绪，可开始会议'}})");
+  assert.equal(app.elements.get('#diagnosticStatus').textContent, '模型已就绪，可开始会议');
+  app.run("setDiagnostic('已识别原文，翻译处理中');updateHealth({mode:'local',models:{ready:true}})");
+  assert.equal(app.elements.get('#diagnosticStatus').textContent, '已识别原文，翻译处理中');
 });
 
 test('tip dismissal is saved to local preferences independently of the service port', async () => {
@@ -137,4 +155,88 @@ test('slow inference keeps one audio packet in flight and a bounded recent windo
   app.run('audioInFlight=false;sendPendingAudio()');
   assert.equal(sent.length,2);
   assert.equal(app.run('pendingAudio.length'),0);
+});
+
+test('same speaker retains complete speech across chunks and pauses, next speaker starts a paragraph', () => {
+  const app=loadApp();
+  app.run(`
+    for (const event of [
+      {session_id:'mic', segment_id:'1', speaker_id:'SPEAKER_00', original_text:'今天讨论项目。', translated_text:'Today we discuss the project.', start_ms:0, end_ms:8000, is_final:true},
+      {session_id:'mic', segment_id:'2', speaker_id:'SPEAKER_00', original_text:'预算是三万元。', translated_text:'The budget is thirty thousand yuan.', start_ms:8000, end_ms:16000, is_final:true},
+      {session_id:'mic', segment_id:'3', speaker_id:'SPEAKER_01', original_text:'我同意。', translated_text:'I agree.', start_ms:17000, end_ms:18000, is_final:true},
+      {session_id:'mic', segment_id:'4', speaker_id:'SPEAKER_00', original_text:'谢谢。', translated_text:'Thank you.', start_ms:19000, end_ms:20000, is_final:true},
+    ]) upsertCaption(event);
+  `);
+  const paragraphs=JSON.parse(app.run('JSON.stringify(transcriptParagraphs())'));
+  assert.equal(paragraphs.length,3);
+  assert.match(paragraphs[0].original_text,/今天讨论项目。.*预算是三万元。/s);
+  assert.match(paragraphs[0].translated_text,/Today.*thirty thousand/s);
+  assert.equal(paragraphs[2].original_text,'谢谢。');
+});
+
+test('revising the current chunk preserves older speech and its last translation until corrected translation arrives', () => {
+  const app=loadApp();
+  app.run(`
+    upsertCaption({session_id:'m',segment_id:'1',speaker_id:'SPEAKER_PENDING',original_text:'前一句保留。',translated_text:'Previous sentence.',is_final:true});
+    upsertCaption({session_id:'m',segment_id:'2',speaker_id:'SPEAKER_PENDING',original_text:'项目预算三千元。',translated_text:'Three thousand yuan.',is_final:true});
+    upsertCaption({session_id:'m',segment_id:'2',speaker_id:'SPEAKER_PENDING',original_text:'项目预算三万元。',translated_text:'',is_final:false});
+  `);
+  const paragraph=JSON.parse(app.run('JSON.stringify(transcriptParagraphs()[0])'));
+  assert.match(paragraph.original_text,/前一句保留。.*三万元。/s);
+  assert.match(paragraph.translated_text,/Previous.*Three thousand/s);
+  assert.equal(app.run('captionRows.length'),2);
+  app.run("upsertCaption({session_id:'m',segment_id:'2',speaker_id:'SPEAKER_PENDING',original_text:'项目预算三万元。',translated_text:'Thirty thousand yuan.',is_final:true});");
+  assert.match(app.run('transcriptParagraphs()[0].translated_text'),/Thirty thousand/);
+  assert.doesNotMatch(app.run('transcriptParagraphs()[0].translated_text'),/Three thousand/);
+});
+
+test('new captions do not pull a reader away from history, returning to latest resumes following', () => {
+  const app=loadApp();
+  const list=app.elements.get('#captions');
+  list.scrollHeight=1600;list.clientHeight=500;list.scrollTop=240;
+  app.run("followCaptions=false;upsertCaption({session_id:'m',segment_id:'1',speaker_id:'A',original_text:'历史',translated_text:'History',start_ms:0,is_final:true});renderCaptions();");
+  assert.equal(list.scrollTop,240);
+  assert.equal(app.elements.get('#latestBtn').hidden,false);
+  app.run('returnToLatest()');
+  assert.equal(list.scrollTop,1600);
+  assert.equal(app.elements.get('#latestBtn').hidden,true);
+});
+
+test('manual boundary sends captured audio before changing speaker and later audio afterwards', () => {
+  const app=loadApp();const sent=[];app.context.sent=sent;
+  app.run("socket={readyState:WebSocket.OPEN,send:message=>sent.push(JSON.parse(message))};queueAudioFrame(new Float32Array(1600).fill(.01));queueAudioFrame(new Float32Array(1600).fill(.02));requestSpeakerChange();queueAudioFrame(new Float32Array(1600).fill(.03));");
+  app.run('audioInFlight=false;sendPendingAudio()');
+  assert.deepEqual(sent.map(e=>e.type),['audio','audio']);
+  app.run('audioInFlight=false;sendPendingAudio()');
+  assert.deepEqual(sent.map(e=>e.type),['audio','audio','speaker_change']);
+  app.run('audioInFlight=false;sendPendingAudio()');
+  assert.deepEqual(sent.map(e=>e.type),['audio','audio','speaker_change','audio']);
+});
+
+test('stopping drains queued audio before requesting final recognition', () => {
+  const app=loadApp();const sent=[];app.context.sent=sent;
+  app.run("socket={readyState:WebSocket.OPEN,send:message=>sent.push(JSON.parse(message)),close:()=>sent.push({type:'closed'})};queueAudioFrame(new Float32Array(1600));queueAudioFrame(new Float32Array(1600));stopSession();");
+  assert.deepEqual(sent.map(e=>e.type),['audio']);
+  app.run('audioInFlight=false;sendPendingAudio()');
+  assert.deepEqual(sent.map(e=>e.type),['audio','audio']);
+  app.run('audioInFlight=false;sendPendingAudio()');
+  assert.deepEqual(sent.map(e=>e.type),['audio','audio','finish']);
+});
+
+test('starting recording again cannot overwrite the previous recording with reused segment ids', async () => {
+  const app=loadApp();
+  app.context.navigator.mediaDevices={getUserMedia:async()=>{}};
+  app.context.WebSocket=class {static OPEN=1;static CONNECTING=0;constructor(){this.readyState=1;}};
+  app.run("runtimeMode='LOCAL';modelsReady=true;");
+  await app.run('startSession()');
+  const first=app.run('captureSessionId');
+  app.run('socket.readyState=3;socket.onclose();');
+  await app.run('startSession()');
+  assert.notEqual(app.run('captureSessionId'),first);
+});
+
+test('manual speaker changes remain available when no audio is waiting', () => {
+  const app=loadApp();const sent=[];app.context.sent=sent;
+  app.run("socket={readyState:WebSocket.OPEN,send:message=>sent.push(JSON.parse(message))};requestSpeakerChange();audioInFlight=false;requestSpeakerChange();");
+  assert.deepEqual(sent.map(e=>e.type),['speaker_change','speaker_change']);
 });
