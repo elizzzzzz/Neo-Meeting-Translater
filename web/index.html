@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#f5f5f7" />
     <title>Local Interpreter · 实时会议</title>
-    <link rel="stylesheet" href="/web/styles.css?v=0.2.7" />
+    <link rel="stylesheet" href="/web/styles.css?v=0.2.8" />
   </head>
   <body>
     <header class="global-bar">
@@ -43,7 +43,7 @@
         <aside class="side-column">
           <section class="side-panel">
             <div class="panel-header compact"><div><span class="section-label" data-i18n="status.eyebrow">SESSION</span><h2 data-i18n="status.title">当前状态</h2></div></div>
-            <dl class="status-list"><div><dt>输入来源</dt><dd id="sourceStatus">未选择</dd></div><div><dt>输入电平</dt><dd class="input-level"><meter id="inputLevelMeter" min="0" max="1" value="0" aria-label="麦克风输入电平"></meter><span id="inputLevelStatus">未开始</span></dd></div><div><dt>识别语言</dt><dd id="recognitionLanguageStatus">未开始</dd></div><div><dt>方向</dt><dd id="directionStatus">自动 → 中文</dd></div><div><dt>说话人模式</dt><dd id="speakerStatus">手动换人</dd></div><div><dt>运行模式</dt><dd id="modeStatus">演示</dd></div><div><dt title="语音识别（ASR）">语音识别</dt><dd id="asrStatus">检查中…</dd></div><div><dt title="本地翻译引擎（Ollama）">翻译引擎</dt><dd id="ollamaStatus">检查中…</dd></div><div><dt>翻译模型</dt><dd id="ollamaModelStatus">检查中…</dd></div><div><dt>翻译状态</dt><dd id="translationStatus">检查中…</dd></div><div><dt>音频链路</dt><dd id="audioStatus">未开始</dd></div><div><dt>诊断</dt><dd id="diagnosticStatus">等待启动</dd></div></dl>
+            <dl class="status-list" aria-label="当前状态"><div class="status-item status-input"><dt title="输入来源"><span class="status-icon" aria-hidden="true">◉</span><span class="status-label-text" data-i18n="status.inputSource">输入来源</span></dt><dd id="sourceStatus">未选择</dd></div><div class="status-item status-level"><dt title="输入电平"><span class="status-icon" aria-hidden="true">▥</span><span class="status-label-text" data-i18n="status.inputLevel">输入电平</span></dt><dd class="input-level"><meter id="inputLevelMeter" min="0" max="1" value="0" aria-label="麦克风输入电平"></meter><span id="inputLevelStatus">未开始</span></dd></div><div class="status-item"><dt title="识别语言"><span class="status-icon" aria-hidden="true">文</span><span class="status-label-text" data-i18n="status.recognitionLanguage">识别语言</span></dt><dd id="recognitionLanguageStatus">未开始</dd></div><div class="status-item"><dt title="翻译方向"><span class="status-icon" aria-hidden="true">↔</span><span class="status-label-text" data-i18n="status.direction">方向</span></dt><dd id="directionStatus">自动 → 中文</dd></div><div class="status-item"><dt title="说话人模式"><span class="status-icon" aria-hidden="true">●●</span><span class="status-label-text" data-i18n="status.speakerMode">说话人模式</span></dt><dd id="speakerStatus">手动换人</dd></div><div class="status-item"><dt title="运行模式"><span class="status-icon" aria-hidden="true">⌁</span><span class="status-label-text" data-i18n="status.runMode">运行模式</span></dt><dd id="modeStatus">演示</dd></div><div class="status-item status-engine"><dt title="语音识别（ASR）"><span class="status-icon" aria-hidden="true">A</span><span class="status-label-text" data-i18n="status.asr">语音识别</span></dt><dd id="asrStatus">检查中…</dd></div><div class="status-item status-engine"><dt title="本地翻译引擎（Ollama）"><span class="status-icon" aria-hidden="true">O</span><span class="status-label-text" data-i18n="status.ollama">翻译引擎</span></dt><dd id="ollamaStatus">检查中…</dd></div><div class="status-item status-engine"><dt title="翻译模型"><span class="status-icon" aria-hidden="true">✦</span><span class="status-label-text" data-i18n="status.translationModel">翻译模型</span></dt><dd id="ollamaModelStatus">检查中…</dd></div><div class="status-item"><dt title="翻译状态"><span class="status-icon" aria-hidden="true">⇢</span><span class="status-label-text" data-i18n="status.translation">翻译状态</span></dt><dd id="translationStatus">检查中…</dd></div><div class="status-item"><dt title="音频链路"><span class="status-icon" aria-hidden="true">≈</span><span class="status-label-text" data-i18n="status.audio">音频链路</span></dt><dd id="audioStatus">未开始</dd></div><div class="status-item status-diagnostic"><dt title="诊断"><span class="status-icon" aria-hidden="true">!</span><span class="status-label-text" data-i18n="status.diagnostic">诊断</span></dt><dd id="diagnosticStatus">等待启动</dd></div></dl>
           </section>
         </aside>
       </section>
@@ -80,6 +80,6 @@
       </section>
     </div>
     <footer class="footer-bar"><span data-i18n="footer.config">文字模式 · M3 / 16G 配置</span><span id="footerStatus"><span data-i18n="footer.service">服务地址</span> <span id="serviceAddress">127.0.0.1:8000</span></span></footer>
-    <script src="/web/app.js?v=0.2.7" defer></script>
+    <script src="/web/app.js?v=0.2.8" defer></script>
   </body>
 </html>

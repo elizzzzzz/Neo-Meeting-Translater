@@ -240,6 +240,21 @@ dt, dd { font-size: 11px; }
   .side-column { max-width: 210px; }
 }
 
+/* Status rail: icons carry the repeated meaning while the full label remains
+   available through the title and accessible text. Keep values as compact
+   diagnostic tokens so the transcript remains visually dominant. */
+.status-list > div.status-item { grid-template-columns: 24px minmax(0, 1fr); gap: 8px; }
+.status-list > div.status-item dt { display: flex; align-items: center; justify-content: center; min-width: 24px; }
+.status-label-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+.status-icon { display: inline-grid; width: 22px; height: 22px; place-items: center; color: var(--blue); background: #f1f7ff; border: 1px solid #d9eaff; border-radius: 7px; font-size: 11px; font-weight: 700; line-height: 1; }
+.status-engine .status-icon { color: #6e6e73; background: #f5f5f7; border-color: #e0e0e0; }
+.status-diagnostic .status-icon { color: #8a5a00; background: #fff8e6; border-color: #f1d58a; }
+.status-list > div.status-item dd { max-width: none; min-width: 0; font-size: 10px; }
+.status-list > div.status-item dd:not(.input-level) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.status-list > div.status-diagnostic dd { color: var(--muted); }
+.input-level { min-width: 0; }
+.input-level span { max-width: 86px; }
+
 /* Native always-on-top caption mode. The WKWebView remains interactive while
    the surrounding native window becomes a compact, translucent overlay. */
 body.floating-mode { background: transparent; }
