@@ -39,6 +39,7 @@ try:
   def settings_route(route):
    if route.request.method=='POST':
     saved_settings.append(route.request.post_data_json)
+    health_fixture.update(models={'ready':False,'stage':'restart','progress':0,'message':'设置已保存，请重启'},settings={'restart_required':True,**saved_settings[-1]})
     route.fulfill(json={'restart_required':True,'model_dir':saved_settings[-1]['model_dir']})
    else:route.fulfill(json={'model_dir':'/test/models','ollama_model_dir':'/test/ollama-models','asr_engine':'whisper','asr_model':'mlx-community/whisper-medium-mlx-8bit','translation_backend':'ollama','translation_model':'translategemma:4b'})
   page.route('**/settings',settings_route)
@@ -110,6 +111,8 @@ try:
   page.locator('#saveSettingsBtn').click()
   page.wait_for_function('document.querySelector("#systemNotice").textContent.includes("已保存")')
   assert saved_settings[-1]['asr_engine']=='ollama' and saved_settings[-1]['translation_backend']=='llama'
+  assert page.locator('#startBtn').is_disabled()
+  assert '待重启加载' in page.locator('#asrStatus').inner_text()
   page.keyboard.press('Escape');page.locator('#demoBtn').click()
   assert page.locator('body').evaluate("e=>e.classList.contains('floating-mode')")
   assert page.locator('.caption-row').count()==0

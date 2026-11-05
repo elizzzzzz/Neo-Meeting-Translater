@@ -225,3 +225,96 @@ def test_legacy_mlx_npz_weights_are_detected(monkeypatch, tmp_path):
     info = system.inspect_asr_models('whisper', model_dir=str(root))
     assert info['installed']
     assert info['resolved_model'] == str(root)
+
+
+def test_new_empty_root_never_resolves_old_direct_model(tmp_path):
+    old = tmp_path / 'old-whisper'
+    old.mkdir()
+    (old / 'config.json').write_text('{}')
+    (old / 'weights.npz').write_bytes(b'weights')
+    new = tmp_path / 'new'
+    new.mkdir()
+    assert system.resolve_model_location(str(old), new) is None
+
+
+def test_preview_changed_root_drops_stale_absolute_selection(monkeypatch, tmp_path):
+    old = _whisper_snapshot(tmp_path / 'old/hub')
+    new = tmp_path / 'new'
+    new.mkdir()
+    monkeypatch.setattr(system, 'user_config_path', lambda: tmp_path / '.env')
+    info = system.inspect_asr_models('whisper', str(old), str(new))
+    assert not info['installed']
+    assert str(old) not in info['models']
+    assert not info['model']
+
+
+def test_changing_sensevoice_root_replaces_independent_historical_path(monkeypatch, tmp_path):
+    config = tmp_path / '.env'
+    config.write_text(f'MEETING_INTERPRETER_MODEL_DIR={tmp_path / "old"}\nMEETING_INTERPRETER_ASR_BACKEND=sensevoice\nMEETING_INTERPRETER_SENSEVOICE_MODEL={tmp_path / "independent-old"}\nMEETING_INTERPRETER_ASR_MODEL={tmp_path / "old-whisper"}\n')
+    root = tmp_path / 'new-sensevoice'
+    root.mkdir()
+    for name in ('model.int8.onnx', 'tokens.txt', 'silero_vad.onnx'):
+        (root / name).write_bytes(b'weights')
+    monkeypatch.setattr(system, 'user_config_path', lambda: config)
+    system.save_model_directory(str(root), 'sensevoice', {'asr_model':'SenseVoice-Small'})
+    saved = system.saved_config()
+    assert saved['MEETING_INTERPRETER_SENSEVOICE_MODEL'] == str(root)
+    assert 'MEETING_INTERPRETER_ASR_MODEL' not in saved
+    monkeypatch.setattr(system.os, 'environ', dict(system.os.environ))
+    system.load_user_config()
+    from meeting_interpreter.asr import create_asr_backend
+    assert create_asr_backend().model == str(root)
+    assert system.inspect_asr_models('sensevoice')['path'] == str(root)
+
+
+def test_saving_whisper_in_empty_new_folder_clears_pinned_old_model(monkeypatch, tmp_path):
+    config = tmp_path / '.env'
+    old = _whisper_snapshot(tmp_path / 'old/hub')
+    config.write_text(f'MEETING_INTERPRETER_MODEL_DIR={tmp_path / "old"}\nMEETING_INTERPRETER_ASR_MODEL={old}\n')
+    monkeypatch.setattr(system, 'user_config_path', lambda: config)
+    system.save_model_directory(str(tmp_path / 'empty'), 'whisper', {'asr_model':str(old)})
+    assert str(old) not in config.read_text()
+    assert system.model_settings()['asr_model'] == ''
+    monkeypatch.setattr(system.os, 'environ', dict(system.os.environ))
+    system.load_user_config()
+    from meeting_interpreter.asr import create_asr_backend
+    import pytest
+    with pytest.raises(RuntimeError, match='模型'):
+        create_asr_backend()
+
+
+def test_model_root_discovers_a_direct_child_whisper_folder(monkeypatch, tmp_path):
+    root = tmp_path / 'new'
+    model = root / 'whisper-medium'
+    model.mkdir(parents=True)
+    (model / 'config.json').write_text('{}')
+    (model / 'weights.npz').write_bytes(b'weights')
+    monkeypatch.setattr(system, 'user_config_path', lambda: tmp_path / '.env')
+    info = system.inspect_asr_models('whisper', '/old/whisper-medium', str(root))
+    assert info['installed']
+    assert info['model'] == str(model)
+
+
+def test_settings_reports_sensevoice_selection_without_inherited_whisper_path(monkeypatch, tmp_path):
+    config = tmp_path / '.env'
+    config.write_text(f'MEETING_INTERPRETER_MODEL_DIR={tmp_path / "new"}\nMEETING_INTERPRETER_ASR_BACKEND=sensevoice\n')
+    monkeypatch.setattr(system, 'user_config_path', lambda: config)
+    monkeypatch.setenv('MEETING_INTERPRETER_ASR_MODEL', '/old-whisper')
+    assert system.model_settings()['asr_model'] == 'SenseVoice-Small'
+
+
+def test_settings_save_marks_current_model_pending_restart(monkeypatch, tmp_path):
+    from fastapi.testclient import TestClient
+    from meeting_interpreter.app import create_app
+    config = tmp_path / '.env'
+    monkeypatch.setattr(system, 'user_config_path', lambda: config)
+    monkeypatch.setenv('MEETING_INTERPRETER_MODE', 'mock')
+    monkeypatch.setenv('MEETING_INTERPRETER_TRANSLATION_BACKEND', 'nllb')
+    with TestClient(create_app()) as client:
+        response = client.post('/settings', json={'model_dir':str(tmp_path / 'new'), 'asr_engine':'sensevoice', 'asr_model':'SenseVoice-Small'})
+        assert response.status_code == 200
+        health = client.get('/health').json()
+        assert health['settings']['restart_required']
+        assert not health['models']['ready']
+        assert health['models']['stage'] == 'restart'
+        assert '重启' in health['models']['message']

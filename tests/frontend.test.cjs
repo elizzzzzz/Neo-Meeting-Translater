@@ -482,3 +482,20 @@ test('missing model folder displays the diagnostic instead of a script failure',
   assert.match(app.elements.get('#asrModelStatus').textContent,/未挂载/);
   assert.doesNotMatch(app.elements.get('#asrModelStatus').textContent,/检查失败/);
 });
+
+test('empty changed folder clears the historical speech model option', async () => {
+  const app=loadApp();
+  app.context.fetch=async()=>({ok:true,json:async()=>({installed:false,model:'',models:[],path:'/new',message:'未找到语音模型'})});
+  app.run("asrEngine.value='whisper';asrModel.value='/old/model';modelDirectory.value='/new'");
+  await app.run("refreshModelSelection('asr')");
+  assert.equal(app.elements.get('#asrModel').value,'');
+  assert.doesNotMatch(app.elements.get('#asrModel').innerHTML,/old\/model/);
+});
+
+test('pending restart displays saved selection instead of the old active ASR path', () => {
+  const app=loadApp();
+  app.run("updateHealth({mode:'local',models:{ready:false,stage:'restart',message:'设置已保存，请重启'},asr:{status:'ready',model:'/old/whisper'},settings:{restart_required:true,asr_model:'SenseVoice-Small'}})");
+  assert.match(app.elements.get('#asrStatus').textContent,/SenseVoice/);
+  assert.doesNotMatch(app.elements.get('#asrStatus').textContent,/old/);
+  assert.equal(app.elements.get('#startBtn').disabled,true);
+});

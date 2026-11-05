@@ -51,7 +51,10 @@ class MockASRBackend:
 def sensevoice_model_directory() -> Path:
     explicit = os.getenv('MEETING_INTERPRETER_SENSEVOICE_MODEL')
     root = Path(os.getenv('MEETING_INTERPRETER_MODEL_DIR', str(Path.home() / 'Library/Application Support/LocalMeetingInterpreter/models'))).expanduser()
-    return Path(explicit).expanduser() if explicit else root / 'asr/sensevoice'
+    from .system import sensevoice_location
+    if explicit and not os.getenv('MEETING_INTERPRETER_MODEL_DIR'):
+        return Path(explicit).expanduser()
+    return sensevoice_location(root, explicit)
 
 
 def create_asr_backend(language: str | None = None) -> ASRBackend:
@@ -67,6 +70,8 @@ def create_asr_backend(language: str | None = None) -> ASRBackend:
     selected = os.getenv('MEETING_INTERPRETER_ASR_MODEL', 'mlx-community/whisper-medium-mlx-8bit')
     root = os.getenv('MEETING_INTERPRETER_MODEL_DIR')
     resolved = resolve_model_location(selected, Path(root).expanduser()) if root else None
+    if root and not resolved:
+        raise RuntimeError(f'所选目录内未找到语音模型：{root}。请在设置中重新选择模型目录和模型。')
     return MLXWhisperBackend(resolved or selected, language)
 
 

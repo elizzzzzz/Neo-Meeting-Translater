@@ -213,7 +213,7 @@ def save_model_directory(model_dir: str, asr_engine: object = None, model_settin
         for field in ('asr_model', 'translation_model'):
             if field in model_settings:
                 value = model_settings[field]
-                if not isinstance(value, str) or not value.strip() or any(c in value for c in '\r\n\x00"\''):
+                if not isinstance(value, str) or (not value.strip() and (field != 'asr_model' or asr_engine in SERVICE_URLS)) or any(c in value for c in '\r\n\x00"\''):
                     raise ValueError('请选择有效的模型名称。')
         if 'asr_model' in model_settings:
             key = 'MEETING_INTERPRETER_SERVICE_ASR_MODEL' if asr_engine in SERVICE_URLS else 'MEETING_INTERPRETER_ASR_MODEL'
@@ -250,11 +250,22 @@ def save_model_directory(model_dir: str, asr_engine: object = None, model_settin
     previous = {**os.environ, **saved_config(), **extra}
     relocated = _relocated_values(previous, path)
     values.update(extra)
-    for key in ('MEETING_INTERPRETER_ASR_MODEL', 'MEETING_INTERPRETER_TRANSLATION_MODEL', 'MEETING_INTERPRETER_SENSEVOICE_MODEL'):
-        if key in relocated:
-            values[key] = relocated[key]
+    engine = str(asr_engine or previous.get('MEETING_INTERPRETER_ASR_BACKEND', 'whisper'))
+    removed = set()
+    if engine == 'sensevoice':
+        values['MEETING_INTERPRETER_SENSEVOICE_MODEL'] = str(sensevoice_location(path))
+        removed.update(('MEETING_INTERPRETER_ASR_MODEL', 'MEETING_INTERPRETER_SERVICE_ASR_MODEL', 'MEETING_INTERPRETER_ASR_URL'))
+    elif engine == 'whisper':
+        selected = previous.get('MEETING_INTERPRETER_ASR_MODEL', RECOMMENDED_ASR_MODEL)
+        info = inspect_asr_models('whisper', selected, str(path))
+        values['MEETING_INTERPRETER_ASR_MODEL'] = str(info['model'])
+        removed.update(('MEETING_INTERPRETER_SENSEVOICE_MODEL', 'MEETING_INTERPRETER_SERVICE_ASR_MODEL', 'MEETING_INTERPRETER_ASR_URL'))
+    else:
+        removed.update(('MEETING_INTERPRETER_ASR_MODEL', 'MEETING_INTERPRETER_SENSEVOICE_MODEL'))
+    if 'MEETING_INTERPRETER_TRANSLATION_MODEL' in relocated:
+        values['MEETING_INTERPRETER_TRANSLATION_MODEL'] = relocated['MEETING_INTERPRETER_TRANSLATION_MODEL']
     if asr_engine is not None:
-        values['MEETING_INTERPRETER_ASR_BACKEND'] = str(asr_engine)
+        values['MEETING_INTERPRETER_ASR_BACKEND'] = engine
     seen: set[str] = set()
     output: list[str] = []
     for line in existing:
@@ -262,7 +273,11 @@ def save_model_directory(model_dir: str, asr_engine: object = None, model_settin
             output.append(line)
             continue
         key = line.split("=", 1)[0].strip()
+        if key in removed:
+            continue
         if key in values:
+            if key in seen:
+                continue
             output.append(f"{key}={values[key]}")
             seen.add(key)
         else:
@@ -355,11 +370,45 @@ def resolve_model_location(selected: str, root: Path, engine: str = 'whisper') -
         for folder in candidates:
             if _model_files(folder, engine):
                 return str(folder)
-    for folder in (root / repo, root / repo.split('/')[-1], root / 'asr' / repo.split('/')[-1]):
+    relative = repo if not Path(repo).is_absolute() else Path(repo).name
+    for folder in (root / relative, root / Path(relative).name, root / 'asr' / Path(relative).name):
         if _model_files(folder, engine):
             return str(folder)
     return None
 
+
+
+def sensevoice_location(root: Path, explicit: str | None = None) -> Path:
+    candidates = [root, root / 'asr/sensevoice', root / 'sensevoice']
+    if explicit:
+        selected = Path(explicit).expanduser()
+        if selected.is_relative_to(root):
+            candidates.insert(0, selected)
+    required = ('model.int8.onnx', 'tokens.txt', 'silero_vad.onnx')
+    return next((folder for folder in candidates if all((folder / name).is_file() for name in required)), root / 'asr/sensevoice')
+
+
+def _available_models(root: Path, engine: str) -> dict[str, str]:
+    models = {}
+    if _model_files(root, engine):
+        models[str(root)] = str(root)
+    # Only inspect bounded, known model locations, never scan service blobs.
+    for base in (root, root / 'asr'):
+        if base.is_dir():
+            for folder in sorted(base.iterdir()):
+                if folder.is_dir() and _model_files(folder, engine):
+                    models[str(folder)] = str(folder)
+    for cache in _cache_roots(root):
+        if not cache.is_dir():
+            continue
+        for marker in sorted(cache.glob('models--*')):
+            repo = marker.name.removeprefix('models--').replace('--', '/')
+            if engine == 'whisper' and 'whisper' not in repo.lower():
+                continue
+            resolved = resolve_model_location(repo, root, engine)
+            if resolved:
+                models[repo] = resolved
+    return models
 
 def _relocated_values(values: dict[str, str], root: Path) -> dict[str, str]:
     result = dict(values)
@@ -383,6 +432,13 @@ def load_user_config() -> None:
     values = saved_config()
     root = Path(values.get('MEETING_INTERPRETER_MODEL_DIR') or os.getenv('MEETING_INTERPRETER_MODEL_DIR') or ollama_model_directory()).expanduser()
     values = _relocated_values(values, root)
+    if 'MEETING_INTERPRETER_ASR_BACKEND' in values:
+        engine = values['MEETING_INTERPRETER_ASR_BACKEND']
+        keys = {'whisper': ('MEETING_INTERPRETER_SENSEVOICE_MODEL', 'MEETING_INTERPRETER_SERVICE_ASR_MODEL', 'MEETING_INTERPRETER_ASR_URL'),
+                'sensevoice': ('MEETING_INTERPRETER_ASR_MODEL', 'MEETING_INTERPRETER_SERVICE_ASR_MODEL', 'MEETING_INTERPRETER_ASR_URL')}.get(engine, ('MEETING_INTERPRETER_ASR_MODEL', 'MEETING_INTERPRETER_SENSEVOICE_MODEL'))
+        for key in keys:
+            values.pop(key, None)
+            os.environ.pop(key, None)
     for key, value in values.items():
         if key.startswith(('MEETING_INTERPRETER_ASR_', 'MEETING_INTERPRETER_SERVICE_ASR_', 'MEETING_INTERPRETER_TRANSLATION_', 'MEETING_INTERPRETER_OLLAMA_', 'MEETING_INTERPRETER_LLAMA_', 'MEETING_INTERPRETER_SENSEVOICE_')):
             os.environ[key] = value
@@ -396,8 +452,8 @@ def load_user_config() -> None:
         if resolved:
             os.environ[key] = resolved
 
-    if all((root / name).is_file() for name in ('model.int8.onnx', 'tokens.txt', 'silero_vad.onnx')):
-        os.environ['MEETING_INTERPRETER_SENSEVOICE_MODEL'] = str(root)
+    if os.getenv('MEETING_INTERPRETER_ASR_BACKEND') == 'sensevoice':
+        os.environ['MEETING_INTERPRETER_SENSEVOICE_MODEL'] = str(sensevoice_location(root, values.get('MEETING_INTERPRETER_SENSEVOICE_MODEL')))
     engine = os.getenv('MEETING_INTERPRETER_ASR_BACKEND', 'whisper')
     provider = os.getenv('MEETING_INTERPRETER_TRANSLATION_BACKEND', 'nllb')
     roles = []
@@ -423,7 +479,7 @@ def model_settings() -> dict:
     provider = values.get('MEETING_INTERPRETER_TRANSLATION_BACKEND', 'nllb')
     root = current_model_directory()
     return {'model_dir': root, 'model_dir_exists': Path(root).is_dir(), 'ollama_model_dir': ollama_model_directory(), 'asr_engine': engine,
-            'asr_model': values.get('MEETING_INTERPRETER_SERVICE_ASR_MODEL', '') if engine in SERVICE_URLS else values.get('MEETING_INTERPRETER_ASR_MODEL', RECOMMENDED_ASR_MODEL),
+            'asr_model': 'SenseVoice-Small' if engine == 'sensevoice' else values.get('MEETING_INTERPRETER_SERVICE_ASR_MODEL', '') if engine in SERVICE_URLS else values.get('MEETING_INTERPRETER_ASR_MODEL', RECOMMENDED_ASR_MODEL),
             'asr_url': values.get('MEETING_INTERPRETER_ASR_URL', SERVICE_URLS.get(engine, '')),
             'translation_backend': provider,
             'translation_model': values.get({'ollama': 'MEETING_INTERPRETER_OLLAMA_MODEL', 'llama': 'MEETING_INTERPRETER_LLAMA_MODEL'}.get(provider, 'MEETING_INTERPRETER_TRANSLATION_MODEL'), 'translategemma:4b' if provider == 'ollama' else 'facebook/nllb-200-distilled-600M' if provider == 'nllb' else ''),
@@ -437,9 +493,10 @@ def inspect_asr_models(engine: str = 'whisper', model: str | None = None, model_
     values = {**os.environ, **saved_config()}
     if engine == 'sensevoice':
         explicit = values.get('MEETING_INTERPRETER_SENSEVOICE_MODEL')
-        folder = Path(explicit).expanduser() if explicit and (model_dir is None or str(root) == current_model_directory()) else root / 'asr/sensevoice'
-        if all((root / name).is_file() for name in ('model.int8.onnx', 'tokens.txt', 'silero_vad.onnx')):
-            folder = root
+        folder = sensevoice_location(root, explicit)
+        # Legacy standalone configuration without a model root remains supported.
+        if explicit and model_dir is None and not values.get('MEETING_INTERPRETER_MODEL_DIR'):
+            folder = Path(explicit).expanduser()
         required = ['model.int8.onnx', 'tokens.txt', 'silero_vad.onnx']
         present = [name for name in required if (folder / name).is_file()]
         installed = len(present) == len(required)
@@ -450,15 +507,15 @@ def inspect_asr_models(engine: str = 'whisper', model: str | None = None, model_
     # Preserve repository IDs but replace stale absolute paths with their new location.
     if resolved and (Path(selected).is_absolute() or resolved == str(root)):
         selected = resolved
-    models = [selected]
-    if engine == 'whisper':
-        models.append(RECOMMENDED_ASR_MODEL)
-    for cache in _cache_roots(root):
-        if cache.is_dir():
-            for marker in sorted(cache.glob('models--*')):
-                repo = marker.name.removeprefix('models--').replace('--', '/')
-                if (engine != 'whisper' or 'whisper' in repo.lower()) and resolve_model_location(repo, root, engine):
-                    models.append(repo)
+    available = _available_models(root, engine)
+    if not installed:
+        # The chosen directory owns the selection; never retain a historical path.
+        if len(available) == 1:
+            selected, resolved = next(iter(available.items()))
+            installed = True
+        else:
+            selected = ''
+    models = list(dict.fromkeys(([selected] if selected else []) + list(available)))
     message = '本地文件已找到' if installed else ('目录不存在或外置盘未挂载，请重新选择目录' if not root.is_dir() else '所选模型未在此目录找到，请选择已检测到的模型')
     return {'engine': engine, 'model': selected, 'models': list(dict.fromkeys(models)), 'installed': installed,
             'resolved_model': resolved, 'progress': 100 if installed else 0, 'path': str(root),

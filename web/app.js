@@ -231,7 +231,9 @@ function updateHealth(health) {
   const modeLabel = runtimeMode === 'LOCAL' ? uiText('mode.local') : uiText('mode.demo');
   modeStatus.textContent = modeLabel;
   modeBadge.textContent = modeLabel;
-  const models = health.models || {};
+  const models = health.settings?.restart_required
+    ? {...health.models, ready:false, stage:'restart', progress:0, message:localized('设置已保存，请完全退出并重新打开 App', '設定を保存しました。App を終了して再起動してください', 'Settings saved. Quit and reopen the App to load the new models.')}
+    : health.models || {};
   const prepared = runtimeMode === 'LOCAL' && Boolean(models.ready);
   document.body.classList.toggle('conversation-ready', prepared);
   if (startupIntro) startupIntro.hidden = prepared;
@@ -250,7 +252,9 @@ function updateHealth(health) {
   if (runtimeMode === 'LOCAL' && !models.ready && !demoTimer) setDiagnostic(models.message || (activeInterfaceLanguage() === 'en' ? 'Models are not connected; subtitle mode is available' : activeInterfaceLanguage() === 'ja' ? 'モデル未接続。字幕モードを利用できます' : '模型未连接，可先使用字幕模式'));
   if (runtimeMode === 'LOCAL' && models.ready && !wasModelsReady && !demoTimer && !(socket && socket.readyState <= WebSocket.OPEN)) setDiagnostic(models.message || (activeInterfaceLanguage() === 'en' ? 'Models ready; you can start the meeting' : activeInterfaceLanguage() === 'ja' ? 'モデル準備完了。会議を開始できます' : '模型已就绪，可开始会议'));
   const asrProvider = health.asr?.backend === 'ollama' ? 'Ollama · ' : health.asr?.backend === 'llama' ? 'llama.app · ' : '';
-  asrStatus.textContent = `${asrProvider}${statusText(health.asr?.status)} · ${formatModel(health.asr?.model)}`;
+  asrStatus.textContent = health.settings?.restart_required
+    ? `${localized('待重启加载', '再起動後に読み込み', 'Restart to load')} · ${formatModel(health.settings.asr_model)}`
+    : `${asrProvider}${statusText(health.asr?.status)} · ${formatModel(health.asr?.model)}`;
   const speakerOption = speakerMode.querySelector('option[value="embedding"]');
   if (speakerOption) speakerOption.disabled = !health.speaker?.available;
   speakerMode.title = health.speaker?.message || '未连接声纹模型，可手动换人';
@@ -385,7 +389,8 @@ async function refreshModelSelection(role) {
         : choices.some(item => item.id === model.value) ? localized('模型已找到 · 保存并重启后加载', 'モデル検出 · 保存・再起動後に読み込み', 'Model found · loads after save and restart')
         : localized('所选模型未检测到，请重新选择', '選択モデルは未検出です', 'Selected model not found; choose another');
     } else {
-      fillModelChoices(model, info.models || [info.model || (provider === 'nllb' ? 'facebook/nllb-200-distilled-600M' : 'mlx-community/whisper-medium-mlx-8bit')], provider === 'sensevoice' ? 'SenseVoice-Small' : info.model || preferred);
+      model.value = ''; model.dataset.selected = '';
+      fillModelChoices(model, info.models || [info.model || (provider === 'nllb' ? 'facebook/nllb-200-distilled-600M' : 'mlx-community/whisper-medium-mlx-8bit')], provider === 'sensevoice' ? 'SenseVoice-Small' : info.model || '');
       status.textContent = info.installed ? localized('本地文件已找到 · 保存并重启后加载', 'ファイル検出 · 保存・再起動後に読み込み', 'Local files found · save and restart to load') : !info.path || activeInterfaceLanguage() !== 'zh' ? localized('所选目录内未找到模型，请检查路径或重新选择', '保存先のモデルが見つかりません。パスを確認してください', 'Model not found in this folder; check the path or selection') : info.message || '本地模型尚未准备好';
       if (speech) {
         downloadAsrBtn.disabled = Boolean(info.installed) || provider === 'sensevoice';
@@ -458,6 +463,8 @@ async function saveModelDirectory() {
     setDiagnostic(saved);
     notice.textContent = saved; notice.className = 'model-save-notice good';
     if (systemNotice) { systemNotice.className = 'system-notice good'; systemNotice.textContent = saved; }
+    const health = await fetch('/health');
+    if (health.ok) updateHealth(await health.json());
   } catch (error) {
     notice.textContent = `${localized('保存失败', '保存失敗', 'Save failed')}: ${error.message}`; notice.className = 'model-save-notice warn';
     if (systemNotice) { systemNotice.className = 'system-notice warn'; systemNotice.textContent = `保存失败：${error.message}`; }

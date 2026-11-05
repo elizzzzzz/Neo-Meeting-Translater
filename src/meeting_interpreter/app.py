@@ -55,13 +55,14 @@ def create_app() -> FastAPI:
         "warmup_message": "模型尚未预热" if mode == "local" else "可直接使用模拟字幕",
         "warmup_progress": 0 if mode == "local" else 100,
         "startup_ready": mode != "local",
+        "settings_pending_restart": False,
         "asr_backend": None,
         "translator_backend_instance": None,
         "speaker_backend": None,
         "speaker_status": "loading" if speaker_model_path().is_file() and mode == "local" else "missing",
         "speaker_message": "声纹模型尚未连接，可手动换人",
     }
-    app = FastAPI(title="Local Meeting Interpreter", version="0.2.11")
+    app = FastAPI(title="Local Meeting Interpreter", version="0.2.12")
     app.mount("/web", StaticFiles(directory=WEB_DIR), name="web")
 
     @app.get("/health")
@@ -112,7 +113,15 @@ def create_app() -> FastAPI:
             connected = connected and asr_service['reachable'] and present
             if not asr_service['reachable'] or not present:
                 runtime['asr_status'] = 'offline' if not asr_service['reachable'] else 'missing'
-        return {"status": "ok", "mode": mode, "asr": {"status": runtime["asr_status"], "model": asr_model, 'backend': asr_engine, 'service': asr_service}, "speaker": {"available": runtime["speaker_backend"] is not None, "status": runtime["speaker_status"], "message": runtime["speaker_message"]}, "translation": {"status": runtime["translation_status"], "backend": translation_backend, "model": translation_model, "last_response_ms": runtime["last_translation_ms"], 'service': translation_service}, "ollama": ollama, "audio": {"frames": runtime["audio_frames"], "last_audio_at": runtime["last_audio_at"]}, "models": {"stage": runtime["warmup_stage"], "message": runtime["warmup_message"] if connected or not runtime['startup_ready'] else '所选模型服务已断开或模型不可用，请检查本地设置。', "progress": runtime["warmup_progress"], "ready": bool(connected)}, "settings": {"model_dir": current_model_directory()}, "last_error": runtime["last_error"], "checked_at": runtime["last_health_at"]}
+        pending = runtime['settings_pending_restart']
+        settings_state = {'model_dir': current_model_directory(), 'restart_required': pending}
+        if pending:
+            settings_state.update(model_settings())
+            connected = False
+        model_state = {'stage': 'restart' if pending else runtime['warmup_stage'],
+                       'message': '设置已保存，请重启 App（完全退出后重新打开），以加载新目录中的模型。' if pending else runtime['warmup_message'] if connected or not runtime['startup_ready'] else '所选模型服务已断开或模型不可用，请检查本地设置。',
+                       'progress': 0 if pending else runtime['warmup_progress'], 'ready': bool(connected)}
+        return {"status": "ok", "mode": mode, "asr": {"status": runtime["asr_status"], "model": asr_model, 'backend': asr_engine, 'service': asr_service}, "speaker": {"available": runtime["speaker_backend"] is not None, "status": runtime["speaker_status"], "message": runtime["speaker_message"]}, "translation": {"status": runtime["translation_status"], "backend": translation_backend, "model": translation_model, "last_response_ms": runtime["last_translation_ms"], 'service': translation_service}, "ollama": ollama, "audio": {"frames": runtime["audio_frames"], "last_audio_at": runtime["last_audio_at"]}, "models": model_state, "settings": settings_state, "last_error": '' if pending else runtime['last_error'], "checked_at": runtime["last_health_at"]}
 
     @app.get("/system/check")
     async def system_check() -> dict[str, object]:
@@ -150,7 +159,7 @@ def create_app() -> FastAPI:
     @app.get("/settings")
     async def get_settings() -> dict[str, object]:
         return {**model_settings(),
-                "sensevoice_available": all((sensevoice_model_directory() / name).is_file() for name in ('model.int8.onnx', 'tokens.txt', 'silero_vad.onnx'))}
+                "sensevoice_available": inspect_asr_models('sensevoice')['installed']}
 
     @app.get('/services/models')
     async def service_models(provider: str = 'ollama', url: str | None = None):
@@ -177,7 +186,9 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=400, detail="请提供模型保存目录。")
         try:
             selection = {key: payload[key] for key in ('asr_model', 'asr_url', 'translation_backend', 'translation_model', 'translation_url') if key in payload}
-            return await asyncio.to_thread(save_model_directory, model_dir.strip(), payload.get('asr_engine'), selection)
+            result = await asyncio.to_thread(save_model_directory, model_dir.strip(), payload.get('asr_engine'), selection)
+            runtime['settings_pending_restart'] = True
+            return result
         except (OSError, ValueError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -282,6 +293,10 @@ def create_app() -> FastAPI:
     @app.websocket("/ws")
     async def websocket_endpoint(websocket: WebSocket) -> None:
         await websocket.accept()
+        if runtime['settings_pending_restart']:
+            await websocket.send_json({'type':'error', 'message':'模型设置已更改，请重启 App 后开始录音。'})
+            await websocket.close(code=1008)
+            return
         await websocket.send_json({"type": "status", "stage": "service", "message": f"本地服务已连接；ASR：{asr_model}；翻译：{translation_model}"})
         send_lock = asyncio.Lock()
 
