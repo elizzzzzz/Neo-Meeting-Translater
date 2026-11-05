@@ -63,7 +63,7 @@ BUNDLE="$STAGING_DIR/frozen/LocalMeetingInterpreter.app"
 plutil -replace NSMicrophoneUsageDescription \
   -string "用于采集本地麦克风或会议回环音频，并在本机生成实时字幕。" \
   "$BUNDLE/Contents/Info.plist"
-plutil -replace CFBundleShortVersionString -string "0.2.6" "$BUNDLE/Contents/Info.plist"
+plutil -replace CFBundleShortVersionString -string "0.2.7" "$BUNDLE/Contents/Info.plist"
 # The standalone COLLECT directory is already copied into the self-contained
 # bundle; release it before making the clean delivery copy on a small disk.
 rm -rf "$STAGING_DIR/frozen/LocalMeetingInterpreter" "$STAGING_DIR/work"

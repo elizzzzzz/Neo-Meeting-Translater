@@ -348,3 +348,23 @@ test('a superseded translation revision never replaces the latest caption', () =
   `);
   assert.equal(app.run('captionRows[0].translated_text'),'最新');
 });
+
+test('interface language auto-detects Japanese and English while keeping caption pairs stable', () => {
+  const app = loadApp();
+  app.context.navigator.language = 'ja-JP';
+  app.run("interfaceLanguage.value='auto'; applyInterfaceLanguage();");
+  assert.equal(app.run('activeInterfaceLanguage()'), 'ja');
+  assert.equal(app.run("uiText('actions.startAudio')"), '音声入力を開始');
+  assert.equal(app.run("languageDisplayLabel('zh')"), '中国語');
+  app.run("setInterfaceLanguage('en');");
+  assert.equal(app.run('activeInterfaceLanguage()'), 'en');
+  assert.equal(app.run("uiText('actions.startAudio')"), 'Start audio input');
+  assert.equal(app.run("selectedLanguagePair"), 'zh-ja');
+});
+
+test('interface language switching does not rewrite transcript content', () => {
+  const app = loadApp();
+  app.run("upsertCaption({session_id:'i18n',segment_id:'1',speaker_id:'A',language_pair:'zh-ja',source_language:'zh',target_language:'ja',original_text:'中文原文',translated_text:'日本語訳',is_final:true}); renderCaptions(); setInterfaceLanguage('en'); renderCaptions();");
+  assert.match(app.elements.get('#captions').innerHTML, /中文原文/);
+  assert.match(app.elements.get('#captions').innerHTML, /日本語訳/);
+});

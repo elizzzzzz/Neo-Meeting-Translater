@@ -9,6 +9,7 @@ const exportBtn = document.querySelector('#exportBtn');
 const clearBtn = document.querySelector('#clearBtn');
 const floatingBtn = document.querySelector('#floatingBtn');
 const demoBtn = document.querySelector('#demoBtn');
+const interfaceLanguage = document.querySelector('#interfaceLanguage');
 const tipsBtn = document.querySelector('#tipsBtn');
 const settingsBtn = document.querySelector('#settingsBtn');
 const tipsModal = document.querySelector('#tipsModal');
@@ -90,10 +91,85 @@ let selectedLanguagePair = 'zh-ja';
 const LANGUAGE_LABELS = {zh: '中文', en: 'English', ja: '日本語'};
 const LANGUAGE_PAIRS = ['zh-ja', 'zh-en', 'en-ja'];
 let modelsReady = false;
+let lastHealth = null;
 let demoTimer;
 let demoStep = 0;
 let demoSession = "";
 let lastInputRms = 0;
+
+const UI_TEXT = {
+  zh: {
+    'brand.name': 'LOCAL INTERPRETER', 'nav.workspace': 'MEETING WORKSPACE', 'nav.liveMeeting': '实时会议',
+    'mode.local': '本地', 'mode.demo': '演示', 'language.interface': '界面语言', 'language.auto': '自动', 'language.zh': '中文', 'language.ja': '日本語', 'language.en': 'English',
+    'language.autoDetect': '自动识别', 'language.zhSimplified': '中文（简体）',
+    'actions.guide': '使用指南', 'actions.settings': '本地设置', 'actions.subtitleMode': '字幕模式', 'actions.exitSubtitleMode': '退出字幕模式', 'actions.export': '导出记录', 'actions.startAudio': '开启音频输入', 'actions.stop': '停止', 'actions.latest': '回到最新 ↓', 'actions.clear': '清空', 'actions.floating': '字幕浮窗', 'actions.exitFloating': '退出浮窗',
+    'status.localRun': '本地运行', 'status.liveText': '实时文字', 'intro.title': '把会议内容留在本机。', 'intro.description': '实时识别、区分说话人，并生成中日、中英、英日双向字幕。', 'transcript.segments': '段发言', 'tips.kicker': '使用提示', 'tips.title': '三步开始本地会议翻译', 'tips.lead': '所有音频和模型都留在这台 Mac 上。字幕模式只显示已经收到的真实原文和译文，不生成模拟内容。', 'tips.audioTitle': '选音频', 'tips.audioBody': '麦克风用于现场会议；腾讯会议、Teams 和网页视频请选择 BlackHole、Loopback 等系统回环设备。', 'tips.modelTitle': '等模型就绪', 'tips.modelBody': '顶部显示冷启动进度。看到“模型可用 · 热启动”后再开始会议。', 'tips.floatingTitle': '需要时开浮窗', 'tips.floatingBody': '点击“字幕模式”，字幕会置顶、半透明并可拖动、缩放到会议窗口空白处。', 'tips.remember': '以后不再提醒', 'actions.later': '稍后再看', 'actions.setup': '开始设置', 'actions.close': '关闭', 'settings.kicker': '本机环境', 'settings.title': '模型与 Ollama 设置', 'settings.ollamaInstall': 'Ollama 安装', 'settings.version': '当前版本', 'settings.recommendedModel': '推荐翻译模型', 'settings.modelStatus': '模型状态', 'settings.asrEngine': '语音转文字引擎', 'settings.prepareAsr': '准备语音模型', 'settings.captionContent': '字幕显示内容', 'settings.bilingual': '双语对照：源与译', 'settings.sourceOnly': '仅显示源文', 'settings.translationOnly': '仅显示译文', 'settings.captionHint': '中日：中文左、日文右；中英：中文左、英文右；英日：英文左、日文右。“源 / 译”随实际发言切换。', 'settings.modelDirectory': '模型保存目录', 'settings.chooseDirectory': '选择目录', 'settings.directoryHint': '此目录用于语音识别模型缓存，更改后重启生效。现有文件不会自动迁移；Ollama 翻译模型目前由其自身管理。', 'settings.onlineAudio': '在线会议 / 网页视频音频', 'settings.onlineAudioHint': '系统音频捕获需要 macOS 音频回环设备。安装 BlackHole 或 Loopback 后，在主界面的“音频输入”中选择对应设备；应用不会把会议音频上传到网络。', 'settings.recheck': '重新检查', 'settings.installOllama': '安装 Ollama', 'settings.upgradeOllama': '升级 Ollama', 'settings.installModel': '安装推荐模型', 'settings.save': '保存设置', 'footer.config': '文字模式 · M3 / 16G 配置', 'footer.service': '服务地址',
+    'controls.ariaLabel': '会议输入设置', 'controls.audioInput': '音频输入', 'controls.defaultMic': '默认麦克风（授权后显示名称）', 'controls.sourceLanguage': '源语言', 'controls.targetLanguage': '目标语言', 'controls.speaker': '说话人',
+    'speaker.manual': '手动换人', 'speaker.autoTest': '自动分人（测试）', 'direction.ariaLabel': '翻译方向快捷设置', 'direction.eyebrow': 'TRANSLATION DIRECTIONS', 'direction.title': '选择会议语言', 'direction.hint': '双方轮流发言，自动识别与互译',
+    'transcript.eyebrow': 'LIVE TRANSCRIPT', 'transcript.title': '发言记录', 'transcript.footnote': '同一发言人连续记录 · 向上滚动查看历史，回到底部继续跟随', 'session.waitingAudio': '等待音频输入', 'status.eyebrow': 'SESSION', 'status.title': '当前状态',
+    'status.loading': '加载中', 'status.ready': '已就绪', 'status.running': '运行中', 'status.processing': '推理中', 'status.configured': '已配置', 'status.offline': '未连接', 'status.missing': '缺少模型', 'status.error': '错误', 'status.mock': '演示', 'status.unknown': '未知',
+    'language.locked': '已锁定{language}', 'language.autoDetected': '自动识别', 'language.zhName': '中文', 'language.jaName': '日语', 'language.enName': '英语',
+    'caption.waiting': '等待实时字幕', 'caption.emptyHint': '选择麦克风或 BlackHole 回环设备后开始会议。', 'caption.translationPending': '翻译处理中…', 'caption.translationUpdating': '译文更新中',
+    'runtime.idle': '待机', 'runtime.connecting': '连接中…', 'runtime.preparing': '准备收音…', 'runtime.running': '运行中', 'runtime.stopped': '已停止', 'runtime.unavailable': '不可用', 'runtime.finishing': '正在收尾', 'runtime.paused': '收音已暂停',
+  },
+  ja: {
+    'brand.name': 'LOCAL INTERPRETER', 'nav.workspace': 'MEETING WORKSPACE', 'nav.liveMeeting': 'リアルタイム会議', 'mode.local': 'ローカル', 'mode.demo': 'デモ', 'language.interface': '表示言語', 'language.auto': '自動', 'language.zh': '中文', 'language.ja': '日本語', 'language.en': 'English', 'language.autoDetect': '自動認識', 'language.zhSimplified': '中国語（簡体字）',
+    'actions.guide': '使い方', 'actions.settings': 'ローカル設定', 'actions.subtitleMode': '字幕モード', 'actions.exitSubtitleMode': '字幕モードを終了', 'actions.export': '記録を書き出す', 'actions.startAudio': '音声入力を開始', 'actions.stop': '停止', 'actions.latest': '最新へ ↓', 'actions.clear': 'クリア', 'actions.floating': '字幕フロート', 'actions.exitFloating': 'フロートを終了',
+    'status.localRun': 'ローカル実行', 'status.liveText': 'リアルタイム文字', 'intro.title': '会議の内容をこの Mac に保存。', 'intro.description': '発話を認識し、話者を分けて中日・中英・英日を双方向に字幕化します。', 'transcript.segments': '発話', 'tips.kicker': '使い方', 'tips.title': '3 ステップでローカル会議翻訳', 'tips.lead': '音声とモデルはこの Mac に保存されます。字幕モードは受信した実際の原文と訳文だけを表示します。', 'tips.audioTitle': '音声を選択', 'tips.audioBody': '現地会議はマイク、Teams・Tencent Meeting・Web 動画は BlackHole や Loopback を選択します。', 'tips.modelTitle': 'モデルを待つ', 'tips.modelBody': '上部にコールドスタートの進捗が表示されます。「モデル準備完了 · ウォーム」を確認してから開始します。', 'tips.floatingTitle': 'フロートを使う', 'tips.floatingBody': '字幕モードは最前面・半透明で、会議画面の空き場所へ移動できます。', 'tips.remember': '次回から表示しない', 'actions.later': '後で', 'actions.setup': '設定を開始', 'actions.close': '閉じる', 'settings.kicker': 'ローカル環境', 'settings.title': 'モデルと Ollama の設定', 'settings.ollamaInstall': 'Ollama のインストール', 'settings.version': '現在のバージョン', 'settings.recommendedModel': '推奨翻訳モデル', 'settings.modelStatus': 'モデル状態', 'settings.asrEngine': '音声認識エンジン', 'settings.prepareAsr': '音声モデルを準備', 'settings.captionContent': '字幕の表示内容', 'settings.bilingual': '対訳：原文と訳文', 'settings.sourceOnly': '原文のみ', 'settings.translationOnly': '訳文のみ', 'settings.captionHint': '中日：中国語を左、日本語を右。中英：中国語を左、英語を右。英日：英語を左、日本語を右。原文と訳文の表示は発話ごとに切り替わります。', 'settings.modelDirectory': 'モデル保存先', 'settings.chooseDirectory': 'フォルダを選択', 'settings.directoryHint': '音声認識モデルのキャッシュ先です。変更後は App を再起動してください。既存ファイルは移動しません。Ollama の翻訳モデルは Ollama が管理します。', 'settings.onlineAudio': 'オンライン会議 / Web 動画の音声', 'settings.onlineAudioHint': 'システム音声の取り込みには macOS のループバックデバイスが必要です。BlackHole または Loopback をインストールし、メイン画面で音声入力として選択します。音声はネットワークへ送信されません。', 'settings.recheck': '再チェック', 'settings.installOllama': 'Ollama をインストール', 'settings.upgradeOllama': 'Ollama を更新', 'settings.installModel': '推奨モデルをインストール', 'settings.save': '設定を保存', 'footer.config': '文字モード · M3 / 16G', 'footer.service': 'サービス',
+    'controls.ariaLabel': '会議入力設定', 'controls.audioInput': '音声入力', 'controls.defaultMic': 'デフォルトマイク（許可後に表示）', 'controls.sourceLanguage': '原言語', 'controls.targetLanguage': '翻訳先', 'controls.speaker': '話者', 'speaker.manual': '手動で話者変更', 'speaker.autoTest': '自動話者分離（テスト）',
+    'direction.ariaLabel': '翻訳方向のクイック設定', 'direction.eyebrow': 'TRANSLATION DIRECTIONS', 'direction.title': '会議の言語を選択', 'direction.hint': '交互に話す会議を自動認識して翻訳', 'transcript.eyebrow': 'LIVE TRANSCRIPT', 'transcript.title': '発話記録', 'transcript.footnote': '同じ話者を連続表示 · 上へスクロールして履歴を確認し、最下部で追従', 'session.waitingAudio': '音声入力を待機中', 'status.eyebrow': 'SESSION', 'status.title': '現在の状態',
+    'status.loading': '読み込み中', 'status.ready': '準備完了', 'status.running': '実行中', 'status.processing': '推論中', 'status.configured': '設定済み', 'status.offline': '未接続', 'status.missing': 'モデル不足', 'status.error': 'エラー', 'status.mock': 'デモ', 'status.unknown': '不明', 'language.locked': '{language} に固定', 'language.autoDetected': '自動認識', 'language.zhName': '中国語', 'language.jaName': '日本語', 'language.enName': '英語', 'caption.waiting': 'リアルタイム字幕を待機中', 'caption.emptyHint': 'マイクまたは BlackHole のループバックを選択して会議を開始します。', 'caption.translationPending': '翻訳中…', 'caption.translationUpdating': '翻訳を更新中', 'runtime.idle': '待機中', 'runtime.connecting': '接続中…', 'runtime.preparing': '音声入力を準備中…', 'runtime.running': '実行中', 'runtime.stopped': '停止', 'runtime.unavailable': '利用不可', 'runtime.finishing': '終了処理中', 'runtime.paused': '音声入力を一時停止',
+  },
+  en: {
+    'brand.name': 'LOCAL INTERPRETER', 'nav.workspace': 'MEETING WORKSPACE', 'nav.liveMeeting': 'Live meeting', 'mode.local': 'Local', 'mode.demo': 'Demo', 'language.interface': 'Interface language', 'language.auto': 'Auto', 'language.zh': '中文', 'language.ja': '日本語', 'language.en': 'English', 'language.autoDetect': 'Auto detect', 'language.zhSimplified': 'Chinese (Simplified)',
+    'actions.guide': 'Guide', 'actions.settings': 'Local settings', 'actions.subtitleMode': 'Subtitle mode', 'actions.exitSubtitleMode': 'Exit subtitle mode', 'actions.export': 'Export record', 'actions.startAudio': 'Start audio input', 'actions.stop': 'Stop', 'actions.latest': 'Back to latest ↓', 'actions.clear': 'Clear', 'actions.floating': 'Floating captions', 'actions.exitFloating': 'Exit floating mode',
+    'status.localRun': 'Running locally', 'status.liveText': 'Live text', 'intro.title': 'Keep the meeting on this Mac.', 'intro.description': 'Recognize speech, separate speakers, and create two-way Chinese, Japanese, and English captions.', 'transcript.segments': 'segments', 'tips.kicker': 'Tips', 'tips.title': 'Start local meeting translation in three steps', 'tips.lead': 'Audio and models stay on this Mac. Subtitle mode only shows received source and translated text; it never invents sample output.', 'tips.audioTitle': 'Choose audio', 'tips.audioBody': 'Use a microphone for in-room meetings; choose BlackHole or Loopback for Tencent Meeting, Teams, and web video.', 'tips.modelTitle': 'Wait for models', 'tips.modelBody': 'Cold-start progress appears at the top. Start when you see “Models ready · warm”.', 'tips.floatingTitle': 'Use floating captions', 'tips.floatingBody': 'Subtitle mode stays on top, remains translucent, and can be moved over an empty area of the meeting window.', 'tips.remember': 'Do not show again', 'actions.later': 'Later', 'actions.setup': 'Start setup', 'actions.close': 'Close', 'settings.kicker': 'Local environment', 'settings.title': 'Model and Ollama settings', 'settings.ollamaInstall': 'Ollama installation', 'settings.version': 'Current version', 'settings.recommendedModel': 'Recommended translation model', 'settings.modelStatus': 'Model status', 'settings.asrEngine': 'Speech-to-text engine', 'settings.prepareAsr': 'Prepare speech model', 'settings.captionContent': 'Caption display', 'settings.bilingual': 'Bilingual: source and translation', 'settings.sourceOnly': 'Source only', 'settings.translationOnly': 'Translation only', 'settings.captionHint': 'Chinese/Japanese: Chinese left, Japanese right. Chinese/English: Chinese left, English right. English/Japanese: English left, Japanese right. Source and translation markers follow the speaker.', 'settings.modelDirectory': 'Model directory', 'settings.chooseDirectory': 'Choose folder', 'settings.directoryHint': 'Speech model cache directory. Restart the App after changing it. Existing files are not moved; Ollama manages translation models separately.', 'settings.onlineAudio': 'Online meeting / web video audio', 'settings.onlineAudioHint': 'System audio capture requires a macOS loopback device. Install BlackHole or Loopback, then choose it as the audio input. Audio stays local and is not uploaded.', 'settings.recheck': 'Check again', 'settings.installOllama': 'Install Ollama', 'settings.upgradeOllama': 'Update Ollama', 'settings.installModel': 'Install recommended model', 'settings.save': 'Save settings', 'footer.config': 'Text mode · M3 / 16G', 'footer.service': 'Service',
+    'controls.ariaLabel': 'Meeting input settings', 'controls.audioInput': 'Audio input', 'controls.defaultMic': 'Default microphone (name appears after permission)', 'controls.sourceLanguage': 'Source language', 'controls.targetLanguage': 'Target language', 'controls.speaker': 'Speaker', 'speaker.manual': 'Manual speaker change', 'speaker.autoTest': 'Automatic speaker split (test)',
+    'direction.ariaLabel': 'Quick translation direction settings', 'direction.eyebrow': 'TRANSLATION DIRECTIONS', 'direction.title': 'Choose meeting languages', 'direction.hint': 'Auto-detect and translate alternating speakers', 'transcript.eyebrow': 'LIVE TRANSCRIPT', 'transcript.title': 'Transcript', 'transcript.footnote': 'Keep consecutive speech together · scroll up for history and return to the bottom to follow', 'session.waitingAudio': 'Waiting for audio input', 'status.eyebrow': 'SESSION', 'status.title': 'Current status',
+    'status.loading': 'Loading', 'status.ready': 'Ready', 'status.running': 'Running', 'status.processing': 'Processing', 'status.configured': 'Configured', 'status.offline': 'Offline', 'status.missing': 'Model missing', 'status.error': 'Error', 'status.mock': 'Demo', 'status.unknown': 'Unknown', 'language.locked': 'Locked to {language}', 'language.autoDetected': 'Auto-detect', 'language.zhName': 'Chinese', 'language.jaName': 'Japanese', 'language.enName': 'English', 'caption.waiting': 'Waiting for live captions', 'caption.emptyHint': 'Choose a microphone or BlackHole loopback device to start the meeting.', 'caption.translationPending': 'Translation pending…', 'caption.translationUpdating': 'Updating translation', 'runtime.idle': 'Idle', 'runtime.connecting': 'Connecting…', 'runtime.preparing': 'Preparing audio…', 'runtime.running': 'Running', 'runtime.stopped': 'Stopped', 'runtime.unavailable': 'Unavailable', 'runtime.finishing': 'Finishing', 'runtime.paused': 'Audio paused',
+  },
+};
+
+function detectInterfaceLanguage() {
+  const locale = String(navigator.language || 'zh-CN');
+  if (/^ja(?:-|$)/i.test(locale)) return 'ja';
+  if (/^en(?:-|$)/i.test(locale)) return 'en';
+  return 'zh';
+}
+function activeInterfaceLanguage() {
+  const selected = interfaceLanguage?.value || 'auto';
+  return selected === 'auto' ? detectInterfaceLanguage() : (UI_TEXT[selected] ? selected : 'zh');
+}
+function uiText(key, fallback = '') {
+  const value = UI_TEXT[activeInterfaceLanguage()]?.[key] || UI_TEXT.zh?.[key] || fallback || key;
+  return value;
+}
+function languageDisplayLabel(code) {
+  const key = code === 'zh' ? 'language.zhName' : code === 'ja' ? 'language.jaName' : 'language.enName';
+  return uiText(key, LANGUAGE_LABELS[code] || code);
+}
+function applyInterfaceLanguage() {
+  const lang = activeInterfaceLanguage();
+  if (document.documentElement) document.documentElement.lang = lang === 'zh' ? 'zh-CN' : lang === 'ja' ? 'ja-JP' : 'en-US';
+  document.querySelectorAll('[data-i18n]').forEach(element => {
+    const value = UI_TEXT[lang]?.[element.dataset.i18n];
+    if (value) element.textContent = value;
+  });
+  document.querySelectorAll('[data-i18n-aria-label]').forEach(element => {
+    const value = UI_TEXT[lang]?.[element.dataset.i18nAriaLabel];
+    if (value) element.setAttribute('aria-label', value);
+  });
+  if (modeBadge) modeBadge.textContent = runtimeMode === 'LOCAL' ? uiText('mode.local') : uiText('mode.demo');
+  if (floatingBtn) floatingBtn.textContent = floatingMode ? uiText('actions.exitFloating') : uiText('actions.floating');
+  if (demoBtn && !floatingMode) demoBtn.textContent = uiText('actions.subtitleMode');
+  updateCaptionHeaders(); updateSummary();
+}
+function setInterfaceLanguage(value) {
+  const next = UI_TEXT[value] || value === 'auto' ? value : 'auto';
+  try { localStorage.setItem('interfaceLanguage', next); } catch {}
+  if (interfaceLanguage) interfaceLanguage.value = next;
+  applyInterfaceLanguage();
+}
 
 function setDiagnostic(message) {
   diagnosticStatus.textContent = message;
@@ -104,25 +180,28 @@ function formatModel(value) {
   return text.length > 28 ? `${text.slice(0, 25)}…` : text;
 }
 function statusText(value) {
-  return ({ loading: '加载中', ready: '已就绪', running: '运行中', processing: '推理中', configured: '已配置', offline: '未连接', missing: '缺少模型', error: '错误', mock: '演示' })[String(value || '').toLowerCase()] || String(value || '未知');
+  const key = String(value || '').toLowerCase();
+  const labels = { loading: 'status.loading', ready: 'status.ready', running: 'status.running', processing: 'status.processing', configured: 'status.configured', offline: 'status.offline', missing: 'status.missing', error: 'status.error', mock: 'status.mock' };
+  return uiText(labels[key] || 'status.unknown', String(value || uiText('status.unknown')));
 }
 function updateHealth(health) {
+  lastHealth = health;
   runtimeMode = String(health.mode || 'mock').toUpperCase();
-  const modeLabel = runtimeMode === 'LOCAL' ? '本地' : '演示';
+  const modeLabel = runtimeMode === 'LOCAL' ? uiText('mode.local') : uiText('mode.demo');
   modeStatus.textContent = modeLabel;
   modeBadge.textContent = modeLabel;
   const models = health.models || {};
   const wasModelsReady = modelsReady;
   if (modelReadiness) {
     modelsReady = Boolean(models.ready);
-    modelReadiness.textContent = runtimeMode === 'MOCK' ? '界面演示 · 不使用真实模型' : models.ready ? '模型可用 · 热启动' : `${Math.round(Number(models.progress || 0))}% · ${models.message || '模型未就绪'}`;
+    modelReadiness.textContent = runtimeMode === 'MOCK' ? `${uiText('status.mock')} · ${activeInterfaceLanguage() === 'en' ? 'no live model' : activeInterfaceLanguage() === 'ja' ? '実モデル未使用' : '不使用真实模型'}` : models.ready ? (activeInterfaceLanguage() === 'en' ? 'Models ready · warm' : activeInterfaceLanguage() === 'ja' ? 'モデル準備完了 · ウォーム' : '模型可用 · 热启动') : `${Math.round(Number(models.progress || 0))}% · ${models.message || (activeInterfaceLanguage() === 'en' ? 'Models not ready' : activeInterfaceLanguage() === 'ja' ? 'モデル未準備' : '模型未就绪')}`;
     modelReadiness.classList.toggle('ready', Boolean(models.ready));
     modelReadiness.classList.toggle('error', models.stage === 'error');
   }
   startBtn.disabled = runtimeMode !== 'LOCAL' || !models.ready || Boolean(socket && socket.readyState <= WebSocket.OPEN) || Boolean(demoTimer);
   startBtn.title = runtimeMode !== 'LOCAL' ? '尚未连接真实模型，可先演示字幕和浮窗' : !models.ready ? '模型未就绪，请先检查本地设置' : '';
-  if (runtimeMode === 'LOCAL' && !models.ready && !demoTimer) setDiagnostic(models.message || '模型未连接，可先演示字幕');
-  if (runtimeMode === 'LOCAL' && models.ready && !wasModelsReady && !demoTimer && !(socket && socket.readyState <= WebSocket.OPEN)) setDiagnostic(models.message || '模型已就绪，可开始会议');
+  if (runtimeMode === 'LOCAL' && !models.ready && !demoTimer) setDiagnostic(models.message || (activeInterfaceLanguage() === 'en' ? 'Models are not connected; subtitle mode is available' : activeInterfaceLanguage() === 'ja' ? 'モデル未接続。字幕モードを利用できます' : '模型未连接，可先使用字幕模式'));
+  if (runtimeMode === 'LOCAL' && models.ready && !wasModelsReady && !demoTimer && !(socket && socket.readyState <= WebSocket.OPEN)) setDiagnostic(models.message || (activeInterfaceLanguage() === 'en' ? 'Models ready; you can start the meeting' : activeInterfaceLanguage() === 'ja' ? 'モデル準備完了。会議を開始できます' : '模型已就绪，可开始会议'));
   asrStatus.textContent = `${statusText(health.asr?.status)} · ${formatModel(health.asr?.model)}`;
   const speakerOption = speakerMode.querySelector('option[value="embedding"]');
   if (speakerOption) speakerOption.disabled = !health.speaker?.available;
@@ -266,15 +345,15 @@ function setSessionControls(active) {
   changeSpeakerBtn.disabled = !active;
 }
 function updateRecognitionLanguage(language) {
-  const name = ({zh:'中文',ja:'日语',en:'英语'})[language];
-  recognitionLanguageStatus.textContent = name ? `已锁定${name}` : '自动识别';
+  const name = language ? languageDisplayLabel(language) : '';
+  recognitionLanguageStatus.textContent = name ? uiText('language.locked').replace('{language}', name) : uiText('language.autoDetected');
 }
 
 function setRuntime(active, text) { runtimeDot.classList.toggle('active', active); runtimeText.textContent = text; }
 function setFloatingMode(enabled) {
   floatingMode = enabled;
   document.body.classList.toggle('floating-mode', enabled);
-  if (floatingBtn) floatingBtn.textContent = enabled ? '退出浮窗' : '字幕浮窗';
+  if (floatingBtn) floatingBtn.textContent = enabled ? uiText('actions.exitFloating') : uiText('actions.floating');
   if (window.webkit?.messageHandlers?.native) {
     window.webkit.messageHandlers.native.postMessage({ type: 'floating', enabled });
   }
@@ -284,7 +363,7 @@ function updateSummary() {
   const sourceLabel = sourceLanguage.options[sourceLanguage.selectedIndex]?.textContent || '自动识别';
   const targetLabel = targetLanguage.options[targetLanguage.selectedIndex]?.textContent || '中文（简体）';
   const direction = sourceLanguage.value === 'auto'
-    ? `${selectedLanguagePair.split('-').map(language => LANGUAGE_LABELS[language]).join(' ↔ ')} · 自动互译`
+    ? `${selectedLanguagePair.split('-').map(languageDisplayLabel).join(' ↔ ')} · ${activeInterfaceLanguage() === 'en' ? 'auto translate' : activeInterfaceLanguage() === 'ja' ? '自動翻訳' : '自动互译'}`
     : `${sourceLabel} → ${targetLabel}`;
   directionStatus.textContent = direction;
   directionPill.textContent = direction;
@@ -322,14 +401,14 @@ function bilingualColumns(chunks) {
   });
   return {
     leftLanguage, rightLanguage,
-    leftLabel: LANGUAGE_LABELS[leftLanguage], rightLabel: LANGUAGE_LABELS[rightLanguage],
+    leftLabel: languageDisplayLabel(leftLanguage), rightLabel: languageDisplayLabel(rightLanguage),
     left, right, source, translation,
   };
 }
 
 function renderColumn(parts) {
   return parts.filter(part => part.text || part.role === '源').map(part =>
-    `<span class="caption-part"><b class="caption-role ${part.role === '源' ? 'source-role' : 'translation-role'}">${part.role}</b>${escapeHtml(part.text || '翻译处理中…')} </span>`
+    `<span class="caption-part"><b class="caption-role ${part.role === '源' ? 'source-role' : 'translation-role'}">${part.role === '源' ? (activeInterfaceLanguage() === 'en' ? 'SRC' : activeInterfaceLanguage() === 'ja' ? '原' : '源') : (activeInterfaceLanguage() === 'en' ? 'TR' : activeInterfaceLanguage() === 'ja' ? '訳' : '译')}</b>${escapeHtml(part.text || uiText('caption.translationPending'))} </span>`
   ).join('');
 }
 
@@ -337,8 +416,8 @@ function updateCaptionHeaders() {
   if (!captionSourceHeader || !captionTranslationHeader) return;
   const [left, right] = selectedLanguagePair.split('-');
   const mode = displayMode();
-  captionSourceHeader.textContent = mode === 'source' ? '源文' : mode === 'translation' ? '译文' : LANGUAGE_LABELS[left];
-  captionTranslationHeader.textContent = mode === 'both' ? LANGUAGE_LABELS[right] : '';
+  captionSourceHeader.textContent = mode === 'source' ? (activeInterfaceLanguage() === 'en' ? 'Source' : activeInterfaceLanguage() === 'ja' ? '原文' : '源文') : mode === 'translation' ? (activeInterfaceLanguage() === 'en' ? 'Translation' : activeInterfaceLanguage() === 'ja' ? '翻訳' : '译文') : languageDisplayLabel(left);
+  captionTranslationHeader.textContent = mode === 'both' ? languageDisplayLabel(right) : '';
 }
 function ensureDifferentLanguages(changed) {
   if (sourceLanguage.value !== 'auto' && sourceLanguage.value === targetLanguage.value) {
@@ -415,13 +494,13 @@ function returnToLatest() {
 function renderCaptions() {
   const scrollTop = captions.scrollTop;
   updateCaptionHeaders();
-  if (!captionRows.length) { captions.innerHTML = '<div class="empty-state"><strong>等待实时字幕</strong><span>选择麦克风或 BlackHole 回环设备后开始会议。</span></div>'; return; }
+  if (!captionRows.length) { captions.innerHTML = `<div class="empty-state"><strong>${uiText('caption.waiting')}</strong><span>${uiText('caption.emptyHint')}</span></div>`; return; }
   const paragraphs = transcriptParagraphs();
   const mode = displayMode();
   captions.dataset.displayMode = mode;
   const markup = paragraphs.map(event => {
     const columns = bilingualColumns(event.chunks);
-    const pending = event.is_final ? '' : '<span class="draft">译文更新中</span>';
+    const pending = event.is_final ? '' : `<span class="draft">${uiText('caption.translationUpdating')}</span>`;
     const copies = mode === 'both'
       ? `<div class="caption-copy caption-left" lang="${columns.leftLanguage}">${renderColumn(columns.left)}</div><div class="caption-copy caption-right" lang="${columns.rightLanguage}">${renderColumn(columns.right)}</div>`
       : `<div class="caption-copy caption-left">${renderColumn(mode === 'source' ? columns.source : columns.translation)}</div>`;
@@ -722,6 +801,7 @@ latestBtn.addEventListener('click', returnToLatest);
 changeSpeakerBtn.addEventListener('click', requestSpeakerChange);
 exportBtn.addEventListener('click', exportTranscript);
 floatingBtn?.addEventListener('click', () => setFloatingMode(!floatingMode));
+interfaceLanguage?.addEventListener('change', () => setInterfaceLanguage(interfaceLanguage.value));
 captionDisplayMode?.addEventListener('change', () => { renderCaptions(); });
 tipsBtn?.addEventListener('click', () => toggleModal(tipsModal, true));
 settingsBtn?.addEventListener('click', openSettings);
@@ -752,7 +832,9 @@ document.addEventListener('keydown', event => {
   else if (!tipsModal.hidden) closeTips();
   else if (floatingMode) setFloatingMode(false);
 });
-modeStatus.textContent = '待机'; modeBadge.textContent = '本地'; startBtn.disabled = true;
+try { if (interfaceLanguage) interfaceLanguage.value = localStorage.getItem('interfaceLanguage') || 'auto'; } catch { if (interfaceLanguage) interfaceLanguage.value = 'auto'; }
+applyInterfaceLanguage();
+modeStatus.textContent = uiText('runtime.idle'); modeBadge.textContent = uiText('mode.local'); startBtn.disabled = true;
 renderCaptions(); updateSummary(); loadDevices(); loadPreferences(); checkOllama();
 if (serviceAddress) serviceAddress.textContent = location.host;
 fetch('/health').then(response => response.json()).then(updateHealth).catch(() => { setDiagnostic('本地服务未连接，可先检查 App 状态'); });
