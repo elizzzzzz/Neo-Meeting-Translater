@@ -283,3 +283,68 @@ test('canceling language warmup never opens the microphone', async () => {
   app.run('stopSession()'); await opening;
   assert.equal(opened,0); assert.equal(app.elements.get('#sourceLanguage').disabled,false);
 });
+
+for (const [left, right] of [['zh', 'ja'], ['zh', 'en'], ['en', 'ja']]) {
+  test(`${left}/${right} keeps language columns fixed in both directions and filters by role`, () => {
+    const app = loadApp();
+    app.run(`setDirection('${left}', '${right}');`);
+    assert.equal(app.run('sourceLanguage.value'), 'auto');
+    assert.equal(app.run('selectedLanguagePair'), `${left}-${right}`);
+    app.run(`
+      upsertCaption({session_id:'pair',segment_id:'1',speaker_id:'A',language_pair:'${left}-${right}',source_language:'${left}',target_language:'${right}',original_text:'left source',translated_text:'right translated',is_final:true});
+      upsertCaption({session_id:'pair',segment_id:'2',speaker_id:'A',language_pair:'${left}-${right}',source_language:'${right}',target_language:'${left}',original_text:'right source',translated_text:'left translated',is_final:true});
+      renderCaptions();
+    `);
+    const columns = JSON.parse(app.run('JSON.stringify(bilingualColumns(transcriptParagraphs()[0].chunks))'));
+    assert.deepEqual(columns.left.map(part=>part.text), ['left source', 'left translated']);
+    assert.deepEqual(columns.right.map(part=>part.text), ['right translated', 'right source']);
+    assert.deepEqual(columns.left.map(part=>part.role), ['源', '译']);
+    assert.deepEqual(columns.right.map(part=>part.role), ['译', '源']);
+    assert.equal(app.run('transcriptParagraphs().length'), 1);
+    app.run("captionDisplayMode.value='source';renderCaptions()");
+    const source = app.elements.get('#captions').innerHTML;
+    assert.match(source, /left source/); assert.match(source, /right source/);
+    assert.doesNotMatch(source, /left translated|right translated/);
+    app.run("captionDisplayMode.value='translation';renderCaptions()");
+    const translated = app.elements.get('#captions').innerHTML;
+    assert.match(translated, /left translated/); assert.match(translated, /right translated/);
+    assert.doesNotMatch(translated, /left source|right source/);
+  });
+
+  test(`${left}/${right} sends bidirectional configuration and confirms automatic recognition`, async () => {
+    const app = loadApp(); const sent=[];
+    app.context.navigator.mediaDevices={getUserMedia:async()=>{throw new Error('test permission');}};
+    app.context.WebSocket=class {
+      static OPEN=1;static CONNECTING=0;
+      constructor(){this.readyState=1;} send(message){sent.push(JSON.parse(message));} close(){this.readyState=3;}
+    };
+    app.run(`runtimeMode='LOCAL';modelsReady=true;setDirection('${left}','${right}');`);
+    await app.run('startSession()');
+    const opening=app.run('socket.onopen()');
+    assert.equal(sent[0].language_pair, `${left}-${right}`);
+    assert.equal(sent[0].source_language, 'auto');
+    app.run(`socket.onmessage({data:JSON.stringify({type:'configured',asr_language:'auto',language_pair:'${left}-${right}'})});`);
+    await opening;
+    assert.match(app.elements.get('#recognitionLanguageStatus').textContent, /自动识别/);
+  });
+}
+
+test('switching meeting languages leaves historical columns and source/translation labels intact', () => {
+  const app=loadApp();
+  app.run(`
+    upsertCaption({session_id:'old',segment_id:'1',speaker_id:'A',language_pair:'en-ja',source_language:'ja',target_language:'en',original_text:'日本語です',translated_text:'English text',is_final:true});
+    setDirection('zh','en');
+  `);
+  const columns=JSON.parse(app.run('JSON.stringify(bilingualColumns(transcriptParagraphs()[0].chunks))'));
+  assert.equal(columns.leftLanguage,'en');assert.equal(columns.rightLanguage,'ja');
+  assert.equal(columns.left[0].role,'译');assert.equal(columns.right[0].role,'源');
+});
+
+test('a superseded translation revision never replaces the latest caption', () => {
+  const app=loadApp();
+  app.run(`
+    upsertCaption({session_id:'m',segment_id:'1',source_language:'en',target_language:'ja',original_text:'latest words',translated_text:'最新',is_final:false});
+    upsertCaption({session_id:'m',segment_id:'1',source_language:'en',target_language:'ja',original_text:'latest words',translated_text:'obsolete',translation_source_text:'old words',is_final:true});
+  `);
+  assert.equal(app.run('captionRows[0].translated_text'),'最新');
+});

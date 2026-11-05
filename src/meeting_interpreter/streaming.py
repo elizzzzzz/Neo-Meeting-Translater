@@ -84,7 +84,8 @@ class LiveSession:
     async def _publish(self, caption: CaptionEvent):
         key = (caption.session_id, caption.segment_id)
         previous = self._captions.get(key)
-        if previous:
+        if (previous and previous.source_language == caption.source_language
+                and previous.target_language == caption.target_language):
             if previous.original_text == caption.original_text:
                 caption = caption.model_copy(update={'translated_text': previous.translated_text,
                                                       'is_final': previous.is_final})
@@ -145,7 +146,15 @@ class LiveSession:
             await self.send({'type': 'translation_status', 'state': 'processing', 'pending_translations': len(self._pending)})
             async def publish_translation(text, complete):
                 latest = self._captions[key]
-                current = latest.original_text == caption.original_text
+                current = (latest.original_text == caption.original_text
+                    and latest.source_language == caption.source_language
+                    and latest.target_language == caption.target_language)
+                if not current:
+                    return
+                # Revision streams must not replace a readable full translation
+                # with their first token. Commit the completed revision once.
+                if not complete and caption.translated_text:
+                    return
                 updated = latest.model_copy(update={'translated_text': text, 'is_final': complete and current})
                 self._captions[key] = updated
                 if complete and current:

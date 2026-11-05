@@ -86,6 +86,9 @@ let audioFrames = 0;
 let lastCaptionAt = 0;
 let sessionStartedAt = 0;
 let floatingMode = false;
+let selectedLanguagePair = 'zh-ja';
+const LANGUAGE_LABELS = {zh: '中文', en: 'English', ja: '日本語'};
+const LANGUAGE_PAIRS = ['zh-ja', 'zh-en', 'en-ja'];
 let modelsReady = false;
 let demoTimer;
 let demoStep = 0;
@@ -280,42 +283,48 @@ function updateSummary() {
   captionCount.textContent = String(transcriptParagraphs().length);
   const sourceLabel = sourceLanguage.options[sourceLanguage.selectedIndex]?.textContent || '自动识别';
   const targetLabel = targetLanguage.options[targetLanguage.selectedIndex]?.textContent || '中文（简体）';
-  const direction = `${sourceLabel} → ${targetLabel}`;
+  const direction = sourceLanguage.value === 'auto'
+    ? `${selectedLanguagePair.split('-').map(language => LANGUAGE_LABELS[language]).join(' ↔ ')} · 自动互译`
+    : `${sourceLabel} → ${targetLabel}`;
   directionStatus.textContent = direction;
   directionPill.textContent = direction;
   speakerStatus.textContent = speakerMode.options[speakerMode.selectedIndex]?.textContent || '稍后区分';
   sourceStatus.textContent = activeInputLabel || inputDevice.options[inputDevice.selectedIndex]?.textContent || '未选择';
-  directionButtons.forEach((button) => button.classList.toggle('selected', button.dataset.source === sourceLanguage.value && button.dataset.target === targetLanguage.value));
+  directionButtons.forEach(button => button.classList.toggle('selected', `${button.dataset.source}-${button.dataset.target}` === selectedLanguagePair));
 }
 
 function displayMode() {
   return captionDisplayMode?.value || 'both';
 }
 
-function bilingualColumns(chunks, forceZhJa = false) {
-  const languages = new Set(chunks.flatMap(chunk => [chunk.source_language, chunk.target_language]));
-  const isZhJa = forceZhJa || (languages.has('zh') && languages.has('ja'));
-  if (!isZhJa) {
-    return {
-      fixedZhJa: false,
-      leftLanguage: chunks[0]?.source_language || 'source',
-      rightLanguage: chunks[0]?.target_language || 'translation',
-      leftLabel: '源文', rightLabel: '译文',
-      left: chunks.map(chunk => ({ role: '源', text: chunk.original_text, language: chunk.source_language })),
-      right: chunks.map(chunk => ({ role: '译', text: chunk.translated_text, language: chunk.target_language })),
-    };
-  }
+function pairForLanguages(source, target) {
+  return LANGUAGE_PAIRS.find(pair => {
+    const languages = pair.split('-');
+    return source !== target && languages.includes(source) && languages.includes(target);
+  });
+}
+function bilingualColumns(chunks) {
+  // Each paragraph keeps its own language pair even after a later session
+  // selects different languages. Language positions never follow the speaker.
+  const pair = chunks[0]?.language_pair
+    || pairForLanguages(chunks[0]?.source_language, chunks[0]?.target_language)
+    || selectedLanguagePair;
+  const [leftLanguage, rightLanguage] = pair.split('-');
+  const source = chunks.map(chunk => ({role: '源', text: chunk.original_text, language: chunk.source_language}));
+  const translation = chunks.map(chunk => ({role: '译', text: chunk.translated_text, language: chunk.target_language}));
   const left = [], right = [];
-  for (const chunk of chunks) {
-    if (chunk.source_language === 'zh') {
-      left.push({ role: '源', text: chunk.original_text, language: 'zh' });
-      right.push({ role: '译', text: chunk.translated_text, language: 'ja' });
+  chunks.forEach((chunk, index) => {
+    if (chunk.source_language === rightLanguage) {
+      left.push(translation[index]); right.push(source[index]);
     } else {
-      left.push({ role: '译', text: chunk.translated_text, language: 'zh' });
-      right.push({ role: '源', text: chunk.original_text, language: 'ja' });
+      left.push(source[index]); right.push(translation[index]);
     }
-  }
-  return { fixedZhJa: true, leftLanguage: 'zh', rightLanguage: 'ja', leftLabel: '中文', rightLabel: '日本語', left, right };
+  });
+  return {
+    leftLanguage, rightLanguage,
+    leftLabel: LANGUAGE_LABELS[leftLanguage], rightLabel: LANGUAGE_LABELS[rightLanguage],
+    left, right, source, translation,
+  };
 }
 
 function renderColumn(parts) {
@@ -324,22 +333,39 @@ function renderColumn(parts) {
   ).join('');
 }
 
-function updateCaptionHeaders(columns) {
+function updateCaptionHeaders() {
   if (!captionSourceHeader || !captionTranslationHeader) return;
-  captionSourceHeader.textContent = columns?.leftLabel || '中文';
-  captionTranslationHeader.textContent = columns?.rightLabel || '日本語';
+  const [left, right] = selectedLanguagePair.split('-');
+  const mode = displayMode();
+  captionSourceHeader.textContent = mode === 'source' ? '源文' : mode === 'translation' ? '译文' : LANGUAGE_LABELS[left];
+  captionTranslationHeader.textContent = mode === 'both' ? LANGUAGE_LABELS[right] : '';
 }
 function ensureDifferentLanguages(changed) {
-  if (sourceLanguage.value === 'auto' || sourceLanguage.value !== targetLanguage.value) return;
-  if (changed === 'source') targetLanguage.value = sourceLanguage.value === 'zh' ? 'ja' : 'zh';
-  else sourceLanguage.value = targetLanguage.value === 'zh' ? 'ja' : 'zh';
+  if (sourceLanguage.value !== 'auto' && sourceLanguage.value === targetLanguage.value) {
+    const pair = selectedLanguagePair.split('-');
+    const other = pair.find(language => language !== targetLanguage.value) || 'zh';
+    if (changed === 'source') targetLanguage.value = other;
+    else sourceLanguage.value = other;
+  }
+  const pair = sourceLanguage.value === 'auto'
+    ? (selectedLanguagePair.split('-').includes(targetLanguage.value) ? selectedLanguagePair : pairForLanguages('zh', targetLanguage.value))
+    : pairForLanguages(sourceLanguage.value, targetLanguage.value);
+  if (pair) selectedLanguagePair = pair;
+  updateCaptionHeaders();
 }
-function setDirection(source, target) { sourceLanguage.value = source; targetLanguage.value = target; updateSummary(); }
+function setDirection(source, target) {
+  selectedLanguagePair = pairForLanguages(source, target) || selectedLanguagePair;
+  sourceLanguage.value = 'auto';
+  targetLanguage.value = target;
+  updateSummary(); renderCaptions();
+}
 function swapLanguages() {
-  if (sourceLanguage.value === 'auto') sourceLanguage.value = targetLanguage.value === 'zh' ? 'ja' : 'zh';
-  else [sourceLanguage.value, targetLanguage.value] = [targetLanguage.value, sourceLanguage.value];
-  updateSummary();
+  if (sourceLanguage.value === 'auto') {
+    targetLanguage.value = selectedLanguagePair.split('-').find(language => language !== targetLanguage.value);
+  } else [sourceLanguage.value, targetLanguage.value] = [targetLanguage.value, sourceLanguage.value];
+  updateSummary(); updateCaptionHeaders();
 }
+
 function formatTime(milliseconds) { const totalSeconds = Math.max(0, Math.round(milliseconds / 1000)); return `${String(Math.floor(totalSeconds / 60)).padStart(2, '0')}:${String(totalSeconds % 60).padStart(2, '0')}`; }
 function escapeHtml(value) { return String(value).replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character])); }
 function upsertCaption(event) {
@@ -347,8 +373,10 @@ function upsertCaption(event) {
   if (index < 0) captionRows.push(event);
   else {
     const previous = captionRows[index];
+    if (event.translation_source_text && event.translation_source_text !== previous.original_text) return;
     // Keep the last translation visible while its corrected source is translated.
-    captionRows[index] = {...event, translated_text: event.translated_text || previous.translated_text || ''};
+    const sameDirection = previous.source_language === event.source_language && previous.target_language === event.target_language;
+    captionRows[index] = {...event, translated_text: event.translated_text || (sameDirection ? previous.translated_text : '') || ''};
   }
 }
 function transcriptParagraphs() {
@@ -358,7 +386,9 @@ function transcriptParagraphs() {
     // A speaker paragraph can contain both Chinese and Japanese. The speaker
     // boundary, rather than a decoder language flip, decides when to start a
     // new paragraph.
-    if (!paragraph || paragraph.speaker_id !== row.speaker_id || paragraph.session_id !== row.session_id) {
+    if (!paragraph || paragraph.speaker_id !== row.speaker_id || paragraph.session_id !== row.session_id
+        || paragraph.language_pair !== row.language_pair
+        || pairForLanguages(paragraph.source_language, paragraph.target_language) !== pairForLanguages(row.source_language, row.target_language)) {
       paragraph = {...row, original_text: '', translated_text: '', chunks: []};
       paragraphs.push(paragraph);
     }
@@ -384,30 +414,25 @@ function returnToLatest() {
 }
 function renderCaptions() {
   const scrollTop = captions.scrollTop;
-  if (!captionRows.length) { captions.innerHTML = '<div class="empty-state"><strong>还没有字幕</strong><span>选择麦克风或 BlackHole 回环设备后开始会议。</span></div>'; return; }
+  updateCaptionHeaders();
+  if (!captionRows.length) { captions.innerHTML = '<div class="empty-state"><strong>等待实时字幕</strong><span>选择麦克风或 BlackHole 回环设备后开始会议。</span></div>'; return; }
   const paragraphs = transcriptParagraphs();
-  const sessionLanguages = new Set(captionRows.flatMap(row => [row.source_language, row.target_language]));
-  const sessionZhJa = sessionLanguages.has('zh') && sessionLanguages.has('ja');
-  const firstColumns = paragraphs[0] ? bilingualColumns(paragraphs[0].chunks, sessionZhJa) : null;
-  updateCaptionHeaders(firstColumns);
   const mode = displayMode();
   captions.dataset.displayMode = mode;
-  captions.innerHTML = paragraphs.map(event => {
-    const columns = bilingualColumns(event.chunks, sessionZhJa);
-    const showSource = mode !== 'translation';
-    const showTranslation = mode !== 'source';
-    const left = columns.left;
-    const right = columns.right;
-    const sourceParts = columns.fixedZhJa ? (columns.leftLanguage === 'zh' ? left : right) : left;
-    const translationParts = columns.fixedZhJa ? (columns.leftLanguage === 'zh' ? right : left) : right;
-    const leftHtml = mode === 'source' ? renderColumn(sourceParts) : mode === 'translation' ? renderColumn(translationParts) : renderColumn(left);
-    const rightHtml = mode === 'source' ? '' : mode === 'translation' ? '' : renderColumn(right);
-    return `<section class="caption-row ${mode === 'source' ? 'single-source' : ''} ${mode === 'translation' ? 'single-translation' : ''}"><div class="caption-meta"><span class="speaker-chip">${escapeHtml(speakerLabel(event.speaker_id))}</span><span class="caption-time">${formatTime(event.start_ms)} — ${formatTime(event.end_ms)}</span></div>${showSource ? `<div class="caption-copy caption-left">${leftHtml}</div>` : ''}${showTranslation ? `<div class="caption-copy caption-right">${rightHtml || renderColumn(translationParts)}${event.is_final ? '' : '<span class="draft">译文更新中</span>'}</div>` : ''}</section>`;
+  const markup = paragraphs.map(event => {
+    const columns = bilingualColumns(event.chunks);
+    const pending = event.is_final ? '' : '<span class="draft">译文更新中</span>';
+    const copies = mode === 'both'
+      ? `<div class="caption-copy caption-left" lang="${columns.leftLanguage}">${renderColumn(columns.left)}</div><div class="caption-copy caption-right" lang="${columns.rightLanguage}">${renderColumn(columns.right)}</div>`
+      : `<div class="caption-copy caption-left">${renderColumn(mode === 'source' ? columns.source : columns.translation)}</div>`;
+    return `<section class="caption-row ${mode !== 'both' ? 'single-source' : ''}"><div class="caption-meta"><span class="speaker-chip">${escapeHtml(speakerLabel(event.speaker_id))}</span><span class="caption-time">${formatTime(event.start_ms)} — ${formatTime(event.end_ms)}</span>${pending}</div>${copies}</section>`;
   }).join('');
+  if (captions.innerHTML !== markup) captions.innerHTML = markup;
   if (followCaptions) captions.scrollTop = captions.scrollHeight;
   else captions.scrollTop = scrollTop;
   latestBtn.hidden = followCaptions;
 }
+
 function downsample(buffer, inputRate, outputRate) {
   if (outputRate === inputRate) return buffer;
   const ratio = inputRate / outputRate; const length = Math.round(buffer.length / ratio); const result = new Float32Array(length);
@@ -509,7 +534,7 @@ async function startSession() {
       await new Promise((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error('识别语言准备超时，请检查模型状态')), 180000);
         configuration = { resolve: () => { clearTimeout(timer); resolve(); }, reject: error => { clearTimeout(timer); reject(error); } };
-        socket.send(JSON.stringify({ type: 'config', source_language: sourceLanguage.value, target_language: targetLanguage.value, speaker_mode: speakerMode.value }));
+        socket.send(JSON.stringify({ type: 'config', source_language: sourceLanguage.value, target_language: targetLanguage.value, language_pair: sourceLanguage.value === 'auto' ? selectedLanguagePair : null, speaker_mode: speakerMode.value }));
       });
       configuration = null;
       if (socket !== sessionSocket || sessionSocket.readyState !== WebSocket.OPEN) return;
@@ -565,7 +590,12 @@ async function startSession() {
       renderCaptions(); updateSummary();
     }
     if (event.type === 'status') setDiagnostic(event.message);
-    if (event.type === 'configured') { updateRecognitionLanguage(event.asr_language || event.source_language); configuration?.resolve(); }
+    if (event.type === 'configured') {
+      if (event.language_pair) {
+        recognitionLanguageStatus.textContent = `${event.language_pair.split('-').map(language => LANGUAGE_LABELS[language]).join(' / ')} · 自动识别`;
+      } else updateRecognitionLanguage(event.asr_language || event.source_language);
+      configuration?.resolve();
+    }
     if (event.type === 'speaker_changed') {
       speakerMode.value = 'none'; speakerChoiceMade = true; updateSummary(); setDiagnostic(event.message);
       changeSpeakerBtn.disabled = sessionEnding; audioInFlight = false; sendPendingAudio();

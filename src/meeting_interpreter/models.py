@@ -6,6 +6,9 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
+LanguagePair = Literal["zh-ja", "zh-en", "en-ja"]
+
+
 class EventType(StrEnum):
     AUDIO = "audio"
     CAPTION = "caption"
@@ -29,6 +32,7 @@ class CaptionEvent(BaseModel):
     speaker_id: str
     source_language: str
     target_language: str
+    language_pair: LanguagePair | None = None
     original_text: str
     translated_text: str
     is_final: bool = False
@@ -44,5 +48,6 @@ class ErrorEvent(BaseModel):
 class SessionConfig(BaseModel):
     source_language: Literal["auto", "zh", "ja", "en"] = "auto"
     target_language: Literal["zh", "ja", "en"] = "zh"
+    language_pair: LanguagePair | None = None
     mode: Literal["mock", "local"] = "mock"
     speaker_mode: Literal["none", "embedding", "pyannote"] = "none"

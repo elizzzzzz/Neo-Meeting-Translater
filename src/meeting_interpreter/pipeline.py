@@ -83,10 +83,13 @@ class Pipeline:
     Real adapters should replace `process_audio` while preserving CaptionEvent semantics.
     """
 
-    def __init__(self, source_language: str = "auto", target_language: str = "zh", mode: str | None = None, speaker_mode: str | None = None, asr_backend: ASRBackend | None = None, translator_backend: TranslationBackend | None = None, speaker_backend: EmbeddingSpeakerBackend | None = None, translate_inline: bool = True) -> None:
+    def __init__(self, source_language: str = "auto", target_language: str = "zh", mode: str | None = None, speaker_mode: str | None = None, asr_backend: ASRBackend | None = None, translator_backend: TranslationBackend | None = None, speaker_backend: EmbeddingSpeakerBackend | None = None, translate_inline: bool = True, language_pair: str | None = None) -> None:
         self.translate_inline = translate_inline
         self.source_language = source_language
         self.target_language = target_language
+        if language_pair not in (None, "zh-ja", "zh-en", "en-ja"):
+            raise ValueError("请选择中日、中英或英日会议语言。")
+        self.language_pair = language_pair if source_language == "auto" else None
         self.mode = mode or os.getenv("MEETING_INTERPRETER_MODE", "mock")
         self._sequence = itertools.count(1)
         self._clock_ms = 0
@@ -306,6 +309,13 @@ class Pipeline:
             self.audio_status.update(state="rejected", message="未识别到可靠语音，请检查输入设备或靠近麦克风")
             return
         result_language = normalize_language(result.language)
+        target_language = self.target_language
+        if self.language_pair:
+            pair = self.language_pair.split("-")
+            if result_language not in pair:
+                self.audio_status.update(state="rejected", message="识别语言不属于所选会议语言，请检查音频输入或会议语言设置")
+                return
+            target_language = pair[1] if result_language == pair[0] else pair[0]
         if self.source_language != "auto" and (result_language != self.source_language or not text_matches_language(result.text, self.source_language)):
             language = {"zh": "中文", "ja": "日语", "en": "英语"}.get(self.source_language, self.source_language)
             self.audio_status.update(state="rejected", message=f"已忽略与锁定{language}不符的识别内容，请检查音频输入；多语混说可选自动识别")
@@ -347,20 +357,23 @@ class Pipeline:
         speaker_id = self._speaker_ids.get(event.session_id, "SPEAKER_PENDING")
         if result.text == self._last_text.get(event.session_id):
             previous = self._latest_caption.get(event.session_id)
-            if previous and previous.segment_id == self._active_segment_id[event.session_id] and previous.speaker_id == speaker_id:
+            if (previous and previous.segment_id == self._active_segment_id[event.session_id]
+                    and previous.speaker_id == speaker_id and previous.source_language == result.language
+                    and previous.target_language == target_language):
                 updated = previous.model_copy(update={"end_ms": result.end_ms})
                 self._latest_caption[event.session_id] = updated
                 yield updated
                 return
         self._last_text[event.session_id] = result.text
         self._paragraph_text[event.session_id] = (self._paragraph_text.get(event.session_id, "") + " " + result.text).strip()[-600:]
-        translated_text = result.text if self.translator is None or result.language == self.target_language else ""
+        translated_text = result.text if self.translator is None or result.language == target_language else ""
         caption = CaptionEvent(
             session_id=event.session_id,
             segment_id=self._active_segment_id[event.session_id],
             speaker_id=speaker_id,
             source_language=result.language,
-            target_language=self.target_language,
+            target_language=target_language,
+            language_pair=self.language_pair,
             original_text=result.text,
             translated_text=translated_text,
             is_final=bool(translated_text),
@@ -372,7 +385,7 @@ class Pipeline:
         self._latest_caption[event.session_id] = caption
         yield caption
         if self.translate_inline and not translated_text and self.translator is not None:
-            translated_text = await self.translator.translate(result.text, result.language, self.target_language)
+            translated_text = await self.translator.translate(result.text, result.language, target_language)
             caption = caption.model_copy(update={"translated_text": translated_text, "is_final": True})
             self._latest_caption[event.session_id] = caption
             yield caption

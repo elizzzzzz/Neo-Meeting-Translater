@@ -54,7 +54,7 @@ def create_app() -> FastAPI:
         "speaker_status": "loading" if speaker_model_path().is_file() and mode == "local" else "missing",
         "speaker_message": "声纹模型尚未连接，可手动换人",
     }
-    app = FastAPI(title="Local Meeting Interpreter", version="0.2.5")
+    app = FastAPI(title="Local Meeting Interpreter", version="0.2.6")
     app.mount("/web", StaticFiles(directory=WEB_DIR), name="web")
 
     @app.get("/health")
@@ -274,6 +274,7 @@ def create_app() -> FastAPI:
                         continue
                     await session.close()
                     pipeline = Pipeline(source_language=config.source_language, target_language=config.target_language,
+                        language_pair=config.language_pair,
                         mode=mode, speaker_mode=config.speaker_mode, asr_backend=runtime.get('asr_backend'),
                         translator_backend=runtime.get('translator_backend_instance'), speaker_backend=runtime.get('speaker_backend'),
                         translate_inline=False)
@@ -288,7 +289,7 @@ def create_app() -> FastAPI:
                             runtime['last_error'] = str(exc)
                             await send(ErrorEvent(message=f'所选语言准备失败，尚未开启收音：{exc}').model_dump(mode='json'))
                             continue
-                    await send({'type': 'configured', 'source_language': config.source_language, 'asr_language': effective_language, 'target_language': config.target_language})
+                    await send({'type': 'configured', 'source_language': config.source_language, 'asr_language': effective_language, 'target_language': config.target_language, 'language_pair': pipeline.language_pair})
                     language_label = {'zh': '锁定中文', 'ja': '锁定日语', 'en': '锁定英语', 'auto': '自动识别'}.get(effective_language, effective_language)
                     await send({'type': 'status', 'stage': 'models', 'message': f'语音识别已配置：{language_label}；翻译模型状态：{runtime["translation_status"]}'})
                     continue
