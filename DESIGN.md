@@ -35,3 +35,15 @@ Source/Translation role badges for each chunk. A timed-out translation retains
 its source and an explicit skipped marker; never imply complete meeting coverage
 after audio or translation was dropped. Real-time inference and translation
 share a capture deadline below five seconds rather than extending each stage.
+
+## Independent model services
+
+Keep speech recognition and translation in two equal settings cards. Each card
+has its own service, loopback address, model list, and status; they can use
+different services. Use “语音识别 · 声音转文字” and “文字翻译 · 中日英互译”
+instead of technical abbreviations. Filter model choices by audio/text roles.
+Distinguish files found, service connected, model preparing, and ready; discovery
+never means warmed. Collapse optional Ollama installation tools below the cards.
+Save/restart feedback stays visible independently of the collapsed tools. Retain
+the conversation layout and local-only routing. Model-directory controls cover
+built-in caches; Ollama and llama.app retain ownership of their model files.

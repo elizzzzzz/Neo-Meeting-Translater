@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#f5f5f7" />
     <title>Local Interpreter · 实时会议</title>
-    <link rel="stylesheet" href="/web/styles.css?v=0.2.9" />
+    <link rel="stylesheet" href="/web/styles.css?v=0.2.10" />
   </head>
   <body>
     <header class="global-bar">
@@ -60,6 +60,27 @@
         <div class="modal-heading"><div><div class="modal-kicker" data-i18n="settings.kicker">本机环境</div><h2 id="settingsTitle" data-i18n="settings.title">模型与 Ollama 设置</h2></div><button id="closeSettingsBtn" class="icon-button" type="button" aria-label="关闭" data-i18n-aria-label="actions.close">×</button></div>
         <label class="settings-field interface-language-field"><span  data-i18n="language.interface">界面语言</span><select id="interfaceLanguage" aria-label="界面语言"><option value="auto" data-i18n="language.auto">自动</option><option value="zh" data-i18n="language.zh">中文</option><option value="ja" data-i18n="language.ja">日本語</option><option value="en" data-i18n="language.en">English</option></select></label>
         <section class="input-settings"><label class="control-field control-wide"><span data-i18n="controls.audioInput">音频输入</span><select id="inputDevice"><option value="" data-i18n="controls.defaultMic">默认麦克风（授权后显示名称）</option></select></label><label class="control-field"><span data-i18n="controls.speaker">说话人</span><select id="speakerMode"><option value="none" data-i18n="speaker.manual">手动换人</option><option value="embedding" disabled data-i18n="speaker.autoTest">自动分人（测试）</option></select></label></section>
+        <div class="model-selection-grid">
+          <section class="model-selection-card" aria-labelledby="asrSelectionTitle">
+            <h3 id="asrSelectionTitle" data-i18n="models.speech">语音识别 · 声音转文字</h3>
+            <label class="settings-field"><span data-i18n="models.service">运行服务</span><select id="asrEngine"><option value="whisper" data-i18n="models.whisper">Whisper · 内置本地识别</option><option value="sensevoice" data-i18n="models.sensevoice">SenseVoice · 内置本地识别</option><option value="ollama">Ollama</option><option value="llama">llama.app</option></select></label>
+            <label id="asrServiceField" class="settings-field" hidden><span data-i18n="models.address">本机服务地址</span><input id="asrServiceUrl" type="url" spellcheck="false" placeholder="http://127.0.0.1:11434" /></label>
+            <label class="settings-field"><span data-i18n="models.model">模型</span><select id="asrModel"></select></label>
+            <small id="asrEngineHint" data-i18n="models.speechHint">Qwen3-ASR 通过所选服务识别原文；另一侧独立选择翻译模型。</small>
+            <div class="model-action-row"><strong id="asrModelStatus" role="status">正在检查语音模型…</strong><button id="downloadAsrBtn" class="button button-ghost" type="button" data-i18n="settings.prepareAsr">准备语音模型</button></div>
+          </section>
+          <section class="model-selection-card" aria-labelledby="translationSelectionTitle">
+            <h3 id="translationSelectionTitle" data-i18n="models.translation">文字翻译 · 中日英互译</h3>
+            <label class="settings-field"><span data-i18n="models.service">运行服务</span><select id="translationEngine"><option value="ollama">Ollama</option><option value="llama">llama.app</option><option value="nllb" data-i18n="models.nllb">NLLB · 内置本地翻译</option></select></label>
+            <label id="translationServiceField" class="settings-field"><span data-i18n="models.address">本机服务地址</span><input id="translationServiceUrl" type="url" spellcheck="false" placeholder="http://127.0.0.1:9931" /></label>
+            <label class="settings-field"><span data-i18n="models.model">模型</span><select id="translationModel"></select></label>
+            <small data-i18n="models.translationHint">只列出可用于文字生成的模型。识别模型和翻译模型可使用不同服务。</small>
+            <div class="model-action-row"><strong id="translationModelStatus" role="status">正在检查翻译模型…</strong></div>
+          </section>
+        </div>
+        <div class="model-toolbar"><small data-i18n="models.restart">选择后保存并重新打开 App 生效；刷新列表不会加载或下载模型。</small><button id="refreshModelsBtn" type="button" class="button button-ghost" data-i18n="models.refresh">刷新模型列表</button></div>
+        <div id="modelCompatibilityNotice" class="model-save-notice warn" role="status" hidden></div>
+        <details class="service-management"><summary data-i18n="models.ollamaTools">Ollama 安装与下载（可选）</summary>
         <div class="environment-grid">
           <div class="environment-item"><span data-i18n="settings.ollamaInstall">Ollama 安装</span><strong id="ollamaInstallStatus">检查中…</strong></div>
           <div class="environment-item"><span data-i18n="settings.version">当前版本</span><strong id="ollamaVersionStatus">检查中…</strong></div>
@@ -67,14 +88,16 @@
           <div class="environment-item"><span data-i18n="settings.modelStatus">模型状态</span><strong id="recommendedModelPresence">检查中…</strong></div>
         </div>
         <div id="systemNotice" class="system-notice" role="status">正在检查 Ollama 和推荐模型…</div>
-        <div class="settings-field"><label for="asrEngine" data-i18n="settings.asrEngine">语音转文字引擎</label><select id="asrEngine"><option value="whisper">Whisper · 多语言识别</option><option value="sensevoice">SenseVoice · 中日快速识别（测试）</option></select><div class="model-action-row"><strong id="asrModelStatus">正在检查语音模型…</strong><button id="downloadAsrBtn" class="button button-ghost" type="button" data-i18n="settings.prepareAsr">准备语音模型</button></div><small id="asrEngineHint">切换后重新打开 App 生效；两种引擎均在本机运行。日语可先用 Whisper，中文可对比 SenseVoice。</small></div>
+        <div class="modal-actions"><button id="checkOllamaBtn" class="button button-ghost" type="button" data-i18n="settings.recheck">重新检查</button><button id="installOllamaBtn" class="button button-ghost" type="button" data-i18n="settings.installOllama">安装 Ollama</button><button id="upgradeOllamaBtn" class="button button-ghost" type="button" data-i18n="settings.upgradeOllama">升级 Ollama</button><button id="pullModelBtn" class="button button-primary" type="button" data-i18n="settings.installModel">安装推荐模型</button></div>
+        </details>
+        <div id="modelSaveNotice" class="model-save-notice" role="status" hidden></div>
         <div class="settings-field"><label for="captionDisplayMode" data-i18n="settings.captionContent">字幕显示内容</label><select id="captionDisplayMode"><option value="both" data-i18n="settings.bilingual">双语对照：源与译</option><option value="source" data-i18n="settings.sourceOnly">仅显示源文</option><option value="translation" data-i18n="settings.translationOnly">仅显示译文</option></select><small data-i18n="settings.captionHint">中日：中文左、日文右；中英：中文左、英文右；英日：英文左、日文右。“源 / 译”随实际发言切换。</small></div>
         <div class="settings-field"><label for="modelDirectory" data-i18n="settings.modelDirectory">模型保存目录</label><div class="path-picker"><input id="modelDirectory" type="text" spellcheck="false" /><button id="chooseModelDirectoryBtn" class="button button-ghost" type="button" data-i18n="settings.chooseDirectory">选择目录</button></div><small data-i18n="settings.directoryHint">此目录用于语音识别模型缓存，更改后重启生效。现有文件不会自动迁移；Ollama 翻译模型目前由其自身管理。</small></div>
         <div class="settings-field"><label data-i18n="settings.onlineAudio">在线会议 / 网页视频音频</label><div class="audio-source-note" data-i18n="settings.onlineAudioHint">系统音频捕获需要 macOS 音频回环设备。安装 BlackHole 或 Loopback 后，在设置的“音频输入”中选择对应设备；应用不会把会议音频上传到网络。</div></div>
-        <div class="modal-actions settings-actions"><button id="checkOllamaBtn" class="button button-ghost" type="button" data-i18n="settings.recheck">重新检查</button><button id="installOllamaBtn" class="button button-ghost" type="button" data-i18n="settings.installOllama">安装 Ollama</button><button id="upgradeOllamaBtn" class="button button-ghost" type="button" data-i18n="settings.upgradeOllama">升级 Ollama</button><button id="pullModelBtn" class="button button-primary" type="button" data-i18n="settings.installModel">安装推荐模型</button><button id="saveSettingsBtn" class="button button-dark" type="button" data-i18n="settings.save">保存设置</button></div>
+        <div class="modal-actions settings-actions"><button id="saveSettingsBtn" class="button button-dark" type="button" data-i18n="settings.save">保存设置</button></div>
       </section>
     </div>
     <footer class="footer-bar"><span data-i18n="footer.config">文字模式 · M3 / 16G 配置</span><span id="footerStatus"><span data-i18n="footer.service">服务地址</span> <span id="serviceAddress">127.0.0.1:8000</span></span></footer>
-    <script src="/web/app.js?v=0.2.9" defer></script>
+    <script src="/web/app.js?v=0.2.10" defer></script>
   </body>
 </html>

@@ -28,6 +28,13 @@ const recommendedModelPresence = document.querySelector('#recommendedModelPresen
 const systemNotice = document.querySelector('#systemNotice');
 const modelDirectory = document.querySelector('#modelDirectory');
 const asrEngine = document.querySelector('#asrEngine');
+const asrModel = document.querySelector('#asrModel');
+const asrServiceUrl = document.querySelector('#asrServiceUrl');
+const translationEngine = document.querySelector('#translationEngine');
+const translationModel = document.querySelector('#translationModel');
+const translationServiceUrl = document.querySelector('#translationServiceUrl');
+const translationModelStatus = document.querySelector('#translationModelStatus');
+const refreshModelsBtn = document.querySelector('#refreshModelsBtn');
 const asrEngineHint = document.querySelector('#asrEngineHint');
 const asrModelStatus = document.querySelector('#asrModelStatus');
 const downloadAsrBtn = document.querySelector('#downloadAsrBtn');
@@ -98,6 +105,9 @@ const LANGUAGE_PAIRS = ['zh-ja', 'zh-en', 'en-ja'];
 let modelsReady = false;
 let lastHealth = null;
 let interfaceChoiceMade = false;
+let modelSelectionRevision = {asr: 0, translation: 0};
+const SERVICE_DEFAULT_URLS = {ollama: 'http://127.0.0.1:11434', llama: 'http://127.0.0.1:9931'};
+const serviceCapacities = new Map();
 let demoTimer;
 let demoStep = 0;
 let demoSession = "";
@@ -135,6 +145,18 @@ const UI_TEXT = {
     'status.loading': 'Loading', 'status.ready': 'Ready', 'status.running': 'Running', 'status.processing': 'Processing', 'status.configured': 'Configured', 'status.offline': 'Offline', 'status.missing': 'Model missing', 'status.error': 'Error', 'status.mock': 'Demo', 'status.unknown': 'Unknown', 'language.locked': 'Locked to {language}', 'language.autoDetected': 'Auto-detect', 'language.zhName': 'Chinese', 'language.jaName': 'Japanese', 'language.enName': 'English', 'caption.waiting': 'Waiting for live captions', 'caption.emptyHint': 'Choose a microphone or BlackHole loopback device to start the meeting.', 'caption.translationPending': 'Translation pending…', 'caption.translationUpdating': 'Updating translation', 'runtime.idle': 'Idle', 'runtime.connecting': 'Connecting…', 'runtime.preparing': 'Preparing audio…', 'runtime.running': 'Running', 'runtime.stopped': 'Stopped', 'runtime.unavailable': 'Unavailable', 'runtime.finishing': 'Finishing', 'runtime.paused': 'Audio paused',
   },
 };
+
+Object.entries({
+  zh: {'models.speech': '语音识别 · 声音转文字', 'models.translation': '文字翻译 · 中日英互译', 'models.service': '运行服务', 'models.address': '本机服务地址', 'models.model': '模型', 'models.speechHint': 'Qwen3-ASR 通过所选服务识别原文；另一侧独立选择翻译模型。', 'models.translationHint': '只列出可用于文字生成的模型。识别和翻译可使用不同服务。', 'models.restart': '选择后保存并重新打开 App 生效；刷新列表不会加载或下载模型。', 'models.refresh': '刷新模型列表'},
+  ja: {'models.speech': '音声認識 · 音声から文字へ', 'models.translation': '翻訳 · 中日英の相互翻訳', 'models.service': '実行サービス', 'models.address': 'ローカルサービスのアドレス', 'models.model': 'モデル', 'models.speechHint': 'Qwen3-ASR は原文を認識します。翻訳モデルは別に選択します。', 'models.translationHint': '文字生成モデルを表示します。認識と翻訳には別々のサービスを使えます。', 'models.restart': '保存後に App を再起動してください。更新はモデルを読み込み・ダウンロードしません。', 'models.refresh': 'モデル一覧を更新'},
+  en: {'models.speech': 'Speech recognition · audio to text', 'models.translation': 'Translation · Chinese, Japanese, English', 'models.service': 'Model service', 'models.address': 'Local service address', 'models.model': 'Model', 'models.speechHint': 'Qwen3-ASR recognizes the source speech. Select a translation model separately.', 'models.translationHint': 'Lists text generation models. Recognition and translation can use different services.', 'models.restart': 'Save and reopen the App to apply. Refreshing does not load or download models.', 'models.refresh': 'Refresh model lists'},
+}).forEach(([language, strings]) => Object.assign(UI_TEXT[language], strings));
+Object.assign(UI_TEXT.zh, {'settings.title': '模型与服务设置', 'models.ollamaTools': 'Ollama 安装与下载（可选）', 'models.whisper': 'Whisper · 内置本地识别', 'models.sensevoice': 'SenseVoice · 内置本地识别', 'models.nllb': 'NLLB · 内置本地翻译'});
+Object.assign(UI_TEXT.ja, {'settings.title': 'モデルとサービスの設定', 'models.ollamaTools': 'Ollama のインストール・ダウンロード（任意）', 'models.whisper': 'Whisper · 内蔵音声認識', 'models.sensevoice': 'SenseVoice · 内蔵音声認識', 'models.nllb': 'NLLB · 内蔵翻訳'});
+Object.assign(UI_TEXT.en, {'settings.title': 'Models and services', 'models.ollamaTools': 'Ollama installation and downloads (optional)', 'models.whisper': 'Whisper · built-in recognition', 'models.sensevoice': 'SenseVoice · built-in recognition', 'models.nllb': 'NLLB · built-in translation'});
+UI_TEXT.zh['settings.directoryHint'] = '此目录用于内置识别模型缓存，更改后重启生效。Ollama 和 llama.app 的模型由各自应用管理，现有文件不会自动迁移。';
+UI_TEXT.ja['settings.directoryHint'] = '内蔵音声認識モデルのキャッシュ先です。変更後に再起動してください。Ollama と llama.app のモデルは各 App が管理し、既存ファイルは移動しません。';
+UI_TEXT.en['settings.directoryHint'] = 'Cache for built-in recognition models; restart after changing it. Ollama and llama.app manage their own model files. Existing files are not moved.';
 
 function detectInterfaceLanguage() {
   const locale = String(navigator.language || 'zh-CN');
@@ -227,14 +249,19 @@ function updateHealth(health) {
   startBtn.title = runtimeMode !== 'LOCAL' ? '尚未连接真实模型，可先使用字幕模式' : !models.ready ? '模型未就绪，请先检查本地设置' : '';
   if (runtimeMode === 'LOCAL' && !models.ready && !demoTimer) setDiagnostic(models.message || (activeInterfaceLanguage() === 'en' ? 'Models are not connected; subtitle mode is available' : activeInterfaceLanguage() === 'ja' ? 'モデル未接続。字幕モードを利用できます' : '模型未连接，可先使用字幕模式'));
   if (runtimeMode === 'LOCAL' && models.ready && !wasModelsReady && !demoTimer && !(socket && socket.readyState <= WebSocket.OPEN)) setDiagnostic(models.message || (activeInterfaceLanguage() === 'en' ? 'Models ready; you can start the meeting' : activeInterfaceLanguage() === 'ja' ? 'モデル準備完了。会議を開始できます' : '模型已就绪，可开始会议'));
-  asrStatus.textContent = `${statusText(health.asr?.status)} · ${formatModel(health.asr?.model)}`;
+  const asrProvider = health.asr?.backend === 'ollama' ? 'Ollama · ' : health.asr?.backend === 'llama' ? 'llama.app · ' : '';
+  asrStatus.textContent = `${asrProvider}${statusText(health.asr?.status)} · ${formatModel(health.asr?.model)}`;
   const speakerOption = speakerMode.querySelector('option[value="embedding"]');
   if (speakerOption) speakerOption.disabled = !health.speaker?.available;
   speakerMode.title = health.speaker?.message || '未连接声纹模型，可手动换人';
   if (health.speaker?.available && !speakerChoiceMade && !(socket && socket.readyState <= WebSocket.OPEN)) {
     speakerMode.value = 'embedding'; speakerChoiceMade = true; updateSummary();
   }
-  if (!health.ollama?.configured) {
+  if (health.translation?.service?.provider === 'llama') {
+    const service = health.translation.service;
+    ollamaStatus.textContent = `llama.app · ${statusText(service.reachable ? health.translation.status : 'offline')}`;
+    ollamaModelStatus.textContent = `${statusText(service.model_present ? health.translation.status : 'missing')} · ${formatModel(health.translation.model)}`;
+  } else if (!health.ollama?.configured) {
     ollamaStatus.textContent = localized('未启用', '無効', 'Disabled');
     ollamaModelStatus.textContent = localized('当前使用其他翻译后端', '別の翻訳エンジンを使用', 'Using another engine');
   } else if (!health.ollama.reachable) {
@@ -300,24 +327,89 @@ async function openSettings() {
     const settings = await response.json();
     if (!modelDirectory.value) modelDirectory.value = settings.model_dir || '';
     asrEngine.value = settings.asr_engine || 'whisper';
-    asrEngineHint.textContent = settings.sensevoice_available ? 'SenseVoice 模型已连接。中文可对比 SenseVoice；日语可先用 Whisper。切换后重新打开 App 生效。' : 'SenseVoice 模型未连接，暂请选择 Whisper。需要在模型目录的 asr/sensevoice 中放入 model.int8.onnx、tokens.txt 和 silero_vad.onnx。';
+    asrServiceUrl.value = settings.asr_url || SERVICE_DEFAULT_URLS[asrEngine.value] || '';
+    translationEngine.value = settings.translation_backend || 'ollama';
+    translationServiceUrl.value = settings.translation_url || SERVICE_DEFAULT_URLS[translationEngine.value] || '';
+    asrModel.dataset.selected = settings.asr_model || '';
+    translationModel.dataset.selected = settings.translation_model || '';
   } catch { setDiagnostic('无法读取本地设置'); }
-  await checkAsrModel();
+  await refreshModelSelections();
   await checkOllama();
 }
+function fillModelChoices(select, models, preferred = '') {
+  const ids = models.map(model => typeof model === 'string' ? model : model.id);
+  const selected = preferred || ids[0] || '';
+  const choices = ids.includes(selected) || !selected ? ids : [selected, ...ids];
+  select.innerHTML = choices.length ? choices.map(id => `<option value="${escapeHtml(id)}">${escapeHtml(id)}${ids.includes(id) ? '' : localized(' · 未检测到', ' · 未検出', ' · Not found')}</option>`).join('') : `<option value="">${localized('无可用模型', '利用可能なモデルなし', 'No compatible models')}</option>`;
+  select.value = selected;
+  select.dataset.selected = '';
+}
 async function checkAsrModel() {
-  if (!asrModelStatus) return;
-  asrModelStatus.textContent = '正在检查语音模型…';
-  try {
-    const response = await fetch(`/system/models?engine=${encodeURIComponent(asrEngine.value || 'whisper')}`);
-    const info = await response.json();
-    asrModelStatus.textContent = info.installed ? `${info.model} · 已连接` : `${info.model} · 未连接（${info.progress || 0}%）`;
-    downloadAsrBtn.disabled = Boolean(info.installed) || asrEngine.value === 'sensevoice';
-    downloadAsrBtn.textContent = info.installed ? '语音模型已就绪' : asrEngine.value === 'sensevoice' ? '请导入本地文件' : '下载 Whisper 模型';
-  } catch (error) {
-    asrModelStatus.textContent = `检查失败：${error.message || '本地服务不可用'}`;
+  return refreshModelSelection('asr');
+}
+async function refreshModelSelections() {
+  await Promise.all([refreshModelSelection('asr'), refreshModelSelection('translation')]);
+}
+async function refreshModelSelection(role) {
+  const speech = role === 'asr';
+  const engine = speech ? asrEngine : translationEngine;
+  const model = speech ? asrModel : translationModel;
+  const address = speech ? asrServiceUrl : translationServiceUrl;
+  const status = speech ? asrModelStatus : translationModelStatus;
+  const provider = engine.value || (speech ? 'whisper' : 'ollama');
+  const revision = ++modelSelectionRevision[role];
+  const remote = Boolean(SERVICE_DEFAULT_URLS[provider]);
+  document.querySelector(speech ? '#asrServiceField' : '#translationServiceField').hidden = !remote;
+  if (remote && !address.value) address.value = SERVICE_DEFAULT_URLS[provider];
+  status.textContent = localized('正在检查模型…', 'モデルを確認中…', 'Checking models…');
+  if (speech) {
+    downloadAsrBtn.hidden = remote;
     downloadAsrBtn.disabled = true;
   }
+  const preferred = model.dataset.selected || model.value || '';
+  try {
+    const response = await fetch(remote
+      ? `/services/models?provider=${provider}&url=${encodeURIComponent(address.value)}`
+      : `/system/models?engine=${provider}&model=${encodeURIComponent(preferred)}`);
+    const info = await response.json();
+    if (revision !== modelSelectionRevision[role]) return;
+    if (!response.ok) throw new Error(info.detail || '无法获取模型');
+    if (remote) {
+      if (info.max_loaded_models) serviceCapacities.set(address.value.replace(/\/v1\/?$|\/$/g, ''), info.max_loaded_models);
+      const choices = (info.models || []).filter(item => item[speech ? 'asr' : 'translation']);
+      fillModelChoices(model, choices, preferred);
+      status.textContent = !info.reachable ? localized('服务未连接，请启动对应 App', 'サービス未接続。App を起動してください', 'Service offline; start its App')
+        : !choices.length ? localized('已连接，未发现适用模型；请在服务 App 中添加后刷新', '接続済み。対応モデルを App に追加して更新してください', 'Connected; add a compatible model in the service App and refresh')
+        : choices.some(item => item.id === model.value) ? localized('模型已找到 · 保存并重启后加载', 'モデル検出 · 保存・再起動後に読み込み', 'Model found · loads after save and restart')
+        : localized('所选模型未检测到，请重新选择', '選択モデルは未検出です', 'Selected model not found; choose another');
+    } else {
+      fillModelChoices(model, info.models || [info.model || (provider === 'nllb' ? 'facebook/nllb-200-distilled-600M' : 'mlx-community/whisper-medium-mlx-8bit')], provider === 'sensevoice' ? 'SenseVoice-Small' : preferred);
+      status.textContent = info.installed ? localized('本地文件已找到', 'ローカルファイルを検出', 'Local files found') : localized('本地模型尚未准备好', 'ローカルモデルは未準備です', 'Local model files are not ready');
+      if (speech) {
+        downloadAsrBtn.disabled = Boolean(info.installed) || provider === 'sensevoice';
+        downloadAsrBtn.textContent = info.installed ? localized('语音模型已就绪', '準備完了', 'Speech model ready') : provider === 'sensevoice' ? localized('请导入本地文件', 'ファイルを追加', 'Import local files') : localized('下载所选语音模型', '選択モデルをダウンロード', 'Download selected speech model');
+      }
+    }
+  } catch (error) {
+    if (revision !== modelSelectionRevision[role]) return;
+    status.textContent = `${localized('检查失败', '確認失敗', 'Check failed')}: ${error.message}`;
+  }
+  updateModelCompatibility();
+}
+function updateModelCompatibility() {
+  const notice = document.querySelector('#modelCompatibilityNotice');
+  const root = value => value.replace(/\/v1\/?$|\/$/g, '');
+  const same = asrEngine.value === 'llama' && translationEngine.value === 'llama' && root(asrServiceUrl.value) === root(translationServiceUrl.value);
+  notice.hidden = !(same && asrModel.value && translationModel.value && asrModel.value !== translationModel.value && serviceCapacities.get(root(asrServiceUrl.value)) === 1);
+  notice.textContent = localized('llama.app 当前仅能驻留 1 个模型。请使用不同服务，或在 llama.app 中允许两个模型同时运行，避免反复冷启动。', 'llama.app は現在 1 モデルのみ常駐可能です。別々のサービスを使うか、2 モデルの同時実行を有効にしてください。', 'llama.app currently keeps only one model loaded. Use separate services or allow two resident models to avoid repeated cold starts.');
+}
+function changeModelProvider(role) {
+  const speech = role === 'asr';
+  const provider = (speech ? asrEngine : translationEngine).value;
+  const model = speech ? asrModel : translationModel;
+  model.value = ''; model.dataset.selected = '';
+  (speech ? asrServiceUrl : translationServiceUrl).value = SERVICE_DEFAULT_URLS[provider] || '';
+  refreshModelSelection(role);
 }
 function describeSystem(info) {
   if (!info.installed) return '尚未检测到 Ollama。安装后可使用本地翻译引擎。';
@@ -353,20 +445,26 @@ async function saveModelDirectory() {
   const value = modelDirectory?.value?.trim();
   if (!value) return;
   saveSettingsBtn.disabled = true;
+  const notice = document.querySelector('#modelSaveNotice');
+  notice.hidden = false;
   try {
-    const response = await fetch('/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model_dir: value, asr_engine: asrEngine.value || 'whisper' }) });
+    const response = await fetch('/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model_dir: value, asr_engine: asrEngine.value || 'whisper',
+      asr_model: asrModel.value, asr_url: asrServiceUrl.value, translation_backend: translationEngine.value || 'ollama', translation_model: translationModel.value, translation_url: translationServiceUrl.value }) });
     const result = await response.json();
     if (!response.ok) throw new Error(result.detail || '保存失败');
-    setDiagnostic('识别引擎与模型目录已保存，重新打开 App 后生效');
-    if (systemNotice) { systemNotice.className = 'system-notice good'; systemNotice.textContent = `已保存识别设置与目录：${result.model_dir}。重新打开 App 后生效。`; }
+    const saved = localized('识别、翻译模型与目录已保存，重新打开 App 后生效', '認識・翻訳モデルと保存先を保存しました。App を再起動してください', 'Recognition, translation and directory saved. Reopen the App to apply.');
+    setDiagnostic(saved);
+    notice.textContent = saved; notice.className = 'model-save-notice good';
+    if (systemNotice) { systemNotice.className = 'system-notice good'; systemNotice.textContent = saved; }
   } catch (error) {
+    notice.textContent = `${localized('保存失败', '保存失敗', 'Save failed')}: ${error.message}`; notice.className = 'model-save-notice warn';
     if (systemNotice) { systemNotice.className = 'system-notice warn'; systemNotice.textContent = `保存失败：${error.message}`; }
   } finally { saveSettingsBtn.disabled = false; }
 }
 window.__onModelDirectorySelected = (path) => { if (modelDirectory) modelDirectory.value = path; };
 
 function setSessionControls(active) {
-  [inputDevice, sourceLanguage, targetLanguage, speakerMode, swapLanguagesBtn, ...directionButtons].forEach(control => {
+  [inputDevice, sourceLanguage, targetLanguage, speakerMode, swapLanguagesBtn, asrEngine, asrModel, asrServiceUrl, translationEngine, translationModel, translationServiceUrl, saveSettingsBtn, refreshModelsBtn, ...directionButtons].forEach(control => {
     control.disabled = active;
     control.title = active ? '停止音频后可更改设置' : '';
   });
@@ -863,8 +961,15 @@ installOllamaBtn?.addEventListener('click', () => runSystemAction(installOllamaB
 upgradeOllamaBtn?.addEventListener('click', () => runSystemAction(upgradeOllamaBtn, '/system/upgrade', {}, '正在尝试升级本地翻译引擎…'));
 pullModelBtn?.addEventListener('click', () => runSystemAction(pullModelBtn, '/system/pull-model', { model: recommendedModelStatus.textContent }, '正在下载推荐翻译模型…'));
 saveSettingsBtn?.addEventListener('click', saveModelDirectory);
-asrEngine?.addEventListener('change', checkAsrModel);
-downloadAsrBtn?.addEventListener('click', () => runSystemAction(downloadAsrBtn, '/system/download-asr', {engine: asrEngine.value || 'whisper'}, '正在下载语音识别模型…').then(checkAsrModel));
+asrEngine?.addEventListener('change', () => changeModelProvider('asr'));
+translationEngine?.addEventListener('change', () => changeModelProvider('translation'));
+asrServiceUrl?.addEventListener('change', () => refreshModelSelection('asr'));
+translationServiceUrl?.addEventListener('change', () => refreshModelSelection('translation'));
+asrModel?.addEventListener('change', () => { if (!SERVICE_DEFAULT_URLS[asrEngine.value]) checkAsrModel(); });
+asrModel?.addEventListener('change', updateModelCompatibility);
+translationModel?.addEventListener('change', updateModelCompatibility);
+refreshModelsBtn?.addEventListener('click', refreshModelSelections);
+downloadAsrBtn?.addEventListener('click', () => runSystemAction(downloadAsrBtn, '/system/download-asr', {engine: asrEngine.value || 'whisper', model: asrModel.value}, '正在下载所选语音识别模型…').then(checkAsrModel));
 chooseModelDirectoryBtn?.addEventListener('click', () => {
   if (window.webkit?.messageHandlers?.native) window.webkit.messageHandlers.native.postMessage({ type: 'choose_model_directory' });
   else modelDirectory?.focus();

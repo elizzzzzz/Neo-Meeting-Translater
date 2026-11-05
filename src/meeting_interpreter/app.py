@@ -13,13 +13,14 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from .asr import MLXWhisperBackend, SenseVoiceBackend, create_asr_backend, sensevoice_model_directory
+from .asr import MLXWhisperBackend, SenseVoiceBackend, ServiceASRBackend, create_asr_backend, sensevoice_model_directory
+from .local_services import SERVICE_URLS, SERVICE_NAMES, inspect_service, local_url
 from .models import AudioEvent, ErrorEvent, SessionConfig
 from .pipeline import Pipeline
 from .speaker import EmbeddingSpeakerBackend, speaker_model_path
 from .streaming import LiveSession
-from .system import current_model_directory, download_asr_model, inspect_asr_models, inspect_ollama, install_ollama, pull_ollama_model, read_preferences, save_preferences, save_model_directory, upgrade_ollama
-from .translation import OllamaTranslationBackend
+from .system import current_model_directory, download_asr_model, inspect_asr_models, inspect_ollama, install_ollama, model_settings, pull_ollama_model, read_preferences, save_preferences, save_model_directory, upgrade_ollama
+from .translation import create_translation_backend
 
 ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[2]))
 WEB_DIR = ROOT / "web"
@@ -32,10 +33,16 @@ def create_app() -> FastAPI:
     asr_engine = os.getenv('MEETING_INTERPRETER_ASR_BACKEND', 'whisper')
     if asr_engine == 'sensevoice':
         asr_model = f'SenseVoice · {sensevoice_model_directory()}'
+    elif asr_engine in SERVICE_URLS:
+        asr_model = os.getenv('MEETING_INTERPRETER_SERVICE_ASR_MODEL', '')
     translation_model = os.getenv("MEETING_INTERPRETER_OLLAMA_MODEL", "translategemma:4b") if translation_backend == "ollama" else os.getenv("MEETING_INTERPRETER_TRANSLATION_MODEL", "facebook/nllb-200-distilled-600M")
+    if translation_backend == 'llama':
+        translation_model = os.getenv('MEETING_INTERPRETER_LLAMA_MODEL', '')
+    translation_url = os.getenv('MEETING_INTERPRETER_OLLAMA_URL' if translation_backend == 'ollama' else 'MEETING_INTERPRETER_LLAMA_URL', SERVICE_URLS.get(translation_backend, ''))
+    asr_url = os.getenv('MEETING_INTERPRETER_ASR_URL', SERVICE_URLS.get(asr_engine, ''))
     runtime = {
         "asr_status": "loading" if mode == "local" else "mock",
-        "translation_status": "loading" if mode == "local" and translation_backend == "ollama" else ("configured" if mode == "local" else "mock"),
+        "translation_status": "loading" if mode == "local" and translation_backend in SERVICE_URLS else ("configured" if mode == "local" else "mock"),
         "asr_model": asr_model,
         "translation_backend": translation_backend,
         "translation_model": translation_model,
@@ -54,7 +61,7 @@ def create_app() -> FastAPI:
         "speaker_status": "loading" if speaker_model_path().is_file() and mode == "local" else "missing",
         "speaker_message": "声纹模型尚未连接，可手动换人",
     }
-    app = FastAPI(title="Local Meeting Interpreter", version="0.2.9")
+    app = FastAPI(title="Local Meeting Interpreter", version="0.2.10")
     app.mount("/web", StaticFiles(directory=WEB_DIR), name="web")
 
     @app.get("/health")
@@ -63,12 +70,12 @@ def create_app() -> FastAPI:
         if translation_backend == "ollama":
             try:
                 def probe_ollama() -> tuple[bool, bool, bool, list[str]]:
-                    with urllib.request.urlopen("http://127.0.0.1:11434/api/tags", timeout=0.8) as response:
+                    with urllib.request.urlopen(f"{translation_url}/api/tags", timeout=0.8) as response:
                         payload = json.loads(response.read().decode("utf-8"))
                     names = {str(item.get("name", "")) for item in payload.get("models", [])}
                     loaded: list[str] = []
                     try:
-                        with urllib.request.urlopen("http://127.0.0.1:11434/api/ps", timeout=0.8) as response:
+                        with urllib.request.urlopen(f"{translation_url}/api/ps", timeout=0.8) as response:
                             running = json.loads(response.read().decode("utf-8"))
                         loaded = [str(item.get("name") or item.get("model") or "") for item in running.get("models", [])]
                     except (OSError, urllib.error.URLError, TimeoutError, ValueError):
@@ -87,7 +94,25 @@ def create_app() -> FastAPI:
                 runtime["translation_status"] = "running"
             elif runtime["translation_status"] not in {"processing", "loading", "error"}:
                 runtime["translation_status"] = "ready"
-        return {"status": "ok", "mode": mode, "asr": {"status": runtime["asr_status"], "model": asr_model}, "speaker": {"available": runtime["speaker_backend"] is not None, "status": runtime["speaker_status"], "message": runtime["speaker_message"]}, "translation": {"status": runtime["translation_status"], "backend": translation_backend, "model": translation_model, "last_response_ms": runtime["last_translation_ms"]}, "ollama": ollama, "audio": {"frames": runtime["audio_frames"], "last_audio_at": runtime["last_audio_at"]}, "models": {"stage": runtime["warmup_stage"], "message": runtime["warmup_message"], "progress": runtime["warmup_progress"], "ready": runtime["startup_ready"]}, "settings": {"model_dir": current_model_directory()}, "last_error": runtime["last_error"], "checked_at": runtime["last_health_at"]}
+        translation_service = dict(ollama, provider=translation_backend, name=SERVICE_NAMES.get(translation_backend, '内置翻译'))
+        if translation_backend == 'llama':
+            translation_service = await asyncio.to_thread(inspect_service, 'llama', translation_url, .8)
+            translation_service['model_present'] = any(m['id'] == translation_model for m in translation_service['models'])
+            if not translation_service['reachable']:
+                runtime['translation_status'] = 'offline'
+            elif not translation_service['model_present']:
+                runtime['translation_status'] = 'missing'
+        connected = runtime['startup_ready']
+        if translation_backend in SERVICE_URLS:
+            connected = connected and translation_service['reachable'] and translation_service['model_present']
+        asr_service = None
+        if asr_engine in SERVICE_URLS:
+            asr_service = await asyncio.to_thread(inspect_service, asr_engine, asr_url, .8)
+            present = any(m['id'] == asr_model for m in asr_service['models'])
+            connected = connected and asr_service['reachable'] and present
+            if not asr_service['reachable'] or not present:
+                runtime['asr_status'] = 'offline' if not asr_service['reachable'] else 'missing'
+        return {"status": "ok", "mode": mode, "asr": {"status": runtime["asr_status"], "model": asr_model, 'backend': asr_engine, 'service': asr_service}, "speaker": {"available": runtime["speaker_backend"] is not None, "status": runtime["speaker_status"], "message": runtime["speaker_message"]}, "translation": {"status": runtime["translation_status"], "backend": translation_backend, "model": translation_model, "last_response_ms": runtime["last_translation_ms"], 'service': translation_service}, "ollama": ollama, "audio": {"frames": runtime["audio_frames"], "last_audio_at": runtime["last_audio_at"]}, "models": {"stage": runtime["warmup_stage"], "message": runtime["warmup_message"] if connected or not runtime['startup_ready'] else '所选模型服务已断开或模型不可用，请检查本地设置。', "progress": runtime["warmup_progress"], "ready": bool(connected)}, "settings": {"model_dir": current_model_directory()}, "last_error": runtime["last_error"], "checked_at": runtime["last_health_at"]}
 
     @app.get("/system/check")
     async def system_check() -> dict[str, object]:
@@ -110,18 +135,26 @@ def create_app() -> FastAPI:
         return await asyncio.to_thread(pull_ollama_model, model if isinstance(model, str) else "translategemma:4b")
 
     @app.get("/system/models")
-    async def system_models(engine: str = "whisper") -> dict[str, object]:
-        return await asyncio.to_thread(inspect_asr_models, engine if engine in {"whisper", "sensevoice"} else "whisper")
+    async def system_models(engine: str = "whisper", model: str | None = None) -> dict[str, object]:
+        return await asyncio.to_thread(inspect_asr_models, engine if engine in {"whisper", "sensevoice", 'nllb'} else "whisper", model)
 
     @app.post("/system/download-asr")
     async def system_download_asr(payload: dict[str, object] | None = None) -> dict[str, object]:
         engine = payload.get("engine") if isinstance(payload, dict) else "whisper"
-        return await asyncio.to_thread(download_asr_model, engine if isinstance(engine, str) else "whisper")
+        model = payload.get('model') if isinstance(payload, dict) else None
+        return await asyncio.to_thread(download_asr_model, engine if isinstance(engine, str) else "whisper", model=model if isinstance(model, str) else None)
 
     @app.get("/settings")
     async def get_settings() -> dict[str, object]:
-        return {"model_dir": current_model_directory(), "asr_engine": asr_engine,
+        return {**model_settings(),
                 "sensevoice_available": all((sensevoice_model_directory() / name).is_file() for name in ('model.int8.onnx', 'tokens.txt', 'silero_vad.onnx'))}
+
+    @app.get('/services/models')
+    async def service_models(provider: str = 'ollama', url: str | None = None):
+        try:
+            return await asyncio.to_thread(inspect_service, provider, url)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.get("/preferences")
     async def get_preferences() -> dict[str, object]:
@@ -140,7 +173,8 @@ def create_app() -> FastAPI:
         if not isinstance(model_dir, str) or not model_dir.strip():
             raise HTTPException(status_code=400, detail="请提供模型保存目录。")
         try:
-            return await asyncio.to_thread(save_model_directory, model_dir.strip(), payload.get('asr_engine'))
+            selection = {key: payload[key] for key in ('asr_model', 'asr_url', 'translation_backend', 'translation_model', 'translation_url') if key in payload}
+            return await asyncio.to_thread(save_model_directory, model_dir.strip(), payload.get('asr_engine'), selection)
         except (OSError, ValueError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -159,7 +193,9 @@ def create_app() -> FastAPI:
                 runtime["warmup_message"] = "正在执行首次本地识别，建立热缓存…"
                 runtime["warmup_progress"] = 35
                 await asyncio.sleep(0)
-                if isinstance(backend, SenseVoiceBackend):
+                if isinstance(backend, ServiceASRBackend):
+                    await backend.warmup()
+                elif isinstance(backend, SenseVoiceBackend):
                     await asyncio.to_thread(backend.warmup)
                 else:
                     await backend.transcribe(b"\x00" * (16_000 * 2), 16_000, 0)
@@ -175,7 +211,7 @@ def create_app() -> FastAPI:
                 raise
 
         async def warm_translation() -> None:
-            if translation_backend != "ollama":
+            if translation_backend not in SERVICE_URLS:
                 runtime["translation_status"] = "ready"
                 runtime["warmup_progress"] = 100
                 runtime["warmup_stage"] = "ready"
@@ -183,11 +219,12 @@ def create_app() -> FastAPI:
                 runtime["startup_ready"] = True
                 return
             runtime["warmup_stage"] = "translation"
-            runtime["warmup_message"] = f"正在启动 Ollama 模型：{translation_model}"
+            runtime["warmup_message"] = f"正在启动 {SERVICE_NAMES[translation_backend]} 翻译模型：{translation_model}"
             runtime["warmup_progress"] = 70
             await asyncio.sleep(0)
             try:
-                backend = OllamaTranslationBackend(model=translation_model, timeout=float(os.getenv("MEETING_INTERPRETER_OLLAMA_TIMEOUT", "300")), keep_alive=os.getenv("MEETING_INTERPRETER_OLLAMA_KEEP_ALIVE", "24h"))
+                backend = create_translation_backend()
+                backend.timeout = float(os.getenv('MEETING_INTERPRETER_OLLAMA_TIMEOUT', '300'))
                 await backend.translate("测试", "zh", "ja")
                 runtime["translator_backend_instance"] = backend
                 runtime["translation_status"] = "ready"
@@ -203,6 +240,12 @@ def create_app() -> FastAPI:
 
         async def warm_all() -> None:
             try:
+                if asr_engine == translation_backend == 'llama' and asr_model != translation_model and local_url(asr_url) == local_url(translation_url):
+                    service = await asyncio.to_thread(inspect_service, 'llama', asr_url)
+                    if service.get('max_loaded_models', 2) < 2:
+                        runtime.update(warmup_stage='error', asr_status='error', translation_status='error',
+                            warmup_message='llama.app 当前仅能驻留 1 个模型。请把识别与翻译分配到不同服务，或在 llama.app 允许两个模型同时运行。')
+                        return
                 await warm_asr()
                 if speaker_model_path().is_file():
                     runtime["warmup_stage"] = "speaker"

@@ -166,7 +166,7 @@ class _NativeAppDelegate(NSObject):
         panel.setCanChooseDirectories_(True)
         panel.setAllowsMultipleSelection_(False)
         panel.setPrompt_("选择此目录")
-        panel.setMessage_("选择用于保存语音识别模型缓存的本地目录；翻译模型由 Ollama 管理")
+        panel.setMessage_("选择内置识别模型的缓存目录；Ollama 与 llama.app 的模型由各自应用管理")
         if panel.runModal() != NSModalResponseOK or not panel.URLs():
             return
         path = panel.URLs()[0].path()
@@ -269,7 +269,7 @@ def main() -> None:
             break
         except Exception:
             time.sleep(0.1)
-    app_url = f"http://{host}:{port}/?v=0.2.9"
+    app_url = f"http://{host}:{port}/?v=0.2.10"
     if not ready:
         print(f"Local Meeting Interpreter server did not become ready: {health_url}")
     _open_native_window(app_url)

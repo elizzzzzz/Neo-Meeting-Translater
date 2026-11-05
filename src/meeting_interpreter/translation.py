@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import re
 import urllib.error
 import urllib.request
 from typing import Protocol
+
+from .local_services import SERVICE_URLS, local_url, open_local
 
 
 _STREAM_CLEANUP_TASKS = set()
@@ -184,6 +187,7 @@ class OllamaTranslationBackend:
             "model": self.model,
             "prompt": prompt,
             "stream": stream,
+            "think": False,
             "keep_alive": self.keep_alive,
             "options": {
                 "temperature": 0,
@@ -209,6 +213,7 @@ class OllamaTranslationBackend:
             "model": self.model,
             "prompt": prompt,
             "stream": False,
+            "think": False,
             "keep_alive": self.keep_alive,
             "options": {"temperature": 0, "num_ctx": 2048, "num_predict": 256},
         }
@@ -314,3 +319,102 @@ class OllamaTranslationBackend:
             raise RuntimeError('Ollama 翻译流中断，译文尚未完成，请核对原文')
         if not result.strip():
             raise RuntimeError(f'Ollama 模型 {self.model} 返回了空翻译。')
+
+
+class LlamaTranslationBackend(OllamaTranslationBackend):
+    """llama.app's local OpenAI chat API, including incremental SSE output."""
+
+    def __init__(self, model: str, base_url: str = SERVICE_URLS['llama'], timeout: float = 180, **kwargs):
+        if not model:
+            raise ValueError('请先在设置中选择 llama.app 翻译模型。')
+        super().__init__(model, local_url(base_url), timeout)
+
+    def _request(self, text, source_name, target_name, stream):
+        payload = {'model': self.model, 'messages': [{'role': 'user', 'content':
+            f'Translate the following meeting utterance from {source_name} to {target_name}. '
+            f'Output only the translation. Preserve names, numbers, and punctuation.\n\n{text}'}],
+            'stream': stream, 'temperature': 0, 'max_tokens': 256,
+            'chat_template_kwargs': {'enable_thinking': False}}
+        return urllib.request.Request(self.base_url + '/v1/chat/completions', data=json.dumps(payload).encode(),
+                                      headers={'Content-Type': 'application/json'})
+
+    def _translate_sync(self, text, source_name, target_name):
+        request = self._request(text, source_name, target_name, False)
+        with open_local(request, timeout=self.timeout) as response:
+            body = json.loads(response.read())
+        if body.get('error'):
+            raise RuntimeError(f'llama.app 翻译失败：{body["error"]}')
+        result = body.get('choices', [{}])[0].get('message', {}).get('content') or ''
+        result = re.sub(r'<think>.*?</think>', '', result, flags=re.S).strip()
+        if not result:
+            raise RuntimeError('llama.app 返回了空翻译。')
+        return result
+
+    async def correct_source(self, text, context, language):
+        return text
+
+    async def stream_translate(self, text, source_language, target_language):
+        source_name, target_name = LANGUAGE_NAMES.get(source_language), LANGUAGE_NAMES.get(target_language)
+        if not text or not source_name or not target_name or source_language == target_language:
+            yield text
+            return
+        response, result, done, cancelled = None, '', False, False
+        request = self._request(text, source_name, target_name, True)
+        opening = asyncio.create_task(asyncio.to_thread(open_local, request, timeout=min(self.timeout, 4.5)))
+        try:
+            response = await asyncio.shield(opening)
+            while True:
+                line = await asyncio.to_thread(response.readline, 1024 * 1024)
+                if not line:
+                    break
+                line = line.decode().strip()
+                if not line.startswith('data:'):
+                    continue
+                data = line[5:].strip()
+                if data == '[DONE]':
+                    done = True
+                    break
+                body = json.loads(data)
+                if body.get('error'):
+                    raise RuntimeError(f'llama.app 翻译失败：{body["error"]}')
+                for choice in body.get('choices', []):
+                    token = choice.get('delta', {}).get('content') or ''
+                    if token:
+                        result += token
+                        yield result.strip()
+                    if choice.get('finish_reason'):
+                        done = True
+                if done:
+                    break
+        except asyncio.CancelledError:
+            cancelled = True
+            raise
+        except urllib.error.HTTPError as exc:
+            raise RuntimeError(f'llama.app 翻译失败（HTTP {exc.code}）：{exc.read(2000).decode(errors="replace")}') from exc
+        finally:
+            if response is not None:
+                if cancelled:
+                    _close_stream_later(response)
+                else:
+                    await asyncio.to_thread(response.close)
+            else:
+                def close_late(task):
+                    if not task.cancelled() and task.exception() is None:
+                        _close_stream_later(task.result())
+                opening.add_done_callback(close_late)
+        if not done or not result.strip():
+            raise RuntimeError('llama.app 翻译未完整返回，请核对原文。')
+
+
+def create_translation_backend():
+    provider = os.getenv('MEETING_INTERPRETER_TRANSLATION_BACKEND', 'nllb').lower()
+    if provider == 'llama':
+        return LlamaTranslationBackend(os.getenv('MEETING_INTERPRETER_LLAMA_MODEL', ''),
+            os.getenv('MEETING_INTERPRETER_LLAMA_URL', SERVICE_URLS['llama']))
+    if provider == 'ollama':
+        return OllamaTranslationBackend(model=os.getenv('MEETING_INTERPRETER_OLLAMA_MODEL', 'translategemma:4b'),
+            base_url=local_url(os.getenv('MEETING_INTERPRETER_OLLAMA_URL', SERVICE_URLS['ollama'])),
+            timeout=float(os.getenv('MEETING_INTERPRETER_OLLAMA_TIMEOUT', '180')),
+            keep_alive=os.getenv('MEETING_INTERPRETER_OLLAMA_KEEP_ALIVE', '24h'))
+    return NLLBTranslationBackend(model_name=os.getenv('MEETING_INTERPRETER_TRANSLATION_MODEL', 'facebook/nllb-200-distilled-600M'),
+        device=os.getenv('MEETING_INTERPRETER_TRANSLATION_DEVICE', 'auto'))

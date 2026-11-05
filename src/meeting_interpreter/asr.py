@@ -1,12 +1,18 @@
 from __future__ import annotations
 
 import asyncio
+import base64
+import io
+import json
 import os
 import re
 import threading
+import wave
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
+
+from .local_services import SERVICE_URLS, json_request, local_url
 
 
 @dataclass(frozen=True)
@@ -52,9 +58,91 @@ def create_asr_backend(language: str | None = None) -> ASRBackend:
     engine = os.getenv('MEETING_INTERPRETER_ASR_BACKEND', 'whisper')
     if engine == 'sensevoice':
         return SenseVoiceBackend(str(sensevoice_model_directory()), language)
+    if engine in ('ollama', 'llama'):
+        return ServiceASRBackend(engine, os.getenv('MEETING_INTERPRETER_SERVICE_ASR_MODEL', ''),
+                                 os.getenv('MEETING_INTERPRETER_ASR_URL', SERVICE_URLS[engine]), language)
     if engine != 'whisper':
         raise ValueError(f'未知的语音识别引擎：{engine}')
     return MLXWhisperBackend(os.getenv('MEETING_INTERPRETER_ASR_MODEL', 'mlx-community/whisper-medium-mlx-8bit'), language)
+
+
+def parse_service_transcript(text: str, language: str | None = None) -> tuple[str, str]:
+    """Qwen3-ASR emits language metadata even on automatic bilingual input."""
+    aliases = {'chinese': 'zh', 'japanese': 'ja', 'english': 'en', '中文': 'zh', '日语': 'ja', '英语': 'en'}
+    if '<asr_text>' in text:
+        prefix, text = text.split('<asr_text>', 1)
+        match = re.search(r'language\s*[:：]?\s*([A-Za-z]+)', prefix, re.I)
+        if match:
+            language = aliases.get(match.group(1).lower(), match.group(1).lower())
+    else:
+        try:
+            body = json.loads(text)
+            if isinstance(body, dict) and isinstance(body.get('text'), str):
+                text, language = body['text'], body.get('language') or language
+        except ValueError:
+            pass
+    text = re.sub(r'<\|[^>]+\|>', '', text).strip()
+    language = aliases.get(str(language).lower(), str(language or 'auto').lower())
+    if language == 'auto':
+        if re.search(r'[\u3040-\u30ff]', text):
+            language = 'ja'
+        elif re.search(r'[\u3400-\u9fff]', text):
+            language = 'zh'
+        elif re.search(r'[A-Za-z]', text):
+            language = 'en'
+    return text, language
+
+
+class ServiceASRBackend:
+    """Qwen3-ASR/audio model through Ollama or llama.app; PCM never leaves loopback."""
+
+    def __init__(self, provider: str, model: str, base_url: str, language: str | None = None):
+        if not model:
+            raise ValueError('请先在设置中选择语音识别模型。')
+        self.provider, self.model, self.base_url = provider, model, local_url(base_url)
+        self.language = None if language in (None, '', 'auto') else language
+
+    def for_language(self, language):
+        return ServiceASRBackend(self.provider, self.model, self.base_url, language)
+
+    async def warmup(self):
+        # Explicit startup prewarming is permitted after selecting a local model.
+        await asyncio.to_thread(self._transcribe_sync, b'\x00' * 32000, 16000, 0, 180)
+
+    async def transcribe(self, pcm, sample_rate, start_ms):
+        if not pcm:
+            return None
+        return await asyncio.to_thread(self._transcribe_sync, pcm, sample_rate, start_ms, 4.5)
+
+    def _transcribe_sync(self, pcm, sample_rate, start_ms, timeout):
+        buffer = io.BytesIO()
+        with wave.open(buffer, 'wb') as wav:
+            wav.setnchannels(1)
+            wav.setsampwidth(2)
+            wav.setframerate(sample_rate)
+            wav.writeframes(pcm)
+        audio = base64.b64encode(buffer.getvalue()).decode()
+        qwen = 'qwen' in self.model.lower() and 'asr' in self.model.lower()
+        prompt = '' if qwen else 'Transcribe this audio in its original language. Return JSON with text and language (zh, ja, en). Do not translate or invent speech.'
+        if self.language:
+            prompt = f'language {dict(zh="Chinese",ja="Japanese",en="English").get(self.language,self.language)}<asr_text>' if qwen else prompt + f' Language: {self.language}.'
+        if self.provider == 'ollama':
+            payload = {'model': self.model, 'messages': [{'role': 'user', 'content': prompt, 'images': [audio]}],
+                       'stream': False, 'keep_alive': '24h', 'options': {'temperature': 0, 'num_predict': 256}}
+            body = json_request(self.base_url + '/api/chat', payload, timeout=timeout)
+            text = body.get('message', {}).get('content', '')
+        else:
+            payload = {'model': self.model, 'messages': [{'role': 'user', 'content': [
+                {'type': 'text', 'text': prompt}, {'type': 'input_audio', 'input_audio': {'data': audio, 'format': 'wav'}}]}],
+                'stream': False, 'temperature': 0, 'max_tokens': 256}
+            body = json_request(self.base_url + '/v1/chat/completions', payload, timeout=timeout)
+            text = body.get('choices', [{}])[0].get('message', {}).get('content', '')
+        if body.get('error'):
+            raise RuntimeError(f'{self.provider} 识别失败：{body["error"]}')
+        if not isinstance(text, str):
+            raise RuntimeError('语音识别服务返回了无效内容。')
+        text, language = parse_service_transcript(text, self.language)
+        return ASRResult(text, language, start_ms, start_ms + round(len(pcm) / 2 / sample_rate * 1000)) if text else None
 
 
 class LocalSpeechDetector:

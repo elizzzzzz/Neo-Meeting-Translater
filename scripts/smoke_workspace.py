@@ -35,6 +35,16 @@ try:
   page.route('**/health',lambda route:route.fulfill(json=health_fixture))
   page.route('**/preferences',lambda route:route.fulfill(json={'show_tips':True}))
   page.route('**/system/check',lambda route:route.fulfill(json={'installed':False,'reachable':False,'recommended_model':'translategemma:4b','recommended_model_present':False,'brew_available':False}))
+  saved_settings=[]
+  def settings_route(route):
+   if route.request.method=='POST':
+    saved_settings.append(route.request.post_data_json)
+    route.fulfill(json={'restart_required':True,'model_dir':saved_settings[-1]['model_dir']})
+   else:route.fulfill(json={'model_dir':'/test/models','asr_engine':'whisper','asr_model':'mlx-community/whisper-medium-mlx-8bit','translation_backend':'ollama','translation_model':'translategemma:4b'})
+  page.route('**/settings',settings_route)
+  page.route('**/services/models?**',lambda route:route.fulfill(json={'reachable':True,'models':[
+   {'id':'qwen3-asr:1.7b','asr':True,'translation':False},
+   {'id':'translategemma:4b','asr':False,'translation':True}]}))
   page.goto(f'http://127.0.0.1:{port}',wait_until='networkidle')
   page.locator('#tipsModal').wait_for(state='visible')
   page.screenshot(path=str(out/'tips.png'))
@@ -64,15 +74,30 @@ try:
    print('layout',w,h,page.evaluate('({width:innerWidth,height:innerHeight,scrollW:document.body.scrollWidth,scrollH:document.body.scrollHeight,captions:document.querySelector("#captions").clientHeight})'))
   page.evaluate("setInterfaceLanguage('zh')")
   page.set_viewport_size({'width':1440,'height':900})
-  page.locator('#settingsBtn').click();page.locator('#ollamaInstallStatus').get_by_text('未安装',exact=True).wait_for()
+  page.locator('#settingsBtn').click()
+  page.locator('.service-management summary').click()
+  page.locator('#ollamaInstallStatus').get_by_text('未安装',exact=True).wait_for()
+  page.locator('.service-management summary').click()
   assert page.locator('#interfaceLanguage').is_visible()
   page.locator('#interfaceLanguage').select_option('ja')
-  assert page.locator('#settingsTitle').inner_text()=='モデルと Ollama の設定'
+  assert page.locator('#settingsTitle').inner_text()=='モデルとサービスの設定'
   page.locator('#interfaceLanguage').select_option('zh')
+  page.locator('#asrEngine').select_option('ollama')
+  page.wait_for_function('document.querySelector("#asrModel").value === "qwen3-asr:1.7b"')
+  page.locator('#translationEngine').select_option('llama')
+  page.wait_for_function('document.querySelector("#translationModel").value === "translategemma:4b"')
+  assert page.locator('#translationServiceUrl').input_value()=='http://127.0.0.1:9931'
+  assert page.locator('#asrModel option').all_text_contents()==['qwen3-asr:1.7b']
+  assert page.locator('#translationModel option').all_text_contents()==['translategemma:4b']
   page.locator('#modelDirectory').fill('/Volumes/我的硬盘/会议模型')
   page.wait_for_timeout(3300)
   assert page.locator('#modelDirectory').input_value()=='/Volumes/我的硬盘/会议模型'
   page.screenshot(path=str(out/'settings.png'))
+  page.locator('#asrSelectionTitle').scroll_into_view_if_needed()
+  page.screenshot(path=str(out/'model-selection.png'))
+  page.locator('#saveSettingsBtn').click()
+  page.wait_for_function('document.querySelector("#systemNotice").textContent.includes("已保存")')
+  assert saved_settings[-1]['asr_engine']=='ollama' and saved_settings[-1]['translation_backend']=='llama'
   page.keyboard.press('Escape');page.locator('#demoBtn').click()
   assert page.locator('body').evaluate("e=>e.classList.contains('floating-mode')")
   assert page.locator('.caption-row').count()==0

@@ -10,10 +10,10 @@ import os
 import re
 from dataclasses import replace
 
-from .asr import ASRBackend, MLXWhisperBackend, SenseVoiceBackend, MockASRBackend, create_asr_backend
+from .asr import ASRBackend, MLXWhisperBackend, SenseVoiceBackend, ServiceASRBackend, MockASRBackend, create_asr_backend
 from .models import AudioEvent, CaptionEvent
 from .speaker import EmbeddingSpeakerBackend, PendingSpeakerBackend, PyannoteSpeakerBackend, SpeakerBackend
-from .translation import NLLBTranslationBackend, OllamaTranslationBackend, TranslationBackend
+from .translation import TranslationBackend, create_translation_backend
 
 
 def is_silent_pcm16(audio: bytes, threshold: float = 0.015) -> bool:
@@ -119,22 +119,8 @@ class Pipeline:
         self._mock_phrase_emitted: dict[str, bool] = {}
         self.context_correction_enabled = os.getenv("MEETING_INTERPRETER_CONTEXT_CORRECTION", "1").lower() not in {"0", "false", "no"}
         if self.mode == "local":
-            self.asr: ASRBackend = (asr_backend.for_language(source_language) if isinstance(asr_backend, (MLXWhisperBackend, SenseVoiceBackend)) else asr_backend) or create_asr_backend(source_language)
-            translation_backend = os.getenv("MEETING_INTERPRETER_TRANSLATION_BACKEND", "nllb").lower()
-            if translator_backend is not None:
-                self.translator = translator_backend
-            elif translation_backend == "ollama":
-                self.translator = OllamaTranslationBackend(
-                    model=os.getenv("MEETING_INTERPRETER_OLLAMA_MODEL", "translategemma:4b"),
-                    base_url=os.getenv("MEETING_INTERPRETER_OLLAMA_URL", "http://127.0.0.1:11434"),
-                    timeout=float(os.getenv("MEETING_INTERPRETER_OLLAMA_TIMEOUT", "180")),
-                    keep_alive=os.getenv("MEETING_INTERPRETER_OLLAMA_KEEP_ALIVE", "24h"),
-                )
-            else:
-                self.translator = NLLBTranslationBackend(
-                    model_name=os.getenv("MEETING_INTERPRETER_TRANSLATION_MODEL", "facebook/nllb-200-distilled-600M"),
-                    device=os.getenv("MEETING_INTERPRETER_TRANSLATION_DEVICE", "auto"),
-                )
+            self.asr: ASRBackend = (asr_backend.for_language(source_language) if isinstance(asr_backend, (MLXWhisperBackend, SenseVoiceBackend, ServiceASRBackend)) else asr_backend) or create_asr_backend(source_language)
+            self.translator = translator_backend if translator_backend is not None else create_translation_backend()
             selected_speaker_mode = speaker_mode or os.getenv("MEETING_INTERPRETER_SPEAKER_MODE", "none")
             if selected_speaker_mode == "embedding":
                 self.speaker: SpeakerBackend = speaker_backend.for_session() if speaker_backend else EmbeddingSpeakerBackend()

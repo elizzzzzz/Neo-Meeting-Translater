@@ -11,6 +11,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from .local_services import SERVICE_URLS, local_url
+
 
 RECOMMENDED_OLLAMA_MODEL = "translategemma:4b"
 OLLAMA_DOWNLOAD_URL = "https://ollama.com/download/mac"
@@ -198,9 +200,33 @@ def pull_ollama_model(model: str = RECOMMENDED_OLLAMA_MODEL, timeout: float = 18
     return {"ok": result.returncode == 0, "model": model, "message": output[-1600:] or ("推荐模型已准备好" if result.returncode == 0 else "推荐模型下载失败")}
 
 
-def save_model_directory(model_dir: str, asr_engine: object = None) -> dict[str, object]:
-    if asr_engine is not None and asr_engine not in ('whisper', 'sensevoice'):
+def save_model_directory(model_dir: str, asr_engine: object = None, model_settings: dict | None = None) -> dict[str, object]:
+    if asr_engine is not None and asr_engine not in ('whisper', 'sensevoice', 'ollama', 'llama'):
         raise ValueError('请选择有效的语音识别引擎。')
+    extra = {}
+    if model_settings:
+        asr_engine = asr_engine or os.getenv('MEETING_INTERPRETER_ASR_BACKEND', 'whisper')
+        translation = model_settings.get('translation_backend', os.getenv('MEETING_INTERPRETER_TRANSLATION_BACKEND', 'ollama'))
+        if translation not in ('ollama', 'llama', 'nllb'):
+            raise ValueError('请选择 Ollama、llama.app 或内置翻译引擎。')
+        for field in ('asr_model', 'translation_model'):
+            if field in model_settings:
+                value = model_settings[field]
+                if not isinstance(value, str) or not value.strip() or any(c in value for c in '\r\n\x00"\''):
+                    raise ValueError('请选择有效的模型名称。')
+        if 'asr_model' in model_settings:
+            key = 'MEETING_INTERPRETER_SERVICE_ASR_MODEL' if asr_engine in SERVICE_URLS else 'MEETING_INTERPRETER_ASR_MODEL'
+            if asr_engine != 'sensevoice':
+                extra[key] = model_settings['asr_model'].strip()
+        if asr_engine in SERVICE_URLS:
+            extra['MEETING_INTERPRETER_ASR_URL'] = local_url(model_settings.get('asr_url') or SERVICE_URLS[asr_engine])
+        extra['MEETING_INTERPRETER_TRANSLATION_BACKEND'] = translation
+        if 'translation_model' in model_settings:
+            key = {'ollama': 'MEETING_INTERPRETER_OLLAMA_MODEL', 'llama': 'MEETING_INTERPRETER_LLAMA_MODEL', 'nllb': 'MEETING_INTERPRETER_TRANSLATION_MODEL'}[translation]
+            extra[key] = model_settings['translation_model'].strip()
+        if translation in SERVICE_URLS:
+            key = 'MEETING_INTERPRETER_OLLAMA_URL' if translation == 'ollama' else 'MEETING_INTERPRETER_LLAMA_URL'
+            extra[key] = local_url(model_settings.get('translation_url') or SERVICE_URLS[translation])
     if any(char in model_dir for char in "\r\n\x00"):
         raise ValueError("模型目录不能包含换行或空字符。")
     path = Path(model_dir).expanduser()
@@ -218,6 +244,7 @@ def save_model_directory(model_dir: str, asr_engine: object = None) -> dict[str,
         "HUGGINGFACE_HUB_CACHE": str(path / "huggingface" / "hub"),
         "TRANSFORMERS_CACHE": str(path / "huggingface" / "transformers"),
     }
+    values.update(extra)
     if asr_engine is not None:
         values['MEETING_INTERPRETER_ASR_BACKEND'] = str(asr_engine)
     seen: set[str] = set()
@@ -237,6 +264,26 @@ def save_model_directory(model_dir: str, asr_engine: object = None) -> dict[str,
     return {"model_dir": str(path), "config_path": str(config), "restart_required": True}
 
 
+def model_settings() -> dict:
+    """Read pending saved selections without changing active warmed models."""
+    values = dict(os.environ)
+    try:
+        for line in user_config_path().read_text().splitlines():
+            if '=' in line and not line.lstrip().startswith('#'):
+                key, value = line.split('=', 1)
+                values[key.strip()] = value.strip().strip('\"\'')
+    except OSError:
+        pass
+    engine = values.get('MEETING_INTERPRETER_ASR_BACKEND', 'whisper')
+    provider = values.get('MEETING_INTERPRETER_TRANSLATION_BACKEND', 'nllb')
+    return {'model_dir': current_model_directory(), 'asr_engine': engine,
+            'asr_model': values.get('MEETING_INTERPRETER_SERVICE_ASR_MODEL', '') if engine in SERVICE_URLS else values.get('MEETING_INTERPRETER_ASR_MODEL', RECOMMENDED_ASR_MODEL),
+            'asr_url': values.get('MEETING_INTERPRETER_ASR_URL', SERVICE_URLS.get(engine, '')),
+            'translation_backend': provider,
+            'translation_model': values.get({'ollama': 'MEETING_INTERPRETER_OLLAMA_MODEL', 'llama': 'MEETING_INTERPRETER_LLAMA_MODEL'}.get(provider, 'MEETING_INTERPRETER_TRANSLATION_MODEL'), 'translategemma:4b' if provider == 'ollama' else 'facebook/nllb-200-distilled-600M' if provider == 'nllb' else ''),
+            'translation_url': values.get('MEETING_INTERPRETER_OLLAMA_URL' if provider == 'ollama' else 'MEETING_INTERPRETER_LLAMA_URL', SERVICE_URLS.get(provider, ''))}
+
+
 def current_model_directory() -> str:
     try:
         for line in user_config_path().read_text(encoding="utf-8").splitlines():
@@ -250,29 +297,40 @@ def current_model_directory() -> str:
     return str(Path.home() / "Library/Application Support/LocalMeetingInterpreter/models")
 
 
-def inspect_asr_models(engine: str = "whisper") -> dict[str, object]:
+def inspect_asr_models(engine: str = "whisper", model: str | None = None) -> dict[str, object]:
     root = Path(current_model_directory()).expanduser()
     if engine == "sensevoice":
         folder = root / "asr" / "sensevoice"
         required = ["model.int8.onnx", "tokens.txt", "silero_vad.onnx"]
         present = [name for name in required if (folder / name).is_file()]
-        return {"engine": engine, "model": "SenseVoice-Small", "installed": len(present) == len(required), "progress": round(len(present) / len(required) * 100), "path": str(folder), "missing": [name for name in required if name not in present], "message": "已连接，可使用" if len(present) == len(required) else "需要 model.int8.onnx、tokens.txt、silero_vad.onnx"}
+        return {"engine": engine, "model": "SenseVoice-Small", 'models': ['SenseVoice-Small'], "installed": len(present) == len(required), "progress": round(len(present) / len(required) * 100), "path": str(folder), "missing": [name for name in required if name not in present], "message": "已连接，可使用" if len(present) == len(required) else "需要 model.int8.onnx、tokens.txt、silero_vad.onnx"}
+    if engine == 'nllb':
+        selected = model or os.getenv('MEETING_INTERPRETER_TRANSLATION_MODEL', 'facebook/nllb-200-distilled-600M')
+        marker = root / 'huggingface/hub' / ('models--' + selected.replace('/', '--'))
+        return {'engine': engine, 'model': selected, 'models': [selected], 'installed': marker.is_dir() and any(marker.rglob('*.safetensors'))}
     cache = root / "huggingface"
-    marker = cache / "hub" / ("models--" + RECOMMENDED_ASR_MODEL.replace("/", "--"))
+    selected = model or os.getenv('MEETING_INTERPRETER_ASR_MODEL', RECOMMENDED_ASR_MODEL)
+    marker = cache / "hub" / ("models--" + selected.replace("/", "--"))
     installed = marker.is_dir() and any(marker.rglob("*.safetensors"))
-    return {"engine": "whisper", "model": RECOMMENDED_ASR_MODEL, "installed": installed, "progress": 100 if installed else 0, "path": str(cache), "missing": [] if installed else ["Whisper 权重"], "message": "已连接，可使用" if installed else "尚未下载 Whisper 权重"}
+    models = [RECOMMENDED_ASR_MODEL, selected]
+    if (cache / 'hub').is_dir():
+        models.extend(folder.name.removeprefix('models--').replace('--', '/') for folder in (cache / 'hub').glob('models--*whisper*') if any(folder.rglob('*.safetensors')))
+    return {"engine": "whisper", "model": selected, 'models': list(dict.fromkeys(models)), "installed": installed, "progress": 100 if installed else 0, "path": str(cache), "missing": [] if installed else ["Whisper 权重"], "message": "已连接，可使用" if installed else "尚未下载 Whisper 权重"}
 
 
-def download_asr_model(engine: str = "whisper", timeout: float = 3600.0) -> dict[str, object]:
+def download_asr_model(engine: str = "whisper", timeout: float = 3600.0, model: str | None = None) -> dict[str, object]:
     if engine != "whisper":
         return {"ok": False, "message": "SenseVoice 权重需要导入本地 ONNX 文件；为避免下载错误版本，当前请在设置中指定模型目录。"}
     root = Path(current_model_directory()).expanduser()
+    selected = model or RECOMMENDED_ASR_MODEL
+    if 'whisper' not in selected.lower() or any(c in selected for c in '\r\n\x00'):
+        return {'ok': False, 'message': '请选择 Whisper 模型；其他模型请通过 Ollama 或 llama.app 管理。'}
     try:
         from huggingface_hub import snapshot_download
     except ImportError:
         return {"ok": False, "message": "当前安装包缺少 huggingface_hub，请重新安装本地语音组件。"}
     try:
-        snapshot_download(RECOMMENDED_ASR_MODEL, cache_dir=str(root / "huggingface"), local_files_only=False)
+        snapshot_download(selected, cache_dir=str(root / "huggingface" / 'hub'), local_files_only=False)
     except Exception as exc:
         return {"ok": False, "message": f"Whisper 模型下载失败：{exc}"}
-    return {"ok": True, "engine": engine, "model": RECOMMENDED_ASR_MODEL, "message": "Whisper 语音模型已下载到本地模型目录。"}
+    return {"ok": True, "engine": engine, "model": selected, "message": "Whisper 语音模型已下载到本地模型目录。"}

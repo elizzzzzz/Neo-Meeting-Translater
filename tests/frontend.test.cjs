@@ -48,9 +48,51 @@ test('local settings save the selected speech engine with its model directory', 
   const app = loadApp();
   app.elements.get('#modelDirectory').value = '/models';
   app.elements.get('#asrEngine').value = 'sensevoice';
+  app.elements.get('#asrModel').value = 'SenseVoice-Small';
+  app.elements.get('#translationEngine').value = 'llama';
+  app.elements.get('#translationModel').value = 'local-translate';
+  app.elements.get('#translationServiceUrl').value = 'http://127.0.0.1:9931';
   await app.run('saveModelDirectory()');
   const request = app.requests.find(r=>r.url==='/settings' && r.options?.method==='POST');
-  assert.deepEqual(JSON.parse(request.options.body), {model_dir:'/models',asr_engine:'sensevoice'});
+  assert.deepEqual(JSON.parse(request.options.body), {model_dir:'/models',asr_engine:'sensevoice',asr_model:'SenseVoice-Small',asr_url:'',translation_backend:'llama',translation_model:'local-translate',translation_url:'http://127.0.0.1:9931'});
+});
+
+test('speech and translation discover separate compatible models without loading them', async () => {
+  const app=loadApp();
+  app.context.fetch=async url=>({ok:true,json:async()=>({reachable:true,models:[
+    {id:'qwen3-asr',asr:true,translation:false}, {id:'translategemma',asr:false,translation:true},
+  ]})});
+  app.run("asrEngine.value='ollama';translationEngine.value='llama';");
+  await app.run('refreshModelSelections()');
+  assert.equal(app.elements.get('#asrModel').value,'qwen3-asr');
+  assert.equal(app.elements.get('#translationModel').value,'translategemma');
+  assert.doesNotMatch(app.elements.get('#translationModel').innerHTML,/qwen3-asr/);
+  assert.equal(app.elements.get('#asrServiceUrl').value,'http://127.0.0.1:11434');
+  assert.equal(app.elements.get('#translationServiceUrl').value,'http://127.0.0.1:9931');
+  assert.equal(app.elements.get('#downloadAsrBtn').hidden,true);
+});
+
+test('late model discovery cannot overwrite a newer provider selection', async () => {
+  const app=loadApp();let resolve;
+  app.context.fetch=async url=>{
+    if(url.includes('provider=ollama')) return new Promise(r=>resolve=()=>r({ok:true,json:async()=>({reachable:true,models:[{id:'stale',asr:true}]})}));
+    return {ok:true,json:async()=>({reachable:true,models:[{id:'new',asr:true}]})};
+  };
+  app.run("asrEngine.value='ollama'");
+  const pending=app.run("refreshModelSelection('asr')");
+  app.run("asrEngine.value='llama';asrServiceUrl.value='http://127.0.0.1:9931'");
+  await app.run("refreshModelSelection('asr')");
+  resolve();await pending;
+  assert.equal(app.elements.get('#asrModel').value,'new');
+});
+
+test('empty service lists do not claim a model is ready', async () => {
+  const app=loadApp();
+  app.context.fetch=async()=>({ok:true,json:async()=>({reachable:true,models:[]})});
+  app.run("translationEngine.value='llama'");
+  await app.run("refreshModelSelection('translation')");
+  assert.equal(app.elements.get('#translationModel').value,'');
+  assert.match(app.elements.get('#translationModelStatus').textContent,/未发现适用模型/);
 });
 
 test('preview never reports hot models and local warmup failure disables recording', () => {
