@@ -8,6 +8,20 @@ import urllib.request
 from typing import Protocol
 
 
+_STREAM_CLEANUP_TASKS = set()
+
+
+def _close_stream_later(response):
+    """HTTP close may wait for a blocked readline; don't block live deadlines."""
+    task = asyncio.create_task(asyncio.to_thread(response.close))
+    _STREAM_CLEANUP_TASKS.add(task)
+    def completed(task):
+        _STREAM_CLEANUP_TASKS.discard(task)
+        if not task.cancelled():
+            task.exception()
+    task.add_done_callback(completed)
+
+
 LANGUAGE_CODES = {
     "zh": "zho_Hans",
     "zh-cn": "zho_Hans",
@@ -256,9 +270,11 @@ class OllamaTranslationBackend:
         response = None
         result = ''
         done = False
+        cancelled = False
         request = self._request(text, source_name, target_name, True)
+        opening = asyncio.create_task(asyncio.to_thread(urllib.request.urlopen, request, timeout=min(self.timeout, 4.5)))
         try:
-            response = await asyncio.to_thread(urllib.request.urlopen, request, timeout=self.timeout)
+            response = await asyncio.shield(opening)
             while True:
                 line = await asyncio.to_thread(response.readline, 1024 * 1024)
                 if not line:
@@ -273,6 +289,9 @@ class OllamaTranslationBackend:
                 if body.get('done'):
                     done = True
                     break
+        except asyncio.CancelledError:
+            cancelled = True
+            raise
         except urllib.error.HTTPError as exc:
             detail = exc.read(4096).decode('utf-8', errors='replace')
             raise RuntimeError(f'Ollama 翻译失败（HTTP {exc.code}）：{detail}') from exc
@@ -282,8 +301,15 @@ class OllamaTranslationBackend:
             raise RuntimeError(f'Ollama 翻译超时（{self.timeout:.0f}s）') from exc
         finally:
             if response is not None:
-                # Close this recording's HTTP stream on completion/disconnect.
-                await asyncio.to_thread(response.close)
+                if cancelled:
+                    _close_stream_later(response)
+                else:
+                    await asyncio.to_thread(response.close)
+            else:
+                def close_late_open(task):
+                    if not task.cancelled() and task.exception() is None:
+                        _close_stream_later(task.result())
+                opening.add_done_callback(close_late_open)
         if not done:
             raise RuntimeError('Ollama 翻译流中断，译文尚未完成，请核对原文')
         if not result.strip():

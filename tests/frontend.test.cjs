@@ -144,16 +144,54 @@ test('recording locks language controls and displays the server-confirmed decode
   assert.equal(app.elements.get('#sourceLanguage').disabled,false);
 });
 
-test('slow inference preserves every captured sample and reports backlog', () => {
+test('short transport stalls preserve audio and include its capture time', () => {
   const app=loadApp();const sent=[];app.context.sent=sent;
   app.run("socket={readyState:WebSocket.OPEN,send:message=>sent.push(JSON.parse(message))};activeInputLabel='MacBook 麦克风'");
-  app.run('for(let i=0;i<100;i++) queueAudioFrame(new Float32Array(1600).fill(.03));');
+  app.run('for(let i=0;i<30;i++) queueAudioFrame(new Float32Array(1600).fill(.03));');
   assert.equal(sent.length,1);
-  assert.equal(app.run('pendingAudio.length'),158400);
+  assert.equal(app.run('pendingAudio.length'),46400);
+  assert.ok(sent[0].captured_at_ms <= Date.now());
   assert.doesNotMatch(app.elements.get('#audioStatus').textContent,/已跳过/);
   for(let i=0;i<100;i++) app.run('audioInFlight=false;sendPendingAudio()');
-  assert.equal(sent.reduce((n,e)=>n+Buffer.from(e.audio_base64,'base64').length/2,0),160000);
+  assert.equal(sent.reduce((n,e)=>n+Buffer.from(e.audio_base64,'base64').length/2,0),48000);
   assert.equal(app.run('pendingAudio.length'),0);
+});
+
+test('long transport stalls discard old audio without pausing the microphone', () => {
+  const app=loadApp(); const sent=[]; app.context.sent=sent;
+  app.run("socket={readyState:WebSocket.OPEN,send:message=>sent.push(JSON.parse(message))};for(let i=0;i<100;i++) queueAudioFrame(new Float32Array(1600).fill(.03));");
+  assert.ok(app.run('pendingAudio.length') <= 64000);
+  assert.equal(app.run('sessionEnding'), false);
+  assert.match(app.elements.get('#diagnosticStatus').textContent, /跳过旧音频/);
+  const messages=[];
+  app.context.window.webkit={messageHandlers:{native:{postMessage:message=>messages.push(message)}}};
+  app.run('cleanupAudio();exportTranscript();');
+  assert.match(messages[0].text, /可能不完整/);
+});
+
+test('preparation intro disappears only for real ready models and returns on failure', () => {
+  const app=loadApp();
+  app.run("updateHealth({mode:'local',models:{ready:false,progress:42,message:'加载中'}})");
+  assert.equal(app.elements.get('#startupIntro').hidden, false);
+  assert.equal(app.elements.get('#startupProgress').value, 42);
+  app.run("updateHealth({mode:'local',models:{ready:true,progress:100}})");
+  assert.equal(app.elements.get('#startupIntro').hidden, true);
+  app.run("updateHealth({mode:'local',models:{ready:false,stage:'error'}})");
+  assert.equal(app.elements.get('#startupIntro').hidden, false);
+});
+
+test('timed out translations stop waiting, retain original text and reject late output', () => {
+  const app=loadApp();
+  app.run(`
+    setDirection('zh','ja');
+    upsertCaption({session_id:'m',segment_id:'1',speaker_id:'A',source_language:'zh',target_language:'ja',original_text:'请确认时间',translated_text:'',end_ms:800,is_final:false});
+    upsertCaption({session_id:'m',segment_id:'1',speaker_id:'A',source_language:'zh',target_language:'ja',original_text:'请确认时间',translated_text:'',end_ms:800,is_final:true,skipped_stage:'translation'});
+    upsertCaption({session_id:'m',segment_id:'1',speaker_id:'A',source_language:'zh',target_language:'ja',original_text:'请确认时间',translated_text:'迟到的译文',end_ms:800,is_final:true});
+    renderCaptions();
+  `);
+  assert.match(app.elements.get('#captions').innerHTML,/请确认时间/);
+  assert.match(app.elements.get('#captions').innerHTML,/超时已跳过/);
+  assert.doesNotMatch(app.elements.get('#captions').innerHTML,/迟到的译文|译文更新中/);
 });
 
 test('same speaker retains complete speech across chunks and pauses, next speaker starts a paragraph', () => {

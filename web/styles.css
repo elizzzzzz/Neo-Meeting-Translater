@@ -311,3 +311,53 @@ body.floating-mode .transcript-footnote { display: none; }
   .caption-copy { font-size: 13px; }
   .panel-header-actions .session-label { display: none; }
 }
+
+/* Preparation is temporary. Once ready the conversation owns the window. */
+[hidden] { display: none !important; }
+.startup-loading { display: grid; gap: 9px; width: min(340px, 34%); color: var(--muted); font-size: 12px; }
+.startup-loading progress { width: 100%; height: 7px; accent-color: var(--blue); }
+.page-shell { width: calc(100% - 28px); max-width: none; }
+.direction-bar { gap: 14px; }
+.direction-actions { margin-right: auto; flex-wrap: nowrap; }
+.pair-explanation strong { margin: 0; }
+.pair-explanation .direction-hint { display: block; margin: 3px 0 0; }
+.direction-bar .control-actions { flex: 0 0 auto; }
+.transcript-panel > .panel-header > div:first-child { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.transcript-panel > .panel-header .section-label { display: none; }
+.transcript-count { display: inline-grid; min-width: 22px; height: 22px; padding: 0 5px; place-items: center; background: var(--canvas); color: var(--muted); border-radius: 6px; font-size: 11px; }
+.input-settings { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 12px; margin-top: 18px; }
+.input-settings .control-wide { grid-column: auto; }
+.interface-language-field { margin-top: 18px; }
+.interface-language-field select { width: 100%; height: 38px; background: var(--surface); color: var(--ink); border-color: var(--hairline); font-size: 14px; }
+.caption-role { width: auto; min-width: 30px; height: 21px; padding: 0 5px; margin-right: 7px; vertical-align: 2px; font-size: 11px; }
+.caption-skipped { display: inline-block; margin-left: 6px; color: #8a5a00; font-size: 11px; }
+body.conversation-ready .global-bar,
+body.conversation-ready .sub-bar .eyebrow,
+body.conversation-ready .footer-bar { display: none; }
+body.conversation-ready .sub-bar { min-height: 46px; height: 46px; }
+body.conversation-ready .page-shell { padding-top: 6px; }
+body.conversation-ready .workspace-grid { grid-template-columns: minmax(0, 1fr) 196px; margin-top: 6px; }
+body.conversation-ready .side-column { max-width: 196px; }
+body.conversation-ready .panel-header { min-height: 46px; padding: 7px 16px; }
+body.conversation-ready .panel-header-actions .session-label { display: none; }
+body.conversation-ready .transcript-footnote { padding: 5px 16px; }
+@media (min-width: 761px) and (max-width: 1100px) {
+  .pair-explanation .direction-hint { display: none; }
+  .panel-header-actions { gap: 5px; }
+  .pair-explanation { font-size: 11px; }
+}
+@media (max-width: 760px) {
+  .direction-bar { flex-direction: row; flex-wrap: wrap; align-items: center; padding: 7px; }
+  .pair-explanation { display: none; }
+  .direction-actions { width: 100%; justify-content: space-between; gap: 4px; }
+  .direction-button { font-size: 11px; padding: 0 7px; }
+  .startup-loading { width: 100%; }
+  .intro-row { gap: 12px; }
+  body.conversation-ready .workspace-grid { grid-template-columns: minmax(0, 1fr); }
+  body.conversation-ready .side-column { max-width: none; }
+  .input-settings { grid-template-columns: minmax(0, 1fr); }
+  .sub-actions { gap: 4px; }
+  .sub-bar { padding: 0 10px; }
+}
+body.floating-mode .direction-bar { display: none; }
+body.floating-mode .workspace-grid { display: block; }

@@ -341,7 +341,10 @@ class Pipeline:
         result = replace(result, language=result_language)
         stable = commit_before_ms is not None
         correct_source = getattr(self.translator, "correct_source", None)
-        if stable and self.context_correction_enabled and correct_source is not None and result.text:
+        # The live worker publishes ASR immediately; an extra serial LLM pass
+        # would contend with translation and spend the same capture deadline.
+        # ASR context prompts still apply above; offline/inline correction stays.
+        if stable and self.context_correction_enabled and correct_source is not None and result.text and self.translate_inline:
             try:
                 corrected = await correct_source(
                     result.text,
@@ -398,10 +401,29 @@ class Pipeline:
                 async for caption in self._decode_window(event, bytes(buffer), self._buffer_start_ms.get(session, 0)):
                     yield caption
 
+    def discard_audio(self, event: AudioEvent, samples: int = 0) -> None:
+        """Start a fresh decode window after expired audio, keeping its clock gap."""
+        session = event.session_id
+        self._audio_samples[session] = self._audio_samples.get(session, 0) + samples
+        boundary = round(self._audio_samples[session] * 1000 / event.sample_rate)
+        self._audio_ms[session] = boundary
+        self._buffers.pop(session, None)
+        for state in (self._last_voice_ms, self._last_infer_ms, self._active_segment_id,
+                      self._last_text, self._latest_caption, self._voice_duration_ms,
+                      self._context_text, self._paragraph_text):
+            state.pop(session, None)
+        self._buffer_start_ms[session] = boundary
+        self._committed_until_ms[session] = boundary
+        self._active_start_ms[session] = boundary
+
     async def change_speaker(self) -> AsyncIterator[CaptionEvent]:
         """Manual boundary: finish the current audio, then start a fresh paragraph."""
         async for caption in self.flush_audio():
             yield caption
+        self.mark_speaker_change()
+
+    def mark_speaker_change(self) -> None:
+        """Keep a manual boundary even when expired inference is still busy."""
         self._manual_speaker_number += 1
         for session in self._last_events:
             buffer = self._buffers.get(session, bytearray())

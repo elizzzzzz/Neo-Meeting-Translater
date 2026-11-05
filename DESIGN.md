@@ -19,3 +19,19 @@ Show the microphone's actual track name after permission, a compact native input
 Use one paragraph per consecutive speaker turn, with a compact speaker/time line above equal-width source and translation columns. Keep the columns side by side in the main window and floating window. A bounded recognition chunk can be revised without replacing completed chunks. Keep the previous translation visible while a correction is pending. Retain every paragraph until the user clears the transcript; export uses the same grouping. The transcript alone scrolls, and following pauses when the user scrolls into history. A small blue “回到最新” action resumes following. Automatic voice identification is explicitly marked as experimental and is only selectable when its local model has loaded; otherwise show manual boundaries in plain Chinese.
 
 Keep the optional speech-engine choice inside local settings. Use the Chinese description “语音转文字引擎”; display the SenseVoice model's local availability and state that applying settings requires reopening the App. Keep Whisper available for Japanese comparisons. Model selection never downloads weights implicitly.
+
+## Conversation-first ready state
+
+Show the introduction and a bounded progress indicator only while local models
+are preparing. Once ready, hide the introduction, brand strip, and footer. Keep
+one compact language-pair toolbar, recording controls, transcript, settings, and
+the icon-based status rail. Move audio device, speaker detection, and explicit
+interface language choices into settings; automatic interface language follows
+the system and manual Chinese/Japanese/English choices persist across ports.
+
+Meeting language pairs always use automatic source detection and route the
+translation to the other member. Keep language columns fixed and use full
+Source/Translation role badges for each chunk. A timed-out translation retains
+its source and an explicit skipped marker; never imply complete meeting coverage
+after audio or translation was dropped. Real-time inference and translation
+share a capture deadline below five seconds rather than extending each stage.

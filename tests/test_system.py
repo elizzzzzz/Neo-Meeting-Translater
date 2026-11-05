@@ -3,6 +3,15 @@ from pathlib import Path
 from meeting_interpreter import system
 
 
+def test_interface_language_persists_independently_of_service_port_and_tip_changes(monkeypatch, tmp_path):
+    monkeypatch.setattr(system, 'preferences_path', lambda: tmp_path / 'preferences.json')
+    system.save_preferences(interface_language='ja')
+    system.save_preferences(False)
+    assert system.read_preferences() == {'show_tips': False, 'interface_language': 'ja'}
+    system.save_preferences(interface_language='auto')
+    assert system.read_preferences() == {'show_tips': False, 'interface_language': 'auto'}
+
+
 def test_inspect_ollama_reports_update_and_recommended_model(monkeypatch):
     monkeypatch.setattr(system, "_ollama_path", lambda: "/opt/homebrew/bin/ollama")
     monkeypatch.setattr(system, "_ollama_models", lambda timeout=1.2: (True, ["translategemma:4b"]))

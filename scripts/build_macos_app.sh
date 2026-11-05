@@ -12,6 +12,7 @@ esac
 # Build outside cloud-managed Documents to avoid partially materialized bundles.
 STAGING_DIR="$(mktemp -d /private/tmp/local-meeting-interpreter.XXXXXX)"
 PYTHON_CMD=(/usr/bin/arch -arm64 "$PYTHON_BIN")
+APP_VERSION="$("${PYTHON_CMD[@]}" -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')"
 trap 'rm -rf "$STAGING_DIR"' EXIT
 
 "${PYTHON_CMD[@]}" -c 'import PyInstaller, AppKit, WebKit, mlx_whisper, sherpa_onnx'
@@ -63,7 +64,7 @@ BUNDLE="$STAGING_DIR/frozen/LocalMeetingInterpreter.app"
 plutil -replace NSMicrophoneUsageDescription \
   -string "用于采集本地麦克风或会议回环音频，并在本机生成实时字幕。" \
   "$BUNDLE/Contents/Info.plist"
-plutil -replace CFBundleShortVersionString -string "0.2.8" "$BUNDLE/Contents/Info.plist"
+plutil -replace CFBundleShortVersionString -string "$APP_VERSION" "$BUNDLE/Contents/Info.plist"
 # The standalone COLLECT directory is already copied into the self-contained
 # bundle; release it before making the clean delivery copy on a small disk.
 rm -rf "$STAGING_DIR/frozen/LocalMeetingInterpreter" "$STAGING_DIR/work"
@@ -88,5 +89,19 @@ test -s "$STAGING_DIR/packages/LocalMeetingInterpreter.dmg"
 mkdir -p "$PROJECT_ROOT/dist"
 ditto "$STAGING_DIR/packages/LocalMeetingInterpreter-portable.zip" "$PROJECT_ROOT/dist/LocalMeetingInterpreter-portable.zip"
 ditto "$STAGING_DIR/packages/LocalMeetingInterpreter.dmg" "$PROJECT_ROOT/dist/LocalMeetingInterpreter.dmg"
+# Keep the direct-open artifact current too; previous releases are retained.
+RELEASE_DIR="$HOME/Library/Application Support/LocalMeetingInterpreter/releases/$APP_VERSION"
+mkdir -p "$RELEASE_DIR"
+ditto --noextattr --norsrc "$STAGING_DIR/delivery/LocalMeetingInterpreter.app" "$RELEASE_DIR/LocalMeetingInterpreter.app"
+codesign --verify --deep --strict "$RELEASE_DIR/LocalMeetingInterpreter.app"
+"${PYTHON_CMD[@]}" - "$PROJECT_ROOT/dist/LocalMeetingInterpreter.app" "$RELEASE_DIR/LocalMeetingInterpreter.app" <<'PY'
+import sys
+from pathlib import Path
+shortcut, app = map(Path, sys.argv[1:])
+if shortcut.is_symlink():
+    shortcut.unlink()
+if not shortcut.exists():
+    shortcut.symlink_to(app, target_is_directory=True)
+PY
 echo "Built and verified: $PROJECT_ROOT/dist/LocalMeetingInterpreter-portable.zip"
 echo "Built and verified: $PROJECT_ROOT/dist/LocalMeetingInterpreter.dmg"

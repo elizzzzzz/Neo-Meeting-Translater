@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#f5f5f7" />
     <title>Local Interpreter · 实时会议</title>
-    <link rel="stylesheet" href="/web/styles.css?v=0.2.8" />
+    <link rel="stylesheet" href="/web/styles.css?v=0.2.9" />
   </head>
   <body>
     <header class="global-bar">
@@ -14,28 +14,21 @@
     </header>
     <nav class="sub-bar" aria-label="工作区导航">
       <div><span class="eyebrow" data-i18n="nav.workspace">MEETING WORKSPACE</span><strong data-i18n="nav.liveMeeting">实时会议</strong></div>
-      <div class="sub-actions"><span id="modeBadge" class="mode-badge" data-i18n="mode.local">本地</span><label class="ui-language-picker"><span class="sr-only" data-i18n="language.interface">界面语言</span><select id="interfaceLanguage" aria-label="界面语言"><option value="auto" data-i18n="language.auto">自动</option><option value="zh" data-i18n="language.zh">中文</option><option value="ja" data-i18n="language.ja">日本語</option><option value="en" data-i18n="language.en">English</option></select></label><button id="tipsBtn" class="button button-ghost" type="button" data-i18n="actions.guide">使用指南</button><button id="settingsBtn" class="button button-ghost" type="button" data-i18n="actions.settings">本地设置</button><button id="demoBtn" class="button button-ghost" type="button" data-i18n="actions.subtitleMode">字幕模式</button><button id="exportBtn" class="button button-ghost" type="button" data-i18n="actions.export">导出记录</button></div>
+      <div class="sub-actions"><span id="modeBadge" class="mode-badge" data-i18n="mode.local">本地</span><button id="tipsBtn" class="button button-ghost" type="button" data-i18n="actions.guide">使用指南</button><button id="settingsBtn" class="button button-ghost" type="button" data-i18n="actions.settings">本地设置</button><button id="demoBtn" class="button button-ghost" type="button" data-i18n="actions.subtitleMode">字幕模式</button><button id="exportBtn" class="button button-ghost" type="button" data-i18n="actions.export">导出记录</button></div>
     </nav>
     <main class="page-shell">
-      <section class="intro-row">
+      <section id="startupIntro" class="intro-row" aria-live="polite">
         <div><div class="intro-kicker"><span class="status-pill status-pill-blue" data-i18n="status.localRun">本地运行</span><span class="status-pill" data-i18n="status.liveText">实时文字</span><span id="directionPill" class="status-pill">自动 → 中文</span></div><h1 data-i18n="intro.title">把会议内容留在本机。</h1><p data-i18n="intro.description">实时识别、区分说话人，并生成中日、中英、英日双向字幕。</p></div>
-        <div class="session-summary"><span id="captionCount">0</span><span data-i18n="transcript.segments">段发言</span></div>
+        <div class="startup-loading"><progress id="startupProgress" max="100" value="0"></progress><span id="startupMessage">正在检查本地模型…</span></div>
       </section>
-      <section class="control-strip" aria-label="会议输入设置" data-i18n-aria-label="controls.ariaLabel">
-        <label class="control-field control-wide"><span data-i18n="controls.audioInput">音频输入</span><select id="inputDevice"><option value="" data-i18n="controls.defaultMic">默认麦克风（授权后显示名称）</option></select></label>
-        <label class="control-field"><span data-i18n="controls.sourceLanguage">源语言</span><select id="sourceLanguage"><option value="auto" data-i18n="language.autoDetect">自动识别</option><option value="zh" data-i18n="language.zhSimplified">中文（简体）</option><option value="ja" data-i18n="language.ja">日本語</option><option value="en" data-i18n="language.en">English</option></select></label>
-        <button id="swapLanguages" class="swap-button" type="button" aria-label="交换源语言和目标语言" title="交换语言">⇄</button>
-        <label class="control-field"><span data-i18n="controls.targetLanguage">目标语言</span><select id="targetLanguage"><option value="zh" data-i18n="language.zhSimplified">中文（简体）</option><option value="ja" selected data-i18n="language.ja">日本語</option><option value="en" data-i18n="language.en">English</option></select></label>
-        <label class="control-field"><span data-i18n="controls.speaker">说话人</span><select id="speakerMode"><option value="none" data-i18n="speaker.manual">手动换人</option><option value="embedding" disabled data-i18n="speaker.autoTest">自动分人（测试）</option></select></label>
-        <div class="control-actions"><button id="startBtn" class="button button-primary" type="button" data-i18n="actions.startAudio">开启音频输入</button><button id="stopBtn" class="button button-dark" type="button" disabled data-i18n="actions.stop">停止</button></div>
-      </section>
+      <div hidden aria-hidden="true"><select id="sourceLanguage"><option value="auto" selected>自动识别</option></select><select id="targetLanguage"><option value="zh">中文</option><option value="ja" selected>日本語</option><option value="en">English</option></select><button id="swapLanguages" type="button" tabindex="-1">⇄</button></div>
       <section class="direction-bar" aria-label="翻译方向快捷设置" data-i18n-aria-label="direction.ariaLabel">
-        <div><span class="section-label" data-i18n="direction.eyebrow">TRANSLATION DIRECTIONS</span><strong data-i18n="direction.title">选择会议语言</strong><span class="direction-hint" data-i18n="direction.hint">双方轮流发言，自动识别与互译</span></div>
-        <div class="direction-actions"><button class="direction-button" data-source="zh" data-target="ja" type="button">中文 <span>↔</span> 日本語</button><button class="direction-button" data-source="zh" data-target="en" type="button">中文 <span>↔</span> English</button><button class="direction-button" data-source="en" data-target="ja" type="button">English <span>↔</span> 日本語</button></div>
+        <div class="pair-explanation"><strong data-i18n="direction.title">会议语言</strong><span class="direction-hint" data-i18n="direction.hint">自动识别 · 双向互译</span></div>
+        <div class="direction-actions"><button class="direction-button" data-source="zh" data-target="ja" type="button">中文 <span>↔</span> 日本語</button><button class="direction-button" data-source="zh" data-target="en" type="button">中文 <span>↔</span> English</button><button class="direction-button" data-source="en" data-target="ja" type="button">English <span>↔</span> 日本語</button></div><div class="control-actions"><button id="startBtn" class="button button-primary" type="button" data-i18n="actions.startAudio">开启音频输入</button><button id="stopBtn" class="button button-dark" type="button" disabled data-i18n="actions.stop">停止</button></div>
       </section>
       <section class="workspace-grid">
         <article class="transcript-panel">
-          <div class="panel-header"><div><span class="section-label" data-i18n="transcript.eyebrow">LIVE TRANSCRIPT</span><h2 data-i18n="transcript.title">发言记录</h2></div><div class="panel-header-actions"><span id="sessionLabel" class="session-label" data-i18n="session.waitingAudio">等待音频输入</span><button id="latestBtn" class="button button-primary compact-button" type="button" hidden data-i18n="actions.latest">回到最新 ↓</button><button id="changeSpeakerBtn" class="button button-ghost compact-button" type="button" disabled title="自动分人不准确时，切换到手动并标记换人" data-i18n="speaker.manual">手动换人</button><button id="clearBtn" class="button button-ghost compact-button" type="button" data-i18n="actions.clear">清空</button><button id="floatingBtn" class="button button-ghost compact-button" type="button" data-i18n="actions.floating">字幕浮窗</button></div></div>
+          <div class="panel-header"><div><span class="section-label" data-i18n="transcript.eyebrow">LIVE TRANSCRIPT</span><h2 data-i18n="transcript.title">发言记录</h2><span id="captionCount" class="transcript-count">0</span></div><div class="panel-header-actions"><span id="sessionLabel" class="session-label" data-i18n="session.waitingAudio">等待音频输入</span><button id="latestBtn" class="button button-primary compact-button" type="button" hidden data-i18n="actions.latest">回到最新 ↓</button><button id="changeSpeakerBtn" class="button button-ghost compact-button" type="button" disabled title="自动分人不准确时，切换到手动并标记换人" data-i18n="speaker.manual">手动换人</button><button id="clearBtn" class="button button-ghost compact-button" type="button" data-i18n="actions.clear">清空</button><button id="floatingBtn" class="button button-ghost compact-button" type="button" data-i18n="actions.floating">字幕浮窗</button></div></div>
           <div class="transcript-head"><span id="captionSourceHeader">中文</span><span id="captionTranslationHeader">日本語</span></div>
           <div id="captions" class="captions" role="region" aria-label="双语发言记录，可滚动查看历史" tabindex="0"><div class="empty-state"><strong>还没有字幕</strong><span>选择麦克风或 BlackHole 回环设备后开始会议。</span></div></div>
           <div class="transcript-footnote" data-i18n="transcript.footnote">同一发言人连续记录 · 向上滚动查看历史，回到底部继续跟随</div>
@@ -65,6 +58,8 @@
     <div id="settingsModal" class="modal-backdrop" hidden>
       <section class="modal-card settings-card" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
         <div class="modal-heading"><div><div class="modal-kicker" data-i18n="settings.kicker">本机环境</div><h2 id="settingsTitle" data-i18n="settings.title">模型与 Ollama 设置</h2></div><button id="closeSettingsBtn" class="icon-button" type="button" aria-label="关闭" data-i18n-aria-label="actions.close">×</button></div>
+        <label class="settings-field interface-language-field"><span  data-i18n="language.interface">界面语言</span><select id="interfaceLanguage" aria-label="界面语言"><option value="auto" data-i18n="language.auto">自动</option><option value="zh" data-i18n="language.zh">中文</option><option value="ja" data-i18n="language.ja">日本語</option><option value="en" data-i18n="language.en">English</option></select></label>
+        <section class="input-settings"><label class="control-field control-wide"><span data-i18n="controls.audioInput">音频输入</span><select id="inputDevice"><option value="" data-i18n="controls.defaultMic">默认麦克风（授权后显示名称）</option></select></label><label class="control-field"><span data-i18n="controls.speaker">说话人</span><select id="speakerMode"><option value="none" data-i18n="speaker.manual">手动换人</option><option value="embedding" disabled data-i18n="speaker.autoTest">自动分人（测试）</option></select></label></section>
         <div class="environment-grid">
           <div class="environment-item"><span data-i18n="settings.ollamaInstall">Ollama 安装</span><strong id="ollamaInstallStatus">检查中…</strong></div>
           <div class="environment-item"><span data-i18n="settings.version">当前版本</span><strong id="ollamaVersionStatus">检查中…</strong></div>
@@ -75,11 +70,11 @@
         <div class="settings-field"><label for="asrEngine" data-i18n="settings.asrEngine">语音转文字引擎</label><select id="asrEngine"><option value="whisper">Whisper · 多语言识别</option><option value="sensevoice">SenseVoice · 中日快速识别（测试）</option></select><div class="model-action-row"><strong id="asrModelStatus">正在检查语音模型…</strong><button id="downloadAsrBtn" class="button button-ghost" type="button" data-i18n="settings.prepareAsr">准备语音模型</button></div><small id="asrEngineHint">切换后重新打开 App 生效；两种引擎均在本机运行。日语可先用 Whisper，中文可对比 SenseVoice。</small></div>
         <div class="settings-field"><label for="captionDisplayMode" data-i18n="settings.captionContent">字幕显示内容</label><select id="captionDisplayMode"><option value="both" data-i18n="settings.bilingual">双语对照：源与译</option><option value="source" data-i18n="settings.sourceOnly">仅显示源文</option><option value="translation" data-i18n="settings.translationOnly">仅显示译文</option></select><small data-i18n="settings.captionHint">中日：中文左、日文右；中英：中文左、英文右；英日：英文左、日文右。“源 / 译”随实际发言切换。</small></div>
         <div class="settings-field"><label for="modelDirectory" data-i18n="settings.modelDirectory">模型保存目录</label><div class="path-picker"><input id="modelDirectory" type="text" spellcheck="false" /><button id="chooseModelDirectoryBtn" class="button button-ghost" type="button" data-i18n="settings.chooseDirectory">选择目录</button></div><small data-i18n="settings.directoryHint">此目录用于语音识别模型缓存，更改后重启生效。现有文件不会自动迁移；Ollama 翻译模型目前由其自身管理。</small></div>
-        <div class="settings-field"><label data-i18n="settings.onlineAudio">在线会议 / 网页视频音频</label><div class="audio-source-note" data-i18n="settings.onlineAudioHint">系统音频捕获需要 macOS 音频回环设备。安装 BlackHole 或 Loopback 后，在主界面的“音频输入”中选择对应设备；应用不会把会议音频上传到网络。</div></div>
+        <div class="settings-field"><label data-i18n="settings.onlineAudio">在线会议 / 网页视频音频</label><div class="audio-source-note" data-i18n="settings.onlineAudioHint">系统音频捕获需要 macOS 音频回环设备。安装 BlackHole 或 Loopback 后，在设置的“音频输入”中选择对应设备；应用不会把会议音频上传到网络。</div></div>
         <div class="modal-actions settings-actions"><button id="checkOllamaBtn" class="button button-ghost" type="button" data-i18n="settings.recheck">重新检查</button><button id="installOllamaBtn" class="button button-ghost" type="button" data-i18n="settings.installOllama">安装 Ollama</button><button id="upgradeOllamaBtn" class="button button-ghost" type="button" data-i18n="settings.upgradeOllama">升级 Ollama</button><button id="pullModelBtn" class="button button-primary" type="button" data-i18n="settings.installModel">安装推荐模型</button><button id="saveSettingsBtn" class="button button-dark" type="button" data-i18n="settings.save">保存设置</button></div>
       </section>
     </div>
     <footer class="footer-bar"><span data-i18n="footer.config">文字模式 · M3 / 16G 配置</span><span id="footerStatus"><span data-i18n="footer.service">服务地址</span> <span id="serviceAddress">127.0.0.1:8000</span></span></footer>
-    <script src="/web/app.js?v=0.2.8" defer></script>
+    <script src="/web/app.js?v=0.2.9" defer></script>
   </body>
 </html>

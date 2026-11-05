@@ -23,6 +23,7 @@ class AudioEvent(BaseModel):
     sample_rate: int = Field(default=16_000, ge=8_000, le=48_000)
     channels: int = Field(default=1, ge=1, le=2)
     source: Literal["microphone", "meeting_loopback", "file"] = "microphone"
+    captured_at_ms: float | None = Field(default=None, ge=0)
 
 
 class CaptionEvent(BaseModel):
@@ -36,6 +37,7 @@ class CaptionEvent(BaseModel):
     original_text: str
     translated_text: str
     is_final: bool = False
+    skipped_stage: Literal['recognition', 'translation'] | None = None
     start_ms: int = Field(ge=0)
     end_ms: int = Field(ge=0)
 

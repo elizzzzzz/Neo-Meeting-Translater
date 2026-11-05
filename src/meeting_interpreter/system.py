@@ -6,6 +6,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import threading
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -15,6 +16,7 @@ RECOMMENDED_OLLAMA_MODEL = "translategemma:4b"
 OLLAMA_DOWNLOAD_URL = "https://ollama.com/download/mac"
 RECOMMENDED_ASR_MODEL = "mlx-community/whisper-medium-mlx-8bit"
 _VERSION_RE = re.compile(r"(?:ollama version is |ollama version )?(v?\d+\.\d+\.\d+)", re.I)
+_PREFERENCES_LOCK = threading.Lock()
 
 
 def user_config_path() -> Path:
@@ -38,20 +40,33 @@ def _atomic_write(path: Path, text: str) -> None:
             temporary.unlink(missing_ok=True)
 
 
-def read_preferences() -> dict[str, bool]:
+def read_preferences() -> dict[str, object]:
+    saved = {}
     try:
         saved = json.loads(preferences_path().read_text(encoding="utf-8"))
         show_tips = saved.get("show_tips", True) if isinstance(saved, dict) else True
     except (OSError, ValueError):
         show_tips = True
-    return {"show_tips": show_tips if type(show_tips) is bool else True}
+    result = {"show_tips": show_tips if type(show_tips) is bool else True}
+    if isinstance(saved, dict) and saved.get('interface_language') in ('auto', 'zh', 'ja', 'en'):
+        result['interface_language'] = saved['interface_language']
+    return result
 
 
-def save_preferences(show_tips: bool) -> dict[str, bool]:
-    if type(show_tips) is not bool:
+def save_preferences(show_tips: bool | None = None, interface_language: str | None = None) -> dict[str, object]:
+    if show_tips is None and interface_language is None:
+        raise ValueError('请提供提示或界面语言设置。')
+    if show_tips is not None and type(show_tips) is not bool:
         raise ValueError("提示设置必须为是或否。")
-    preferences = {"show_tips": show_tips}
-    _atomic_write(preferences_path(), json.dumps(preferences) + "\n")
+    if interface_language is not None and interface_language not in ('auto', 'zh', 'ja', 'en'):
+        raise ValueError('界面语言必须为自动、中文、日语或英语。')
+    with _PREFERENCES_LOCK:
+        preferences = read_preferences()
+        if show_tips is not None:
+            preferences['show_tips'] = show_tips
+        if interface_language is not None:
+            preferences['interface_language'] = interface_language
+        _atomic_write(preferences_path(), json.dumps(preferences) + "\n")
     return preferences
 
 

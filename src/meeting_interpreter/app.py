@@ -54,7 +54,7 @@ def create_app() -> FastAPI:
         "speaker_status": "loading" if speaker_model_path().is_file() and mode == "local" else "missing",
         "speaker_message": "声纹模型尚未连接，可手动换人",
     }
-    app = FastAPI(title="Local Meeting Interpreter", version="0.2.8")
+    app = FastAPI(title="Local Meeting Interpreter", version="0.2.9")
     app.mount("/web", StaticFiles(directory=WEB_DIR), name="web")
 
     @app.get("/health")
@@ -124,13 +124,13 @@ def create_app() -> FastAPI:
                 "sensevoice_available": all((sensevoice_model_directory() / name).is_file() for name in ('model.int8.onnx', 'tokens.txt', 'silero_vad.onnx'))}
 
     @app.get("/preferences")
-    async def get_preferences() -> dict[str, bool]:
+    async def get_preferences() -> dict[str, object]:
         return await asyncio.to_thread(read_preferences)
 
     @app.post("/preferences")
-    async def update_preferences(payload: dict[str, object]) -> dict[str, bool]:
+    async def update_preferences(payload: dict[str, object]) -> dict[str, object]:
         try:
-            return await asyncio.to_thread(save_preferences, payload.get("show_tips"))
+            return await asyncio.to_thread(save_preferences, payload.get("show_tips"), payload.get('interface_language'))
         except (OSError, ValueError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -250,6 +250,11 @@ def create_app() -> FastAPI:
                 elif payload['type'] == 'capture_paused':
                     runtime['asr_status'] = 'error'
                     runtime['last_error'] = payload['message']
+                elif payload['type'] == 'segment_skipped':
+                    if payload['stage'] == 'translation':
+                        runtime['translation_status'] = 'timeout'
+                    else:
+                        runtime['asr_status'] = 'timeout'
                 await websocket.send_json(payload)
 
         pipeline = Pipeline(mode=mode, asr_backend=runtime.get('asr_backend'), translator_backend=runtime.get('translator_backend_instance'), translate_inline=False)
