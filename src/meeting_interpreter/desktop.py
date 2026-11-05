@@ -38,31 +38,8 @@ import uvicorn
 
 
 def _load_user_config() -> None:
-    """Load Finder-launched app settings before importing the FastAPI app."""
-    candidates = [
-        Path.home() / "Library/Application Support/LocalMeetingInterpreter/.env",
-        Path.home() / ".config/local-meeting-interpreter/.env",
-    ]
-    for config_path in candidates:
-        if not config_path.is_file():
-            continue
-        for raw_line in config_path.read_text(encoding="utf-8").splitlines():
-            line = raw_line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, value = line.split("=", 1)
-            key = key.strip()
-            value = value.strip().strip("\"'")
-            if key and value and key not in os.environ:
-                os.environ[key] = value
-        break
-
-    default_model_dir = Path.home() / "Library/Application Support/LocalMeetingInterpreter/models"
-    model_dir = Path(os.environ.get("MEETING_INTERPRETER_MODEL_DIR", default_model_dir)).expanduser()
-    os.environ.setdefault("MEETING_INTERPRETER_MODEL_DIR", str(model_dir))
-    os.environ.setdefault("HF_HOME", str(model_dir / "huggingface"))
-    os.environ.setdefault("HUGGINGFACE_HUB_CACHE", str(model_dir / "huggingface" / "hub"))
-    os.environ.setdefault("TRANSFORMERS_CACHE", str(model_dir / "huggingface" / "transformers"))
+    from meeting_interpreter.system import load_user_config
+    load_user_config()
 
 
 _load_user_config()
@@ -269,7 +246,7 @@ def main() -> None:
             break
         except Exception:
             time.sleep(0.1)
-    app_url = f"http://{host}:{port}/?v=0.2.10"
+    app_url = f"http://{host}:{port}/?v=0.2.11"
     if not ready:
         print(f"Local Meeting Interpreter server did not become ready: {health_url}")
     _open_native_window(app_url)

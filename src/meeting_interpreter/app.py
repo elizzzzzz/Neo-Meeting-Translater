@@ -61,7 +61,7 @@ def create_app() -> FastAPI:
         "speaker_status": "loading" if speaker_model_path().is_file() and mode == "local" else "missing",
         "speaker_message": "声纹模型尚未连接，可手动换人",
     }
-    app = FastAPI(title="Local Meeting Interpreter", version="0.2.10")
+    app = FastAPI(title="Local Meeting Interpreter", version="0.2.11")
     app.mount("/web", StaticFiles(directory=WEB_DIR), name="web")
 
     @app.get("/health")
@@ -135,8 +135,11 @@ def create_app() -> FastAPI:
         return await asyncio.to_thread(pull_ollama_model, model if isinstance(model, str) else "translategemma:4b")
 
     @app.get("/system/models")
-    async def system_models(engine: str = "whisper", model: str | None = None) -> dict[str, object]:
-        return await asyncio.to_thread(inspect_asr_models, engine if engine in {"whisper", "sensevoice", 'nllb'} else "whisper", model)
+    async def system_models(engine: str = "whisper", model: str | None = None, model_dir: str | None = None) -> dict[str, object]:
+        try:
+            return await asyncio.to_thread(inspect_asr_models, engine if engine in {"whisper", "sensevoice", 'nllb'} else "whisper", model, model_dir)
+        except (OSError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.post("/system/download-asr")
     async def system_download_asr(payload: dict[str, object] | None = None) -> dict[str, object]:

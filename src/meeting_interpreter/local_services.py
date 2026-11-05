@@ -92,3 +92,11 @@ def inspect_service(provider: str, base_url: str | None = None, timeout: float =
     except (OSError, ValueError, urllib.error.URLError, TimeoutError) as exc:
         result['message'] = f'{SERVICE_NAMES[provider]} 未连接：{exc}'
     return result
+
+
+def match_service_model(selected: str, models: list[dict]) -> str:
+    ids = [item['id'] for item in models]
+    if selected in ids or '/' in selected or not selected:
+        return selected
+    matches = [name for name in ids if name.rsplit('/', 1)[-1] == selected]
+    return matches[0] if len(matches) == 1 else selected

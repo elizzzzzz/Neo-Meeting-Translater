@@ -448,3 +448,37 @@ test('interface language switching does not rewrite transcript content', () => {
   assert.match(app.elements.get('#captions').innerHTML, /中文原文/);
   assert.match(app.elements.get('#captions').innerHTML, /日本語訳/);
 });
+
+test('model preview scans the edited folder and selects the resolved local model', async () => {
+  const app=loadApp(); const urls=[];
+  app.context.fetch=async url=>{urls.push(url);return {ok:true,json:async()=>({installed:true,model:'/new/whisper',models:['/new/whisper'],resolved_model:'/new/whisper'})};};
+  app.run("asrEngine.value='whisper';asrModel.value='/old/whisper';modelDirectory.value='/new models'");
+  await app.run("refreshModelSelection('asr')");
+  assert.match(urls[0],/model_dir=%2Fnew%20models/);
+  assert.equal(app.elements.get('#asrModel').value,'/new/whisper');
+});
+
+test('opening settings again reads the latest saved model directory', async () => {
+  const app=loadApp();
+  app.context.fetch=async url=>({ok:true,json:async()=>url==='/settings'?{model_dir:'/new',asr_engine:'whisper',translation_backend:'ollama'}:{models:[]}});
+  app.run("modelDirectory.value='/old'");
+  await app.run('openSettings()');
+  assert.equal(app.elements.get('#modelDirectory').value,'/new');
+});
+
+test('a unique namespaced service model replaces a stale short name', async () => {
+  const app=loadApp();
+  app.context.fetch=async()=>({ok:true,json:async()=>({reachable:true,models:[{id:'vendor/translategemma:4b',translation:true}]})});
+  app.run("translationEngine.value='ollama';translationModel.value='translategemma:4b'");
+  await app.run("refreshModelSelection('translation')");
+  assert.equal(app.elements.get('#translationModel').value,'vendor/translategemma:4b');
+});
+
+test('missing model folder displays the diagnostic instead of a script failure', async () => {
+  const app=loadApp();
+  app.context.fetch=async()=>({ok:true,json:async()=>({installed:false,model:'old/whisper',models:['old/whisper'],path:'/missing',message:'目录不存在或外置盘未挂载，请重新选择目录'})});
+  app.run("asrEngine.value='whisper'");
+  await app.run("refreshModelSelection('asr')");
+  assert.match(app.elements.get('#asrModelStatus').textContent,/未挂载/);
+  assert.doesNotMatch(app.elements.get('#asrModelStatus').textContent,/检查失败/);
+});

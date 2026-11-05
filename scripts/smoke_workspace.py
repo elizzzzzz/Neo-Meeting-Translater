@@ -40,7 +40,7 @@ try:
    if route.request.method=='POST':
     saved_settings.append(route.request.post_data_json)
     route.fulfill(json={'restart_required':True,'model_dir':saved_settings[-1]['model_dir']})
-   else:route.fulfill(json={'model_dir':'/test/models','asr_engine':'whisper','asr_model':'mlx-community/whisper-medium-mlx-8bit','translation_backend':'ollama','translation_model':'translategemma:4b'})
+   else:route.fulfill(json={'model_dir':'/test/models','ollama_model_dir':'/test/ollama-models','asr_engine':'whisper','asr_model':'mlx-community/whisper-medium-mlx-8bit','translation_backend':'ollama','translation_model':'translategemma:4b'})
   page.route('**/settings',settings_route)
   page.route('**/services/models?**',lambda route:route.fulfill(json={'reachable':True,'models':[
    {'id':'qwen3-asr:1.7b','asr':True,'translation':False},
@@ -82,6 +82,18 @@ try:
   page.locator('#interfaceLanguage').select_option('ja')
   assert page.locator('#settingsTitle').inner_text()=='モデルとサービスの設定'
   page.locator('#interfaceLanguage').select_option('zh')
+  for language in ['zh', 'ja', 'en']:
+   page.locator('#interfaceLanguage').select_option(language)
+   for w,h in [(1440,900),(1024,768)]:
+    page.set_viewport_size({'width':w,'height':h})
+    page.locator('#useOllamaDirectoryBtn').scroll_into_view_if_needed()
+    box=page.locator('#useOllamaDirectoryBtn').bounding_box()
+    assert box and box['x'] >= 0 and box['x']+box['width'] <= w, (language,w,box)
+    assert page.locator('.modal-card').last.evaluate('e=>e.scrollWidth <= e.clientWidth')
+  page.locator('#interfaceLanguage').select_option('zh')
+  page.set_viewport_size({'width':1440,'height':900})
+  page.locator('#useOllamaDirectoryBtn').click()
+  page.wait_for_function('document.querySelector("#modelDirectory").value === "/test/ollama-models"')
   page.locator('#asrEngine').select_option('ollama')
   page.wait_for_function('document.querySelector("#asrModel").value === "qwen3-asr:1.7b"')
   page.locator('#translationEngine').select_option('llama')

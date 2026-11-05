@@ -63,7 +63,11 @@ def create_asr_backend(language: str | None = None) -> ASRBackend:
                                  os.getenv('MEETING_INTERPRETER_ASR_URL', SERVICE_URLS[engine]), language)
     if engine != 'whisper':
         raise ValueError(f'未知的语音识别引擎：{engine}')
-    return MLXWhisperBackend(os.getenv('MEETING_INTERPRETER_ASR_MODEL', 'mlx-community/whisper-medium-mlx-8bit'), language)
+    from .system import resolve_model_location
+    selected = os.getenv('MEETING_INTERPRETER_ASR_MODEL', 'mlx-community/whisper-medium-mlx-8bit')
+    root = os.getenv('MEETING_INTERPRETER_MODEL_DIR')
+    resolved = resolve_model_location(selected, Path(root).expanduser()) if root else None
+    return MLXWhisperBackend(resolved or selected, language)
 
 
 def parse_service_transcript(text: str, language: str | None = None) -> tuple[str, str]:

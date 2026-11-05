@@ -149,3 +149,10 @@ async def test_llama_streaming_translation_accumulates_sse_and_closes_response(m
     assert result == ['会議', '会議です。'] and closed
     assert requests[0][0] == 'http://127.0.0.1:9931/v1/chat/completions'
     assert requests[0][1]['model'] == 'translate-local' and requests[0][1]['stream']
+
+
+def test_service_short_name_only_resolves_when_unambiguous():
+    models = [{'id': 'vendor/translategemma:4b'}, {'id': 'vendor/qwen3-asr:1.7b'}]
+    assert local_services.match_service_model('translategemma:4b', models) == 'vendor/translategemma:4b'
+    assert local_services.match_service_model('other/translategemma:4b', models) == 'other/translategemma:4b'
+    assert local_services.match_service_model('translategemma:4b', models + [{'id':'other/translategemma:4b'}]) == 'translategemma:4b'

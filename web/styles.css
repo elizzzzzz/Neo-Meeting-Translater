@@ -124,7 +124,7 @@ dd { max-width: 180px; overflow-wrap: anywhere; }
 .system-notice.warn { color: #8a5a00; background: #fff8e6; border-color: #f1d58a; }
 .settings-field { display: grid; gap: 8px; margin-top: 22px; }
 .settings-field label { color: var(--muted); font-size: 13px; }
-.path-picker { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.path-picker { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; }
 .path-picker input { min-width: 0; height: 40px; padding: 0 11px; color: var(--ink); background: #fff; border: 1px solid var(--hairline); border-radius: 8px; font: inherit; font-size: 13px; }
 .settings-field small { color: var(--faint); font-size: 11px; line-height: 1.45; }
 .model-action-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; background: #f7f8fb; border: 1px solid #e8ebf0; border-radius: 9px; }

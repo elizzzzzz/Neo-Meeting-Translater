@@ -47,3 +47,11 @@ never means warmed. Collapse optional Ollama installation tools below the cards.
 Save/restart feedback stays visible independently of the collapsed tools. Retain
 the conversation layout and local-only routing. Model-directory controls cover
 built-in caches; Ollama and llama.app retain ownership of their model files.
+
+
+Model-folder controls keep the existing compact Apple settings style. Default to
+Ollama's detected storage folder and offer one secondary “Use Ollama folder”
+action next to the folder picker. Rescan an edited path before saving, retain
+manual edits during health polling, and show missing disks separately from
+missing weights. Loading a changed configuration requires saving and restarting;
+service-managed files remain owned by Ollama / llama.app.

@@ -11,7 +11,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from .local_services import SERVICE_URLS, local_url
+from .local_services import SERVICE_URLS, local_url, inspect_service, match_service_model
 
 
 RECOMMENDED_OLLAMA_MODEL = "translategemma:4b"
@@ -130,6 +130,7 @@ def inspect_ollama(timeout: float = 1.8) -> dict[str, object]:
         except (OSError, subprocess.SubprocessError):
             pass
     reachable, models = _ollama_models(timeout=min(timeout, 1.2))
+    recommended = match_service_model(RECOMMENDED_OLLAMA_MODEL, [{'id': name} for name in models])
     latest_version = _latest_ollama_version(timeout=timeout) if installed else None
     current_tuple = _version_tuple(current_version)
     latest_tuple = _version_tuple(latest_version)
@@ -143,8 +144,8 @@ def inspect_ollama(timeout: float = 1.8) -> dict[str, object]:
         "version_check": "已是最新" if current_tuple and latest_tuple and current_tuple >= latest_tuple else ("有新版本" if current_tuple and latest_tuple else "无法联网核对"),
         "reachable": reachable,
         "models": models,
-        "recommended_model": RECOMMENDED_OLLAMA_MODEL,
-        "recommended_model_present": RECOMMENDED_OLLAMA_MODEL in models,
+        "recommended_model": recommended,
+        "recommended_model_present": recommended in models,
         "brew_available": bool(shutil.which("brew")),
     }
 
@@ -232,6 +233,8 @@ def save_model_directory(model_dir: str, asr_engine: object = None, model_settin
     path = Path(model_dir).expanduser()
     if not path.is_absolute():
         raise ValueError("模型目录必须是绝对路径。")
+    if len(path.parts) >= 3 and path.parts[1] == 'Volumes' and not Path(*path.parts[:3]).is_dir():
+        raise ValueError('外置盘未挂载，请连接磁盘或选择其他模型目录。')
     path.mkdir(parents=True, exist_ok=True)
     config = user_config_path()
     config.parent.mkdir(parents=True, exist_ok=True)
@@ -244,7 +247,12 @@ def save_model_directory(model_dir: str, asr_engine: object = None, model_settin
         "HUGGINGFACE_HUB_CACHE": str(path / "huggingface" / "hub"),
         "TRANSFORMERS_CACHE": str(path / "huggingface" / "transformers"),
     }
+    previous = {**os.environ, **saved_config(), **extra}
+    relocated = _relocated_values(previous, path)
     values.update(extra)
+    for key in ('MEETING_INTERPRETER_ASR_MODEL', 'MEETING_INTERPRETER_TRANSLATION_MODEL', 'MEETING_INTERPRETER_SENSEVOICE_MODEL'):
+        if key in relocated:
+            values[key] = relocated[key]
     if asr_engine is not None:
         values['MEETING_INTERPRETER_ASR_BACKEND'] = str(asr_engine)
     seen: set[str] = set()
@@ -264,19 +272,157 @@ def save_model_directory(model_dir: str, asr_engine: object = None, model_settin
     return {"model_dir": str(path), "config_path": str(config), "restart_required": True}
 
 
-def model_settings() -> dict:
-    """Read pending saved selections without changing active warmed models."""
-    values = dict(os.environ)
-    try:
-        for line in user_config_path().read_text().splitlines():
+def saved_config() -> dict[str, str]:
+    for config in (user_config_path(), Path.home() / '.config/local-meeting-interpreter/.env'):
+        if not config.is_file():
+            continue
+        values = {}
+        for line in config.read_text(encoding='utf-8').splitlines():
             if '=' in line and not line.lstrip().startswith('#'):
                 key, value = line.split('=', 1)
-                values[key.strip()] = value.strip().strip('\"\'')
-    except OSError:
-        pass
+                values[key.strip()] = value.strip().strip("\"'")
+        return values
+    return {}
+
+
+def ollama_model_directory() -> str:
+    """Read Ollama's configured directory without changing its service."""
+    configured = os.getenv('OLLAMA_MODELS', '')
+    if not configured:
+        try:
+            result = subprocess.run(['/bin/launchctl', 'getenv', 'OLLAMA_MODELS'],
+                                    capture_output=True, text=True, timeout=1, check=False)
+            configured = result.stdout.strip() if result.returncode == 0 else ''
+        except (OSError, subprocess.SubprocessError):
+            pass
+    path = Path(configured).expanduser() if configured else Path.home() / '.ollama/models'
+    return str(path.resolve())
+
+
+def current_model_directory() -> str:
+    configured = saved_config().get('MEETING_INTERPRETER_MODEL_DIR') or os.getenv('MEETING_INTERPRETER_MODEL_DIR')
+    return str(Path(configured).expanduser()) if configured else ollama_model_directory()
+
+
+def _cache_roots(root: Path) -> list[Path]:
+    return [root / 'huggingface/hub', root / 'hub', root, root / 'huggingface']
+
+
+def _model_files(folder: Path, engine: str) -> bool:
+    if not (folder / 'config.json').is_file():
+        return False
+    if engine == 'whisper':
+        weights = [folder / name for name in ('weights.safetensors', 'weights.npz') if (folder / name).is_file()]
+    else:
+        weights = list(folder.glob('*.safetensors')) + list(folder.glob('pytorch_model*.bin'))
+    if not weights or not all(p.is_file() and p.stat().st_size > 0 for p in weights):
+        return False
+    # A partial sharded download must not be reported ready.
+    for index in folder.glob('*.index.json'):
+        try:
+            parts = set(json.loads(index.read_text()).get('weight_map', {}).values())
+            if any(not (folder / part).is_file() for part in parts):
+                return False
+        except (OSError, ValueError):
+            return False
+    return True
+
+
+def _repo_name(selected: str) -> str:
+    for part in Path(selected).parts:
+        if part.startswith('models--'):
+            return part.removeprefix('models--').replace('--', '/')
+    return selected
+
+
+def resolve_model_location(selected: str, root: Path, engine: str = 'whisper') -> str | None:
+    """Resolve files in the chosen directory, never a pinned snapshot in an old root."""
+    chosen = Path(selected).expanduser()
+    if chosen.is_absolute() and chosen.is_relative_to(root) and _model_files(chosen, engine):
+        return str(chosen)
+    if _model_files(root, engine):
+        return str(root)
+    repo = _repo_name(selected)
+    for cache in _cache_roots(root):
+        marker = cache / ('models--' + repo.replace('/', '--'))
+        snapshots = marker / 'snapshots'
+        ref = marker / 'refs/main'
+        candidates = []
+        if ref.is_file():
+            candidates.append(snapshots / ref.read_text().strip())
+        if snapshots.is_dir():
+            candidates.extend(sorted(snapshots.iterdir(), key=lambda p: p.name))
+        for folder in candidates:
+            if _model_files(folder, engine):
+                return str(folder)
+    for folder in (root / repo, root / repo.split('/')[-1], root / 'asr' / repo.split('/')[-1]):
+        if _model_files(folder, engine):
+            return str(folder)
+    return None
+
+
+def _relocated_values(values: dict[str, str], root: Path) -> dict[str, str]:
+    result = dict(values)
+    for key, engine in (('MEETING_INTERPRETER_ASR_MODEL', 'whisper'), ('MEETING_INTERPRETER_TRANSLATION_MODEL', 'nllb')):
+        selected = result.get(key)
+        if selected and Path(selected).expanduser().is_absolute():
+            resolved = resolve_model_location(selected, root, engine)
+            # Keep the expected new location visible when files are absent.
+            repo = _repo_name(selected)
+            missing = root / 'huggingface/hub' / ('models--' + repo.replace('/', '--')) / 'snapshots' / Path(selected).name if repo != selected else root / Path(selected).name
+            result[key] = resolved or str(missing)
+    previous = values.get('MEETING_INTERPRETER_MODEL_DIR')
+    sensevoice = values.get('MEETING_INTERPRETER_SENSEVOICE_MODEL')
+    if previous and sensevoice and Path(sensevoice).expanduser().is_relative_to(Path(previous).expanduser()):
+        result['MEETING_INTERPRETER_SENSEVOICE_MODEL'] = str(root / Path(sensevoice).expanduser().relative_to(Path(previous).expanduser()))
+    return result
+
+
+def load_user_config() -> None:
+    """Apply saved model choices before importing libraries that cache HF locations."""
+    values = saved_config()
+    root = Path(values.get('MEETING_INTERPRETER_MODEL_DIR') or os.getenv('MEETING_INTERPRETER_MODEL_DIR') or ollama_model_directory()).expanduser()
+    values = _relocated_values(values, root)
+    for key, value in values.items():
+        if key.startswith(('MEETING_INTERPRETER_ASR_', 'MEETING_INTERPRETER_SERVICE_ASR_', 'MEETING_INTERPRETER_TRANSLATION_', 'MEETING_INTERPRETER_OLLAMA_', 'MEETING_INTERPRETER_LLAMA_', 'MEETING_INTERPRETER_SENSEVOICE_')):
+            os.environ[key] = value
+        elif key not in os.environ:
+            os.environ[key] = value
+    os.environ.update(MEETING_INTERPRETER_MODEL_DIR=str(root), HF_HOME=str(root / 'huggingface'),
+                      HUGGINGFACE_HUB_CACHE=str(root / 'huggingface/hub'), TRANSFORMERS_CACHE=str(root / 'huggingface/transformers'))
+    for key, engine in (('MEETING_INTERPRETER_ASR_MODEL', 'whisper'), ('MEETING_INTERPRETER_TRANSLATION_MODEL', 'nllb')):
+        selected = os.getenv(key, RECOMMENDED_ASR_MODEL if engine == 'whisper' else 'facebook/nllb-200-distilled-600M')
+        resolved = resolve_model_location(selected, root, engine)
+        if resolved:
+            os.environ[key] = resolved
+
+    if all((root / name).is_file() for name in ('model.int8.onnx', 'tokens.txt', 'silero_vad.onnx')):
+        os.environ['MEETING_INTERPRETER_SENSEVOICE_MODEL'] = str(root)
+    engine = os.getenv('MEETING_INTERPRETER_ASR_BACKEND', 'whisper')
+    provider = os.getenv('MEETING_INTERPRETER_TRANSLATION_BACKEND', 'nllb')
+    roles = []
+    if engine in SERVICE_URLS:
+        roles.append((engine, 'MEETING_INTERPRETER_SERVICE_ASR_MODEL', 'MEETING_INTERPRETER_ASR_URL', 'asr'))
+    if provider in SERVICE_URLS:
+        roles.append((provider, 'MEETING_INTERPRETER_OLLAMA_MODEL' if provider == 'ollama' else 'MEETING_INTERPRETER_LLAMA_MODEL',
+                      'MEETING_INTERPRETER_OLLAMA_URL' if provider == 'ollama' else 'MEETING_INTERPRETER_LLAMA_URL', 'translation'))
+    for provider, model_key, url_key, role in roles:
+        selected = os.getenv(model_key, 'translategemma:4b' if provider == 'ollama' and role == 'translation' else '')
+        if selected and '/' not in selected:
+            try:
+                info = inspect_service(provider, os.getenv(url_key) or SERVICE_URLS[provider])
+                os.environ[model_key] = match_service_model(selected, [m for m in info['models'] if m.get(role, True)])
+            except ValueError:
+                pass
+
+
+def model_settings() -> dict:
+    """Read pending saved selections without changing active warmed models."""
+    values = {**os.environ, **saved_config()}
     engine = values.get('MEETING_INTERPRETER_ASR_BACKEND', 'whisper')
     provider = values.get('MEETING_INTERPRETER_TRANSLATION_BACKEND', 'nllb')
-    return {'model_dir': current_model_directory(), 'asr_engine': engine,
+    root = current_model_directory()
+    return {'model_dir': root, 'model_dir_exists': Path(root).is_dir(), 'ollama_model_dir': ollama_model_directory(), 'asr_engine': engine,
             'asr_model': values.get('MEETING_INTERPRETER_SERVICE_ASR_MODEL', '') if engine in SERVICE_URLS else values.get('MEETING_INTERPRETER_ASR_MODEL', RECOMMENDED_ASR_MODEL),
             'asr_url': values.get('MEETING_INTERPRETER_ASR_URL', SERVICE_URLS.get(engine, '')),
             'translation_backend': provider,
@@ -284,38 +430,39 @@ def model_settings() -> dict:
             'translation_url': values.get('MEETING_INTERPRETER_OLLAMA_URL' if provider == 'ollama' else 'MEETING_INTERPRETER_LLAMA_URL', SERVICE_URLS.get(provider, ''))}
 
 
-def current_model_directory() -> str:
-    try:
-        for line in user_config_path().read_text(encoding="utf-8").splitlines():
-            if line.startswith("MEETING_INTERPRETER_MODEL_DIR="):
-                return str(Path(line.split("=", 1)[1].strip().strip("\"'")).expanduser())
-    except OSError:
-        pass
-    configured = os.getenv("MEETING_INTERPRETER_MODEL_DIR")
-    if configured:
-        return str(Path(configured).expanduser())
-    return str(Path.home() / "Library/Application Support/LocalMeetingInterpreter/models")
-
-
-def inspect_asr_models(engine: str = "whisper", model: str | None = None) -> dict[str, object]:
-    root = Path(current_model_directory()).expanduser()
-    if engine == "sensevoice":
-        folder = root / "asr" / "sensevoice"
-        required = ["model.int8.onnx", "tokens.txt", "silero_vad.onnx"]
+def inspect_asr_models(engine: str = 'whisper', model: str | None = None, model_dir: str | None = None) -> dict[str, object]:
+    root = Path(model_dir or current_model_directory()).expanduser()
+    if not root.is_absolute():
+        raise ValueError('模型目录必须是绝对路径。')
+    values = {**os.environ, **saved_config()}
+    if engine == 'sensevoice':
+        explicit = values.get('MEETING_INTERPRETER_SENSEVOICE_MODEL')
+        folder = Path(explicit).expanduser() if explicit and (model_dir is None or str(root) == current_model_directory()) else root / 'asr/sensevoice'
+        if all((root / name).is_file() for name in ('model.int8.onnx', 'tokens.txt', 'silero_vad.onnx')):
+            folder = root
+        required = ['model.int8.onnx', 'tokens.txt', 'silero_vad.onnx']
         present = [name for name in required if (folder / name).is_file()]
-        return {"engine": engine, "model": "SenseVoice-Small", 'models': ['SenseVoice-Small'], "installed": len(present) == len(required), "progress": round(len(present) / len(required) * 100), "path": str(folder), "missing": [name for name in required if name not in present], "message": "已连接，可使用" if len(present) == len(required) else "需要 model.int8.onnx、tokens.txt、silero_vad.onnx"}
-    if engine == 'nllb':
-        selected = model or os.getenv('MEETING_INTERPRETER_TRANSLATION_MODEL', 'facebook/nllb-200-distilled-600M')
-        marker = root / 'huggingface/hub' / ('models--' + selected.replace('/', '--'))
-        return {'engine': engine, 'model': selected, 'models': [selected], 'installed': marker.is_dir() and any(marker.rglob('*.safetensors'))}
-    cache = root / "huggingface"
-    selected = model or os.getenv('MEETING_INTERPRETER_ASR_MODEL', RECOMMENDED_ASR_MODEL)
-    marker = cache / "hub" / ("models--" + selected.replace("/", "--"))
-    installed = marker.is_dir() and any(marker.rglob("*.safetensors"))
-    models = [RECOMMENDED_ASR_MODEL, selected]
-    if (cache / 'hub').is_dir():
-        models.extend(folder.name.removeprefix('models--').replace('--', '/') for folder in (cache / 'hub').glob('models--*whisper*') if any(folder.rglob('*.safetensors')))
-    return {"engine": "whisper", "model": selected, 'models': list(dict.fromkeys(models)), "installed": installed, "progress": 100 if installed else 0, "path": str(cache), "missing": [] if installed else ["Whisper 权重"], "message": "已连接，可使用" if installed else "尚未下载 Whisper 权重"}
+        installed = len(present) == len(required)
+        return {'engine': engine, 'model': 'SenseVoice-Small', 'models': ['SenseVoice-Small'], 'installed': installed, 'progress': round(len(present) / len(required) * 100), 'path': str(folder), 'missing': [name for name in required if name not in present], 'message': '已连接，可使用' if installed else '需要 model.int8.onnx、tokens.txt、silero_vad.onnx'}
+    selected = model or values.get('MEETING_INTERPRETER_TRANSLATION_MODEL' if engine == 'nllb' else 'MEETING_INTERPRETER_ASR_MODEL', 'facebook/nllb-200-distilled-600M' if engine == 'nllb' else RECOMMENDED_ASR_MODEL)
+    resolved = resolve_model_location(selected, root, engine)
+    installed = resolved is not None
+    # Preserve repository IDs but replace stale absolute paths with their new location.
+    if resolved and (Path(selected).is_absolute() or resolved == str(root)):
+        selected = resolved
+    models = [selected]
+    if engine == 'whisper':
+        models.append(RECOMMENDED_ASR_MODEL)
+    for cache in _cache_roots(root):
+        if cache.is_dir():
+            for marker in sorted(cache.glob('models--*')):
+                repo = marker.name.removeprefix('models--').replace('--', '/')
+                if (engine != 'whisper' or 'whisper' in repo.lower()) and resolve_model_location(repo, root, engine):
+                    models.append(repo)
+    message = '本地文件已找到' if installed else ('目录不存在或外置盘未挂载，请重新选择目录' if not root.is_dir() else '所选模型未在此目录找到，请选择已检测到的模型')
+    return {'engine': engine, 'model': selected, 'models': list(dict.fromkeys(models)), 'installed': installed,
+            'resolved_model': resolved, 'progress': 100 if installed else 0, 'path': str(root),
+            'missing': [] if installed else ['模型权重'], 'message': message}
 
 
 def download_asr_model(engine: str = "whisper", timeout: float = 3600.0, model: str | None = None) -> dict[str, object]:
