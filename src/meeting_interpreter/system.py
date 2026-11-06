@@ -201,41 +201,43 @@ def pull_ollama_model(model: str = RECOMMENDED_OLLAMA_MODEL, timeout: float = 18
     return {"ok": result.returncode == 0, "model": model, "message": output[-1600:] or ("推荐模型已准备好" if result.returncode == 0 else "推荐模型下载失败")}
 
 
-def save_model_directory(model_dir: str, asr_engine: object = None, model_settings: dict | None = None) -> dict[str, object]:
+def save_model_directory(model_dir: str, asr_engine: object = None, selection: dict | None = None) -> dict[str, object]:
     if asr_engine is not None and asr_engine not in ('whisper', 'sensevoice', 'ollama', 'llama'):
         raise ValueError('请选择有效的语音识别引擎。')
     extra = {}
-    if model_settings:
+    if selection:
         asr_engine = asr_engine or os.getenv('MEETING_INTERPRETER_ASR_BACKEND', 'whisper')
-        translation = model_settings.get('translation_backend', os.getenv('MEETING_INTERPRETER_TRANSLATION_BACKEND', 'ollama'))
+        translation = selection.get('translation_backend', os.getenv('MEETING_INTERPRETER_TRANSLATION_BACKEND', 'ollama'))
         if translation not in ('ollama', 'llama', 'nllb'):
             raise ValueError('请选择 Ollama、llama.app 或内置翻译引擎。')
         for field in ('asr_model', 'translation_model'):
-            if field in model_settings:
-                value = model_settings[field]
-                if not isinstance(value, str) or (not value.strip() and (field != 'asr_model' or asr_engine in SERVICE_URLS)) or any(c in value for c in '\r\n\x00"\''):
+            if field in selection:
+                value = selection[field]
+                # An empty catalogue is an unconfigured model, not a reason to
+                # discard changes to another model or service.
+                if not isinstance(value, str) or any(c in value for c in '\r\n\x00"\''):
                     raise ValueError('请选择有效的模型名称。')
-        if 'asr_model' in model_settings:
+        if 'asr_model' in selection:
             key = 'MEETING_INTERPRETER_SERVICE_ASR_MODEL' if asr_engine in SERVICE_URLS else 'MEETING_INTERPRETER_ASR_MODEL'
             if asr_engine != 'sensevoice':
-                extra[key] = model_settings['asr_model'].strip()
+                extra[key] = selection['asr_model'].strip()
         if asr_engine in SERVICE_URLS:
-            extra['MEETING_INTERPRETER_ASR_URL'] = local_url(model_settings.get('asr_url') or SERVICE_URLS[asr_engine])
+            extra['MEETING_INTERPRETER_ASR_URL'] = local_url(selection.get('asr_url') or SERVICE_URLS[asr_engine])
         extra['MEETING_INTERPRETER_TRANSLATION_BACKEND'] = translation
-        if 'translation_model' in model_settings:
+        if 'translation_model' in selection:
             key = {'ollama': 'MEETING_INTERPRETER_OLLAMA_MODEL', 'llama': 'MEETING_INTERPRETER_LLAMA_MODEL', 'nllb': 'MEETING_INTERPRETER_TRANSLATION_MODEL'}[translation]
-            extra[key] = model_settings['translation_model'].strip()
+            extra[key] = selection['translation_model'].strip()
         if translation in SERVICE_URLS:
             key = 'MEETING_INTERPRETER_OLLAMA_URL' if translation == 'ollama' else 'MEETING_INTERPRETER_LLAMA_URL'
-            extra[key] = local_url(model_settings.get('translation_url') or SERVICE_URLS[translation])
+            extra[key] = local_url(selection.get('translation_url') or SERVICE_URLS[translation])
     if any(char in model_dir for char in "\r\n\x00"):
         raise ValueError("模型目录不能包含换行或空字符。")
     path = Path(model_dir).expanduser()
     if not path.is_absolute():
         raise ValueError("模型目录必须是绝对路径。")
-    if len(path.parts) >= 3 and path.parts[1] == 'Volumes' and not Path(*path.parts[:3]).is_dir():
-        raise ValueError('外置盘未挂载，请连接磁盘或选择其他模型目录。')
-    path.mkdir(parents=True, exist_ok=True)
+    # Saving preferences must not depend on model storage being available.
+    # Ollama/llama own their storage, and an external disk may be disconnected.
+    # Only a subsequent explicit download should create model directories.
     config = user_config_path()
     config.parent.mkdir(parents=True, exist_ok=True)
     existing: list[str] = []
@@ -284,7 +286,11 @@ def save_model_directory(model_dir: str, asr_engine: object = None, model_settin
             output.append(line)
     output.extend(f"{key}={value}" for key, value in values.items() if key not in seen)
     _atomic_write(config, "\n".join(output).rstrip() + "\n")
-    return {"model_dir": str(path), "config_path": str(config), "restart_required": True}
+    persisted = saved_config()
+    if any(persisted.get(key) != value for key, value in values.items()) or removed.intersection(persisted):
+        raise OSError('配置写入后核对失败，请重新保存设置。')
+    return {"model_dir": str(path), "config_path": str(config), "restart_required": True,
+            "saved": True, "settings": model_settings()}
 
 
 def saved_config() -> dict[str, str]:

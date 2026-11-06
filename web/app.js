@@ -459,12 +459,16 @@ async function saveModelDirectory() {
       asr_model: asrModel.value, asr_url: asrServiceUrl.value, translation_backend: translationEngine.value || 'ollama', translation_model: translationModel.value, translation_url: translationServiceUrl.value }) });
     const result = await response.json();
     if (!response.ok) throw new Error(result.detail || '保存失败');
-    const saved = localized('识别、翻译模型与目录已保存，重新打开 App 后生效', '認識・翻訳モデルと保存先を保存しました。App を再起動してください', 'Recognition, translation and directory saved. Reopen the App to apply.');
+    let saved = localized('识别、翻译模型与目录已保存，重新打开 App 后生效', '認識・翻訳モデルと保存先を保存しました。App を再起動してください', 'Recognition, translation and directory saved. Reopen the App to apply.');
+    if (result.settings?.model_dir_exists === false) saved += localized('。模型目录当前不可用，内置识别需连接磁盘或选择有效目录；服务模型使用其自身存储', '。保存先は現在利用できません。内蔵認識には有効な保存先が必要です。サービスモデルはサービス側で保存されます', ' The model folder is currently unavailable. Built-in recognition needs a valid folder; service models use their own storage.');
     setDiagnostic(saved);
     notice.textContent = saved; notice.className = 'model-save-notice good';
     if (systemNotice) { systemNotice.className = 'system-notice good'; systemNotice.textContent = saved; }
-    const health = await fetch('/health');
-    if (health.ok) updateHealth(await health.json());
+    // Status refresh is independent of the configuration already written.
+    try {
+      const health = await fetch('/health');
+      if (health.ok) updateHealth(await health.json());
+    } catch { /* Keep the verified save receipt visible until the next poll. */ }
   } catch (error) {
     notice.textContent = `${localized('保存失败', '保存失敗', 'Save failed')}: ${error.message}`; notice.className = 'model-save-notice warn';
     if (systemNotice) { systemNotice.className = 'system-notice warn'; systemNotice.textContent = `保存失败：${error.message}`; }

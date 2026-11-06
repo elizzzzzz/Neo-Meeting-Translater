@@ -155,11 +155,67 @@ def test_sensevoice_inspection_honors_explicit_saved_location(monkeypatch, tmp_p
 
 
 def test_saving_missing_external_volume_does_not_create_fake_mount(monkeypatch, tmp_path):
-    import pytest
     monkeypatch.setattr(system, 'user_config_path', lambda: tmp_path / '.env')
-    with pytest.raises(ValueError, match='挂载'):
-        system.save_model_directory('/Volumes/lmi-regression-unmounted/models')
-    assert not (tmp_path / '.env').exists()
+    root = '/Volumes/lmi-regression-unmounted/models'
+    result = system.save_model_directory(root)
+    assert system.saved_config()['MEETING_INTERPRETER_MODEL_DIR'] == root
+    assert not Path('/Volumes/lmi-regression-unmounted').exists()
+    assert result['saved'] is True
+    assert result['settings']['model_dir_exists'] is False
+
+
+def test_asr_service_save_survives_unmounted_root_and_process_restart(monkeypatch, tmp_path):
+    import json
+    import subprocess
+    import sys
+    from fastapi.testclient import TestClient
+    from meeting_interpreter.app import create_app
+
+    config = tmp_path / '.env'
+    root = '/Volumes/lmi-regression-unmounted/models'
+    config.write_text(f'MEETING_INTERPRETER_MODEL_DIR={root}\nMEETING_INTERPRETER_ASR_BACKEND=sensevoice\nMEETING_INTERPRETER_ASR_MODEL=/old/whisper\n')
+    monkeypatch.setattr(system, 'user_config_path', lambda: config)
+    monkeypatch.setenv('MEETING_INTERPRETER_MODE', 'mock')
+    desired = dict(model_dir=root, asr_engine='ollama', asr_model='frozenlab/qwen3-asr:1.7b',
+                   asr_url='http://127.0.0.1:11434', translation_backend='llama',
+                   translation_model='', translation_url='http://127.0.0.1:9931')
+    with TestClient(create_app()) as client:
+        response = client.post('/settings', json=desired)
+        assert response.status_code == 200, response.text
+        result = response.json()
+        assert result['saved'] is True
+        for key, value in desired.items():
+            assert result['settings'][key] == value
+            assert client.get('/settings').json()[key] == value
+        assert client.get('/health').json()['settings']['restart_required']
+    # A fresh process must override the historical inherited ASR settings too.
+    restarted = subprocess.run([sys.executable, '-c', '''
+import json, sys
+from pathlib import Path
+from meeting_interpreter import system
+system.user_config_path = lambda: Path(sys.argv[1])
+system.load_user_config()
+from meeting_interpreter.asr import create_asr_backend
+asr = create_asr_backend()
+print(json.dumps({'settings':system.model_settings(), 'runtime_model':asr.model}))
+''', str(config)], capture_output=True, text=True, check=True)
+    actual = json.loads(restarted.stdout)
+    assert actual['runtime_model'] == desired['asr_model']
+    for key, value in desired.items():
+        assert actual['settings'][key] == value
+    assert 'MEETING_INTERPRETER_ASR_MODEL=' not in config.read_text()
+
+
+def test_empty_service_selection_clears_previous_model_without_blocking_other_settings(monkeypatch, tmp_path):
+    config = tmp_path / '.env'
+    config.write_text('MEETING_INTERPRETER_SERVICE_ASR_MODEL=old-asr\nMEETING_INTERPRETER_OLLAMA_MODEL=old-translation\n')
+    monkeypatch.setattr(system, 'user_config_path', lambda: config)
+    result = system.save_model_directory(str(tmp_path / 'not-created'), 'ollama', {
+        'asr_model':'', 'translation_backend':'ollama', 'translation_model':''})
+    assert result['settings']['asr_model'] == ''
+    assert result['settings']['translation_model'] == ''
+    assert system.saved_config()['MEETING_INTERPRETER_SERVICE_ASR_MODEL'] == ''
+    assert not (tmp_path / 'not-created').exists()
 
 
 def test_default_directory_follows_custom_ollama_location(monkeypatch, tmp_path):

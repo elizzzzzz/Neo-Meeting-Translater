@@ -57,6 +57,30 @@ test('local settings save the selected speech engine with its model directory', 
   assert.deepEqual(JSON.parse(request.options.body), {model_dir:'/models',asr_engine:'sensevoice',asr_model:'SenseVoice-Small',asr_url:'',translation_backend:'llama',translation_model:'local-translate',translation_url:'http://127.0.0.1:9931'});
 });
 
+test('health refresh failure does not relabel saved settings as a save failure', async () => {
+  const app = loadApp();
+  await new Promise(resolve => setImmediate(resolve));
+  app.elements.get('#modelDirectory').value = '/models';
+  app.context.fetch = async url => {
+    if (url === '/health') throw new Error('connection reset');
+    return {ok:true, json:async()=>({saved:true, settings:{model_dir_exists:true}})};
+  };
+  await app.run('saveModelDirectory()');
+  assert.match(app.elements.get('#modelSaveNotice').textContent, /已保存/);
+  assert.equal(app.elements.get('#modelSaveNotice').className, 'model-save-notice good');
+});
+
+test('persisted unavailable directory is reported separately from save success', async () => {
+  const app = loadApp();
+  await new Promise(resolve => setImmediate(resolve));
+  app.elements.get('#modelDirectory').value = '/Volumes/offline/models';
+  app.context.fetch = async url => ({ok:true, json:async()=>url === '/health' ? {mode:'mock',models:{ready:false}} : {saved:true,settings:{model_dir_exists:false}}});
+  await app.run('saveModelDirectory()');
+  const notice = app.elements.get('#modelSaveNotice');
+  assert.match(notice.textContent, /已保存/);
+  assert.match(notice.textContent, /目录.*不可用/);
+});
+
 test('speech and translation discover separate compatible models without loading them', async () => {
   const app=loadApp();
   app.context.fetch=async url=>({ok:true,json:async()=>({reachable:true,models:[
