@@ -1,12 +1,13 @@
 import base64
 import json
 import io
+import struct
 import urllib.error
 
 import pytest
 
 from meeting_interpreter.models import AudioEvent
-from meeting_interpreter.pipeline import Pipeline, is_silent_pcm16
+from meeting_interpreter.pipeline import AdaptiveVoiceGate, Pipeline, is_silent_pcm16
 from meeting_interpreter.translation import NLLBTranslationBackend, OllamaTranslationBackend, nllb_language_code
 from meeting_interpreter.speaker import PendingSpeakerBackend
 
@@ -116,6 +117,21 @@ async def test_mock_pipeline_emits_caption() -> None:
 def test_pcm16_silence_gate() -> None:
     assert is_silent_pcm16(b"\x00" * 3200) is True
     assert is_silent_pcm16((b"\x00\x00" * 1599) + b"\xff\x7f") is False
+
+
+def test_adaptive_voice_gate_rejects_steady_background_and_keeps_core_speaker() -> None:
+    gate = AdaptiveVoiceGate()
+    # A quiet, steady room/air-conditioner bed is learned as the noise floor.
+    background = struct.pack('<' + 'h' * 1600, *([110, -110] * 800))
+    for _ in range(12):
+        _rms, _peak, active_ms = gate.analyze(background, 16_000)
+        assert active_ms == 0
+    # A clearly stronger but still far-field voice remains eligible for ASR.
+    speaker = struct.pack('<' + 'h' * 16000, *([420, -420] * 8000))
+    _rms, _peak, active_ms = gate.analyze(speaker, 16_000)
+    assert active_ms >= 900
+    filtered = gate.filter(background, 16_000)
+    assert max(abs(sample) for sample in memoryview(filtered).cast('h')) == 0
 
 
 @pytest.mark.asyncio

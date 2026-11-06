@@ -108,6 +108,19 @@ async def test_dc_noise_does_not_invoke_asr():
 
 
 @pytest.mark.asyncio
+async def test_steady_background_bed_does_not_invoke_asr_but_core_voice_does():
+    pipeline = Pipeline(mode="local", asr_backend=Recognizer())
+    background = audio([110, -110] * 800)
+    speaker = audio([420, -420] * 800)
+    for _ in range(12):
+        assert [c async for c in pipeline.process_audio(background)] == []
+    assert pipeline.asr.windows == []
+    for _ in range(8):
+        _ = [c async for c in pipeline.process_audio(speaker)]
+    assert pipeline.asr.windows
+
+
+@pytest.mark.asyncio
 async def test_single_click_surrounded_by_silence_does_not_invoke_asr():
     pipeline = Pipeline(mode="local", asr_backend=Recognizer())
     assert [c async for c in pipeline.process_audio(audio([0] * 9600))] == []

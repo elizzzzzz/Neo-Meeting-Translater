@@ -5,6 +5,7 @@ import base64
 import itertools
 import math
 import time
+from collections import deque
 from collections.abc import AsyncIterator
 import os
 import re
@@ -56,6 +57,67 @@ def pcm16_activity(audio: bytes, sample_rate: int) -> tuple[float, float, float]
     return math.sqrt(total_square / len(samples)) / 32768.0, peak, active_samples / sample_rate * 1000
 
 
+class AdaptiveVoiceGate:
+    """Suppress a steady room bed while preserving the dominant speaker."""
+
+    def __init__(self, history_size: int = 50) -> None:
+        self._rms_history: deque[float] = deque(maxlen=history_size)
+        self._peak_history: deque[float] = deque(maxlen=history_size)
+
+    @staticmethod
+    def _quantile(values: deque[float], fraction: float) -> float:
+        if not values:
+            return 0.001
+        ordered = sorted(values)
+        return ordered[min(len(ordered) - 1, round((len(ordered) - 1) * fraction))]
+
+    def _thresholds(self) -> tuple[float, float]:
+        noise_rms = self._quantile(self._rms_history, .2)
+        noise_peak = self._quantile(self._peak_history, .2)
+        return max(.0045, noise_rms * 2.2), max(.006, noise_peak * 1.8)
+
+    def _frame_active(self, frame: memoryview) -> tuple[bool, float, float]:
+        if not frame:
+            return False, 0.0, 0.0
+        mean = sum(frame) / len(frame)
+        centered = [sample - mean for sample in frame]
+        rms = math.sqrt(sum(sample * sample for sample in centered) / len(centered)) / 32768.0
+        peak = max(abs(sample) for sample in centered) / 32768.0
+        rms_floor, peak_floor = self._thresholds()
+        return rms >= rms_floor and peak >= peak_floor, rms, peak
+
+    def process(self, audio: bytes, sample_rate: int) -> tuple[float, float, float, bytes]:
+        if len(audio) % 2:
+            raise ValueError("音频必须是完整的 PCM16 单声道采样")
+        samples = memoryview(audio).cast("h")
+        if not samples:
+            return 0.0, 0.0, 0.0, audio
+        frame_size = max(1, sample_rate // 50)
+        total_square = 0.0
+        peak = 0.0
+        active_samples = 0
+        output = bytearray(len(audio))
+        for offset in range(0, len(samples), frame_size):
+            frame = samples[offset:offset + frame_size]
+            active, frame_rms, frame_peak = self._frame_active(frame)
+            total_square += (frame_rms * 32768.0) ** 2 * len(frame)
+            peak = max(peak, frame_peak)
+            if active:
+                active_samples += len(frame)
+                output[offset * 2:(offset + len(frame)) * 2] = frame.tobytes()
+            else:
+                self._rms_history.append(frame_rms)
+                self._peak_history.append(frame_peak)
+        rms = math.sqrt(total_square / len(samples)) / 32768.0
+        return rms, peak, active_samples / sample_rate * 1000, bytes(output)
+
+    def analyze(self, audio: bytes, sample_rate: int) -> tuple[float, float, float]:
+        return self.process(audio, sample_rate)[:3]
+
+    def filter(self, audio: bytes, sample_rate: int) -> bytes:
+        return self.process(audio, sample_rate)[3]
+
+
 def text_matches_language(text: str, language: str) -> bool:
     if language == "zh":
         return bool(re.search(r"[\u3400-\u9fff]", text)) or not re.search(r"[A-Za-z\u3040-\u30ff]", text)
@@ -102,6 +164,7 @@ class Pipeline:
         self._decoded_has_timestamps: dict[str, bool] = {}
         self._speaker_ids: dict[str, str] = {}
         self._last_speaker_probe_ms: dict[str, int] = {}
+        self._voice_gates: dict[str, AdaptiveVoiceGate] = {}
         self._last_events: dict[str, AudioEvent] = {}
         self._latest_caption: dict[str, CaptionEvent] = {}
         self._manual_speaker_number = 1
@@ -187,7 +250,8 @@ class Pipeline:
     async def _process_local(self, event: AudioEvent, raw_audio: bytes, defer_partial: bool = False) -> AsyncIterator[CaptionEvent]:
         if event.channels != 1:
             raise ValueError("语音识别需要单声道音频")
-        rms, peak, active_ms = pcm16_activity(raw_audio, event.sample_rate)
+        gate = self._voice_gates.setdefault(event.session_id, AdaptiveVoiceGate())
+        rms, peak, active_ms, filtered_audio = gate.process(raw_audio, event.sample_rate)
         self.audio_status = {"state": "sound" if active_ms else "silent", "rms": round(rms, 5), "peak": round(peak, 5),
                              "message": "收到声音，正在识别" if active_ms else "静音或音量较低，等待讲话"}
         session = event.session_id
@@ -211,7 +275,7 @@ class Pipeline:
             self._voice_duration_ms[session] = 0
             self._last_infer_ms.pop(session, None)
             self._speaker_ids.setdefault(session, self._manual_label)
-        buffer.extend(raw_audio)
+        buffer.extend(filtered_audio)
         if active_ms:
             self._last_voice_ms[session] = audio_ms
             self._voice_duration_ms[session] = self._voice_duration_ms.get(session, 0) + active_ms

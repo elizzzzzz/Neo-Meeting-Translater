@@ -773,7 +773,7 @@ async function startSession() {
       });
       configuration = null;
       if (socket !== sessionSocket || sessionSocket.readyState !== WebSocket.OPEN) return;
-      const audio = { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+      const audio = { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true, voiceIsolation: true };
       if (inputDevice.value) audio.deviceId = { exact: inputDevice.value };
       let selectedStream;
       try {
@@ -782,7 +782,7 @@ async function startSession() {
         // Device IDs can change when macOS grants microphone permission. Retry
         // with the default input instead of ending the whole session.
         if (error.name !== 'OverconstrainedError' && error.name !== 'NotFoundError') throw error;
-        selectedStream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+        selectedStream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true, voiceIsolation: true } });
       }
       // Permission changes macOS device IDs and reveals their human-readable
       // names. Display the track actually opened, including a default fallback.
@@ -852,6 +852,8 @@ async function startSession() {
       if (Number.isFinite(event.queued_audio_ms)) queuedAudioMs = event.queued_audio_ms;
       if (Number.isFinite(event.queued_audio_ms)) audioStatus.textContent = event.queued_audio_ms > 1500 ? `识别积压 ${(event.queued_audio_ms / 1000).toFixed(1)} 秒 · 音频完整保留` : '音频接收正常 · 无跳过';
       if (event.state === 'rejected') setDiagnostic(event.message);
+      else if (event.state === 'silent' && event.message) setDiagnostic(event.message);
+      else if (event.state === 'sound') setDiagnostic(localized('核心发言已捕获，正在识别', '主話者の音声を捕捉中・認識しています', 'Core speaker captured; recognizing'));
     }
     if (event.type === 'capture_paused') {
       stopCapture(); sessionEnding = true; setRuntime(false, '收音已暂停'); setDiagnostic(event.message); sendPendingAudio();
