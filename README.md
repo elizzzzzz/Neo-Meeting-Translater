@@ -27,14 +27,16 @@
 
 ## 下载和运行
 
-从 [GitHub Releases](https://github.com/elizzzzzz/local-meeting-interpreter/releases) 下载：
+从 [v0.2.17 发布页](https://github.com/elizzzzzz/local-meeting-interpreter/releases/tag/v0.2.17) 下载（私有仓库需要登录有访问权限的 GitHub 账号）：
 
 - `LocalMeetingInterpreter-portable.zip`：解压后直接双击 `LocalMeetingInterpreter.app`，不需要拖入 Applications。
 - `LocalMeetingInterpreter.dmg`：适合按 macOS 常规方式安装。
 
 安装包不包含 ASR、翻译或 TTS 模型权重，也不会把模型提交到 GitHub。首次使用时，在 App 的“模型与服务设置”中选择本地引擎、模型目录和服务地址。
 
-免安装 ZIP 不启动 Chrome、Safari、Edge 或其他浏览器，字幕页面嵌在原生 macOS App 窗口中。
+字幕页面嵌在原生 macOS App 窗口中，无需打开独立浏览器。当前安装包面向 Apple Silicon（arm64），使用本地临时签名，未进行 Apple 公证。
+
+更多安装和权限说明见 [macOS 安装包](docs/macos-install.md)。
 
 ## 首次配置
 
@@ -60,7 +62,7 @@ Apple SpeechAnalyzer 是 macOS 26+ 的本机语音识别引擎。它只负责语
 - 中文、日语和英语资源的可用性取决于当前 macOS 安装情况。
 - 当前版本已完成接入和只读资源检测，但真实中文、日语识别准确率与端到端延时尚未完成正式实测。
 
-自动识别中文和日语目前属于应用层候选比较实验功能。需要稳定识别时，可使用字幕区域上方的源语言按钮锁定中文、日本語或 English。
+Apple 引擎的双语自动识别目前属于应用层候选比较实验功能。需要稳定识别时，可使用字幕区域上方的源语言按钮锁定中文、日本語或 English。
 
 ### MLX Whisper
 
@@ -87,7 +89,7 @@ asr/sensevoice/silero_vad.onnx
 
 ## 翻译模型和本地服务
 
-翻译可以使用内置 NLLB 适配器、Ollama 或 llama.app。Ollama / llama.app 负责管理各自的模型文件，App 只通过本机服务地址调用它们。
+发布的 App 通过 Ollama 或 llama.app 连接本地翻译模型。Ollama / llama.app 负责管理各自的模型文件，App 通过配置的本机服务地址调用它们。NLLB 适配器需要额外安装 Python 依赖，仅用于源码运行，不包含在当前精简安装包中。
 
 Ollama 示例：
 
@@ -100,7 +102,7 @@ ollama pull translategemma:4b
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -e '.[apple,translation,speaker]'
+pip install -e '.[apple,audio,speaker]'
 
 export MEETING_INTERPRETER_MODE=local
 export MEETING_INTERPRETER_TRANSLATION_BACKEND=ollama
@@ -127,12 +129,12 @@ App 一次采集一个输入设备：
 
 源码运行时提供以下本地接口，便于集成自己的音频采集器：
 
-- \`GET /health\`：查看服务状态和当前运行模式。
-- \`WS /ws\`：发送音频事件并接收实时字幕事件。
+- `GET /health`：查看服务状态和当前运行模式。
+- `WS /ws`：发送音频事件并接收实时字幕事件。
 
 音频事件示例：
 
-\`\`\`json
+```json
 {
   "type": "audio",
   "session_id": "demo",
@@ -141,7 +143,7 @@ App 一次采集一个输入设备：
   "channels": 1,
   "source": "microphone"
 }
-\`\`\`
+```
 
 ## 字幕模式
 
@@ -151,8 +153,8 @@ App 一次采集一个输入设备：
 
 - 置顶、拖动和缩放；
 - 双栏显示、仅源文、仅译文；
-- 历史记录滚轮查看；
-- 原文在左、译文在右；
+- 历史记录滚轮查看（记录保留在本次会话中，退出前请导出）；
+- 固定语言双栏：中日为中文在左、日文在右；中英为中文在左、英文在右；英日为英文在左、日文在右；“源 / 译”标志随发言语言切换；
 - 记录导出为 UTF-8 文本。
 
 “源 / 译”标志只在检测到新段落或源语言发生变化时显示，避免连续发言时反复闪烁。源语言选择按钮可以在识别不确定时立即锁定语言。
@@ -170,11 +172,12 @@ App 一次采集一个输入设备：
 - Apple SpeechAnalyzer 需要 macOS 26+。
 - Apple 语言资源受 macOS 版本和系统安装状态影响；它们不受 App 自定义模型目录控制。
 - 尚未完成真实 Apple 中文、日语识别准确率和会议端到端延时的正式基准测试。
-- 自动中日/中英/英日语言判断是应用层候选比较实验功能；嘈杂或短句场景建议使用源语言按钮。
+- Apple 引擎的双语自动判断是应用层候选比较实验功能；嘈杂或短句场景建议使用源语言按钮。
 - 录音中保存设置会短暂停止收音，切换期间可能缺少少量音频。
 - 说话人区分只能生成匿名标签，不能从会议软件获得真实姓名；混合回环音频中的多人同时讲话会降低区分效果。
 - 语音合成输出尚未完成，当前交付以文字字幕为主。
-- 会议音频需要 macOS 音频回环设备，App 本身不会直接读取腾讯会议或 Teams 的内部音频通道。
+- 会议音频需要 macOS 音频回环设备，App 本身不会直接读取腾讯会议或 Teams 的内部音频通道；真实麦克风、腾讯会议和 Teams 回环采集仍需在目标设备单独验收。
+- 无法保证所有会议场景达到识别约 1 秒、翻译再增加约 1 秒的目标；实际延时受模型、音频长度、噪声和设备负载影响。
 
 ## 开发者运行
 
@@ -188,9 +191,10 @@ pip install -e '.[dev]'
 python -m meeting_interpreter --mock
 ```
 
-启动桌面 App：
+启动桌面 App（需先安装桌面和音频依赖）：
 
 ```bash
+pip install -e '.[apple,audio,speaker]'
 python -m meeting_interpreter.desktop
 ```
 
@@ -204,7 +208,7 @@ node --test tests/frontend.test.cjs
 构建 arm64 安装包：
 
 ```bash
-pip install -e '.[apple,installer,speaker]'
+pip install -e '.[apple,audio,installer,speaker]'
 ./scripts/build_macos_app.sh
 ```
 
@@ -215,6 +219,13 @@ pip install -e '.[apple,installer,speaker]'
 - `dist/LocalMeetingInterpreter.dmg`
 
 可通过 `MEETING_INTERPRETER_ICON_VARIANT=a|b|c` 选择三种内置图标方案后重新构建。
+
+## 文档与评估
+
+- [0.2.17 设置即时生效说明](docs/release-0.2.17.md)
+- [0.2.16 Apple SpeechAnalyzer 接入说明](docs/release-0.2.16.md)
+- [中日识别评估](docs/asr-evaluation-0.2.3.md)
+- [长段中日语音回放评估](docs/asr-evaluation-0.2.4.md)
 
 ## 版本 0.2.17
 
@@ -227,7 +238,7 @@ pip install -e '.[apple,installer,speaker]'
 - Apple SpeechAnalyzer 资源仍需用户显式点击准备。
 - 原生 macOS 窗口、字幕浮窗、中文状态说明和单实例行为保持可用。
 
-发布验证结果：
+已有的 0.2.17 构建验证记录如下；本次发布仅整理文档并上传同一组安装包：
 
 - 148 项 Python 测试通过，1 项跳过。
 - 58 项前端测试通过。
