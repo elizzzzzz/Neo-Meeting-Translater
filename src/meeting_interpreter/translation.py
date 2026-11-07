@@ -321,12 +321,13 @@ class OllamaTranslationBackend:
             raise RuntimeError(f'Ollama 模型 {self.model} 返回了空翻译。')
 
 
-class LlamaTranslationBackend(OllamaTranslationBackend):
-    """llama.app's local OpenAI chat API, including incremental SSE output."""
+class OpenAITranslationBackend(OllamaTranslationBackend):
+    """Loopback OpenAI-compatible chat API, including incremental SSE output."""
 
-    def __init__(self, model: str, base_url: str = SERVICE_URLS['llama'], timeout: float = 180, **kwargs):
+    def __init__(self, model: str, base_url: str, provider: str, timeout: float = 180):
+        self.service_name = {'llama': 'llama.app', 'sglang': 'SGLang'}[provider]
         if not model:
-            raise ValueError('请先在设置中选择 llama.app 翻译模型。')
+            raise ValueError(f'请先在设置中选择 {self.service_name} 翻译模型。')
         super().__init__(model, local_url(base_url), timeout)
 
     def _request(self, text, source_name, target_name, stream):
@@ -343,12 +344,17 @@ class LlamaTranslationBackend(OllamaTranslationBackend):
         with open_local(request, timeout=self.timeout) as response:
             body = json.loads(response.read())
         if body.get('error'):
-            raise RuntimeError(f'llama.app 翻译失败：{body["error"]}')
+            raise RuntimeError(f'{self.service_name} 翻译失败：{body["error"]}')
         result = body.get('choices', [{}])[0].get('message', {}).get('content') or ''
         result = re.sub(r'<think>.*?</think>', '', result, flags=re.S).strip()
         if not result:
-            raise RuntimeError('llama.app 返回了空翻译。')
+            raise RuntimeError(f'{self.service_name} 返回了空翻译。')
         return result
+
+    async def correct_source(self, text, context, language):
+        # Source correction uses the Ollama generate API and is not part of the
+        # OpenAI-compatible contract exposed by llama.app or SGLang.
+        return text
 
     async def correct_source(self, text, context, language):
         return text
@@ -376,13 +382,16 @@ class LlamaTranslationBackend(OllamaTranslationBackend):
                     break
                 body = json.loads(data)
                 if body.get('error'):
-                    raise RuntimeError(f'llama.app 翻译失败：{body["error"]}')
+                    raise RuntimeError(f'{self.service_name} 翻译失败：{body["error"]}')
                 for choice in body.get('choices', []):
                     token = choice.get('delta', {}).get('content') or ''
                     if token:
                         result += token
                         yield result.strip()
-                    if choice.get('finish_reason'):
+                    finish_reason = choice.get('finish_reason')
+                    if finish_reason:
+                        if finish_reason != 'stop':
+                            raise RuntimeError(f'{self.service_name} 翻译未完整返回（{finish_reason}，可能已截断）。')
                         done = True
                 if done:
                     break
@@ -390,7 +399,9 @@ class LlamaTranslationBackend(OllamaTranslationBackend):
             cancelled = True
             raise
         except urllib.error.HTTPError as exc:
-            raise RuntimeError(f'llama.app 翻译失败（HTTP {exc.code}）：{exc.read(2000).decode(errors="replace")}') from exc
+            raise RuntimeError(f'{self.service_name} 翻译失败（HTTP {exc.code}）：{exc.read(2000).decode(errors="replace")}') from exc
+        except TimeoutError as exc:
+            raise RuntimeError(f'{self.service_name} 翻译超时（{self.timeout:.0f}s）') from exc
         finally:
             if response is not None:
                 if cancelled:
@@ -403,7 +414,17 @@ class LlamaTranslationBackend(OllamaTranslationBackend):
                         _close_stream_later(task.result())
                 opening.add_done_callback(close_late)
         if not done or not result.strip():
-            raise RuntimeError('llama.app 翻译未完整返回，请核对原文。')
+            raise RuntimeError(f'{self.service_name} 翻译未完整返回，请核对原文。')
+
+
+class LlamaTranslationBackend(OpenAITranslationBackend):
+    def __init__(self, model: str, base_url: str = SERVICE_URLS['llama'], timeout: float = 180, **kwargs):
+        super().__init__(model, base_url, 'llama', timeout)
+
+
+class SGLangTranslationBackend(OpenAITranslationBackend):
+    def __init__(self, model: str, base_url: str = SERVICE_URLS['sglang'], timeout: float = 180):
+        super().__init__(model, base_url, 'sglang', timeout)
 
 
 def create_translation_backend():
@@ -411,6 +432,10 @@ def create_translation_backend():
     if provider == 'llama':
         return LlamaTranslationBackend(os.getenv('MEETING_INTERPRETER_LLAMA_MODEL', ''),
             os.getenv('MEETING_INTERPRETER_LLAMA_URL', SERVICE_URLS['llama']))
+    if provider == 'sglang':
+        return SGLangTranslationBackend(os.getenv('MEETING_INTERPRETER_SGLANG_MODEL', ''),
+            os.getenv('MEETING_INTERPRETER_SGLANG_URL', SERVICE_URLS['sglang']),
+            timeout=float(os.getenv('MEETING_INTERPRETER_SGLANG_TIMEOUT', '180')))
     if provider == 'ollama':
         return OllamaTranslationBackend(model=os.getenv('MEETING_INTERPRETER_OLLAMA_MODEL', 'translategemma:4b'),
             base_url=local_url(os.getenv('MEETING_INTERPRETER_OLLAMA_URL', SERVICE_URLS['ollama'])),

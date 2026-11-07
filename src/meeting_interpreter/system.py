@@ -208,8 +208,8 @@ def save_model_directory(model_dir: str, asr_engine: object = None, selection: d
     if selection:
         asr_engine = asr_engine or os.getenv('MEETING_INTERPRETER_ASR_BACKEND', 'whisper')
         translation = selection.get('translation_backend', os.getenv('MEETING_INTERPRETER_TRANSLATION_BACKEND', 'ollama'))
-        if translation not in ('ollama', 'llama', 'nllb'):
-            raise ValueError('请选择 Ollama、llama.app 或内置翻译引擎。')
+        if translation not in (*SERVICE_URLS, 'nllb'):
+            raise ValueError('请选择 Ollama、llama.app、SGLang 或内置翻译引擎。')
         for field in ('asr_model', 'translation_model'):
             if field in selection:
                 value = selection[field]
@@ -225,10 +225,10 @@ def save_model_directory(model_dir: str, asr_engine: object = None, selection: d
             extra['MEETING_INTERPRETER_ASR_URL'] = local_url(selection.get('asr_url') or SERVICE_URLS[asr_engine])
         extra['MEETING_INTERPRETER_TRANSLATION_BACKEND'] = translation
         if 'translation_model' in selection:
-            key = {'ollama': 'MEETING_INTERPRETER_OLLAMA_MODEL', 'llama': 'MEETING_INTERPRETER_LLAMA_MODEL', 'nllb': 'MEETING_INTERPRETER_TRANSLATION_MODEL'}[translation]
+            key = f'MEETING_INTERPRETER_{translation.upper()}_MODEL' if translation in SERVICE_URLS else 'MEETING_INTERPRETER_TRANSLATION_MODEL'
             extra[key] = selection['translation_model'].strip()
         if translation in SERVICE_URLS:
-            key = 'MEETING_INTERPRETER_OLLAMA_URL' if translation == 'ollama' else 'MEETING_INTERPRETER_LLAMA_URL'
+            key = f'MEETING_INTERPRETER_{translation.upper()}_URL'
             extra[key] = local_url(selection.get('translation_url') or SERVICE_URLS[translation])
     if any(char in model_dir for char in "\r\n\x00"):
         raise ValueError("模型目录不能包含换行或空字符。")
@@ -449,7 +449,7 @@ def load_user_config() -> None:
             values.pop(key, None)
             os.environ.pop(key, None)
     for key, value in values.items():
-        if key.startswith(('MEETING_INTERPRETER_ASR_', 'MEETING_INTERPRETER_SERVICE_ASR_', 'MEETING_INTERPRETER_TRANSLATION_', 'MEETING_INTERPRETER_OLLAMA_', 'MEETING_INTERPRETER_LLAMA_', 'MEETING_INTERPRETER_SENSEVOICE_')):
+        if key.startswith(('MEETING_INTERPRETER_ASR_', 'MEETING_INTERPRETER_SERVICE_ASR_', 'MEETING_INTERPRETER_TRANSLATION_', 'MEETING_INTERPRETER_OLLAMA_', 'MEETING_INTERPRETER_LLAMA_', 'MEETING_INTERPRETER_SGLANG_', 'MEETING_INTERPRETER_SENSEVOICE_')):
             os.environ[key] = value
         elif key not in os.environ:
             os.environ[key] = value
@@ -471,8 +471,8 @@ def load_user_config() -> None:
     if engine in SERVICE_URLS:
         roles.append((engine, 'MEETING_INTERPRETER_SERVICE_ASR_MODEL', 'MEETING_INTERPRETER_ASR_URL', 'asr'))
     if provider in SERVICE_URLS:
-        roles.append((provider, 'MEETING_INTERPRETER_OLLAMA_MODEL' if provider == 'ollama' else 'MEETING_INTERPRETER_LLAMA_MODEL',
-                      'MEETING_INTERPRETER_OLLAMA_URL' if provider == 'ollama' else 'MEETING_INTERPRETER_LLAMA_URL', 'translation'))
+        roles.append((provider, f'MEETING_INTERPRETER_{provider.upper()}_MODEL',
+                      f'MEETING_INTERPRETER_{provider.upper()}_URL', 'translation'))
     for provider, model_key, url_key, role in roles:
         selected = os.getenv(model_key, 'translategemma:4b' if provider == 'ollama' and role == 'translation' else '')
         if selected and '/' not in selected:
@@ -493,8 +493,8 @@ def model_settings() -> dict:
             'asr_model': 'Apple SpeechAnalyzer' if engine == 'apple' else 'SenseVoice-Small' if engine == 'sensevoice' else values.get('MEETING_INTERPRETER_SERVICE_ASR_MODEL', '') if engine in SERVICE_URLS else values.get('MEETING_INTERPRETER_ASR_MODEL', RECOMMENDED_ASR_MODEL),
             'asr_url': values.get('MEETING_INTERPRETER_ASR_URL', SERVICE_URLS.get(engine, '')),
             'translation_backend': provider,
-            'translation_model': values.get({'ollama': 'MEETING_INTERPRETER_OLLAMA_MODEL', 'llama': 'MEETING_INTERPRETER_LLAMA_MODEL'}.get(provider, 'MEETING_INTERPRETER_TRANSLATION_MODEL'), 'translategemma:4b' if provider == 'ollama' else 'facebook/nllb-200-distilled-600M' if provider == 'nllb' else ''),
-            'translation_url': values.get('MEETING_INTERPRETER_OLLAMA_URL' if provider == 'ollama' else 'MEETING_INTERPRETER_LLAMA_URL', SERVICE_URLS.get(provider, ''))}
+            'translation_model': values.get(f'MEETING_INTERPRETER_{provider.upper()}_MODEL' if provider in SERVICE_URLS else 'MEETING_INTERPRETER_TRANSLATION_MODEL', 'translategemma:4b' if provider == 'ollama' else 'facebook/nllb-200-distilled-600M' if provider == 'nllb' else ''),
+            'translation_url': values.get(f'MEETING_INTERPRETER_{provider.upper()}_URL', SERVICE_URLS.get(provider, ''))}
 
 
 def inspect_asr_models(engine: str = 'whisper', model: str | None = None, model_dir: str | None = None, languages=None) -> dict[str, object]:

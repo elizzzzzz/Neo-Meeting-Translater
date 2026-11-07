@@ -8,8 +8,9 @@ import urllib.parse
 import urllib.request
 
 
-SERVICE_URLS = {'ollama': 'http://127.0.0.1:11434', 'llama': 'http://127.0.0.1:9931'}
-SERVICE_NAMES = {'ollama': 'Ollama', 'llama': 'llama.app'}
+SERVICE_URLS = {'ollama': 'http://127.0.0.1:11434', 'llama': 'http://127.0.0.1:9931',
+                'sglang': 'http://127.0.0.1:30000'}
+SERVICE_NAMES = {'ollama': 'Ollama', 'llama': 'llama.app', 'sglang': 'SGLang'}
 
 
 def local_url(value: str) -> str:
@@ -61,7 +62,7 @@ def model_roles(name: str, capabilities=()) -> tuple[bool, bool]:
 
 def inspect_service(provider: str, base_url: str | None = None, timeout: float = 1.2) -> dict:
     if provider not in SERVICE_URLS:
-        raise ValueError('请选择 Ollama 或 llama.app。')
+        raise ValueError('请选择 Ollama、llama.app 或 SGLang。')
     root = local_url(base_url or SERVICE_URLS[provider])
     result = {'provider': provider, 'name': SERVICE_NAMES[provider], 'url': root,
               'reachable': False, 'models': [], 'message': ''}

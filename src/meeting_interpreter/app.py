@@ -39,9 +39,9 @@ def create_app() -> FastAPI:
         elif asr_engine in SERVICE_URLS:
             asr_model = os.getenv('MEETING_INTERPRETER_SERVICE_ASR_MODEL', '')
         translation_model = os.getenv("MEETING_INTERPRETER_OLLAMA_MODEL", "translategemma:4b") if translation_backend == "ollama" else os.getenv("MEETING_INTERPRETER_TRANSLATION_MODEL", "facebook/nllb-200-distilled-600M")
-        if translation_backend == 'llama':
-            translation_model = os.getenv('MEETING_INTERPRETER_LLAMA_MODEL', '')
-        translation_url = os.getenv('MEETING_INTERPRETER_OLLAMA_URL' if translation_backend == 'ollama' else 'MEETING_INTERPRETER_LLAMA_URL', SERVICE_URLS.get(translation_backend, ''))
+        if translation_backend in SERVICE_URLS and translation_backend != 'ollama':
+            translation_model = os.getenv(f'MEETING_INTERPRETER_{translation_backend.upper()}_MODEL', '')
+        translation_url = os.getenv(f'MEETING_INTERPRETER_{translation_backend.upper()}_URL', SERVICE_URLS.get(translation_backend, ''))
         asr_url = os.getenv('MEETING_INTERPRETER_ASR_URL', SERVICE_URLS.get(asr_engine, ''))
         return translation_backend, asr_model, asr_engine, translation_model, translation_url, asr_url
 
@@ -109,8 +109,8 @@ def create_app() -> FastAPI:
             elif translation_status not in {"processing", "loading", "error"}:
                 translation_status = "ready"
         translation_service = dict(ollama, provider=translation_backend, name=SERVICE_NAMES.get(translation_backend, '内置翻译'))
-        if translation_backend == 'llama':
-            translation_service = await asyncio.to_thread(inspect_service, 'llama', translation_url, .8)
+        if translation_backend in SERVICE_URLS and translation_backend != 'ollama':
+            translation_service = await asyncio.to_thread(inspect_service, translation_backend, translation_url, .8)
             translation_service['model_present'] = any(m['id'] == translation_model for m in translation_service['models'])
             if not translation_service['reachable']:
                 translation_status = 'offline'
@@ -332,7 +332,7 @@ def create_app() -> FastAPI:
             await asyncio.sleep(0)
             try:
                 backend = create_translation_backend()
-                backend.timeout = float(os.getenv('MEETING_INTERPRETER_OLLAMA_TIMEOUT', '300'))
+                backend.timeout = float(os.getenv(f'MEETING_INTERPRETER_{translation_backend.upper()}_TIMEOUT', '300'))
                 await backend.translate("测试", "zh", "ja")
                 runtime["translator_backend_instance"] = backend
                 runtime["translation_status"] = "ready"

@@ -18,7 +18,7 @@
 - 说话人标签与可选的本地说话人区分；默认显示匿名标签。
 - 半透明、置顶、可移动、可缩放的字幕浮窗。
 - 支持本机麦克风，以及通过 BlackHole / Loopback 接入腾讯会议、Microsoft Teams 和网页视频的系统音频。
-- 支持 Apple SpeechAnalyzer、MLX Whisper、SenseVoice，以及 Ollama / llama.app 兼容的本地服务。
+- 支持 Apple SpeechAnalyzer、MLX Whisper、SenseVoice，以及 Ollama / llama.app / SGLang 兼容的本地服务。
 - 修改模型、服务地址和模型目录后立即应用，不需要重启 App。
 - 启动时显示使用提示和模型准备进度；准备完成后自动收起非主要信息，把空间留给字幕。
 - 单实例运行，重复打开不会启动多个本地服务副本。
@@ -89,7 +89,7 @@ asr/sensevoice/silero_vad.onnx
 
 ## 翻译模型和本地服务
 
-发布的 App 通过 Ollama 或 llama.app 连接本地翻译模型。Ollama / llama.app 负责管理各自的模型文件，App 通过配置的本机服务地址调用它们。NLLB 适配器需要额外安装 Python 依赖，仅用于源码运行，不包含在当前精简安装包中。
+发布的 App 通过 Ollama、llama.app 或 SGLang 连接本地翻译模型。Ollama / llama.app / SGLang 负责管理各自的模型文件，App 通过配置的本机服务地址调用它们。NLLB 适配器需要额外安装 Python 依赖，仅用于源码运行，不包含在当前精简安装包中。
 
 Ollama 示例：
 
@@ -112,6 +112,24 @@ python -m meeting_interpreter.desktop
 ```
 
 推荐模型是 `translategemma:4b`，但可以在 App 中更换为本机服务支持的其他模型。模型目录变更后会重新检测并立即应用；现有模型文件不会自动迁移。
+
+### SGLang
+
+设置中的“文字翻译 → SGLang”连接本机 OpenAI 兼容接口，默认地址为 `http://127.0.0.1:30000`。先在终端或自己的启动脚本中启动 SGLang，再回到 App 刷新模型列表；App 不会替 SGLang 下载权重，也不会修改它的模型目录。
+
+SGLang 启动示例（模型路径可替换为本地目录）：
+
+```bash
+python -m sglang.launch_server \
+  --model-path tencent/HY-MT1.5-1.8B \
+  --served-model-name hy-mt1.5-1.8b \
+  --host 127.0.0.1 \
+  --port 30000
+```
+
+推荐先测试 `tencent/HY-MT1.5-1.8B`：它是专用多语翻译模型，适合中、日、英互译和低延迟字幕；如果需要更强的上下文和术语能力，可再比较 `tencent/HY-MT1.5-7B`，但 M3 / 16 GB 更容易受到内存和首 token 延迟影响。通用备选是 Qwen3 4B 级指令模型，适合需要上下文纠错、术语约束和翻译之外文本处理的场景。
+
+SGLang 是推理服务框架，所谓“SGLang 格式”实际是它支持的 Hugging Face 模型权重和 OpenAI 兼容服务接口。具体模型是否能在当前 SGLang 构建和 Apple Metal 环境启动，需要在目标机器上单独验证；本项目目前只验证了服务发现、配置保存、流式接口和断线提示，没有把模型权重下载到仓库或自动安装。
 
 ## 会议和网页音频接入
 
@@ -163,7 +181,7 @@ App 一次采集一个输入设备：
 
 - 音频、识别结果、翻译结果和模型文件默认留在本机。
 - 不提交或内置模型权重。
-- Ollama / llama.app 仅访问配置的本机服务地址。
+- Ollama / llama.app / SGLang 仅访问配置的本机服务地址。
 - App 不会因为启动、刷新模型列表或打开设置而自动下载 Apple 语言资源、ASR 模型或 Ollama 模型。
 - 导出的会议记录由用户主动选择保存位置。
 

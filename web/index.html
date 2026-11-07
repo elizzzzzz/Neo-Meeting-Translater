@@ -73,10 +73,10 @@
           </section>
           <section class="model-selection-card" aria-labelledby="translationSelectionTitle">
             <h3 id="translationSelectionTitle" data-i18n="models.translation">文字翻译 · 中日英互译</h3>
-            <label class="settings-field"><span data-i18n="models.service">运行服务</span><select id="translationEngine"><option value="ollama">Ollama</option><option value="llama">llama.app</option><option value="nllb" data-i18n="models.nllb">NLLB · 内置本地翻译</option></select></label>
+            <label class="settings-field"><span data-i18n="models.service">运行服务</span><select id="translationEngine"><option value="ollama">Ollama</option><option value="llama">llama.app</option><option value="sglang" data-i18n="models.sglang">SGLang · 本地推理服务</option><option value="nllb" data-i18n="models.nllb">NLLB · 内置本地翻译</option></select></label>
             <label id="translationServiceField" class="settings-field"><span data-i18n="models.address">本机服务地址</span><input id="translationServiceUrl" type="url" spellcheck="false" placeholder="http://127.0.0.1:9931" /></label>
             <label class="settings-field"><span data-i18n="models.model">模型</span><select id="translationModel"></select></label>
-            <small data-i18n="models.translationHint">只列出可用于文字生成的模型。识别模型和翻译模型可使用不同服务。</small>
+            <small id="translationEngineHint" data-i18n="models.translationHint">只列出可用于文字生成的模型。识别模型和翻译模型可使用不同服务。</small>
             <div class="model-action-row"><strong id="translationModelStatus" role="status">正在检查翻译模型…</strong></div>
           </section>
         </div>

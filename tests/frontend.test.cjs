@@ -37,6 +37,49 @@ function loadApp() {
   return {elements, context, requests, run:(code)=>vm.runInContext(code,context)};
 }
 
+test('SGLang translation selection discovers models on its own local port', async () => {
+  const app = loadApp();
+  await new Promise(resolve => setImmediate(resolve));
+  const calls = [];
+  app.context.fetch = async url => {
+    calls.push(url);
+    return {ok:true,json:async()=>({reachable:true,models:[{id:'meeting-translation',translation:true},{id:'bge-embed',translation:false}]})};
+  };
+  app.run("translationEngine.value='sglang';translationServiceUrl.value=''");
+  await app.run("refreshModelSelection('translation')");
+  assert.equal(app.elements.get('#translationServiceUrl').value, 'http://127.0.0.1:30000');
+  assert.ok(calls.some(url => url.includes('/services/models?provider=sglang&')));
+  assert.equal(app.elements.get('#translationModel').value, 'meeting-translation');
+  assert.doesNotMatch(app.elements.get('#translationModel').innerHTML, /bge-embed/);
+  assert.equal(app.elements.get('#translationServiceField').hidden, false);
+});
+
+test('SGLang online and offline states never display Ollama status', () => {
+  const app = loadApp();
+  const health = {mode:'local',models:{ready:true},asr:{backend:'apple',status:'ready'},
+    translation:{backend:'sglang',status:'ready',model:'meeting-translation',service:{provider:'sglang',name:'SGLang',reachable:true,model_present:true}}};
+  app.context.sglangHealth=health;
+  app.run('updateHealth(sglangHealth)');
+  assert.match(app.elements.get('#ollamaStatus').textContent, /SGLang/);
+  assert.match(app.elements.get('#ollamaModelStatus').textContent, /meeting-translation/);
+  health.translation.service.reachable=false;
+  health.translation.status='offline';
+  app.run('updateHealth(sglangHealth)');
+  assert.match(app.elements.get('#ollamaStatus').textContent, /SGLang.*未连接/);
+});
+
+test('SGLang appears as a translated service choice only on the translation side', () => {
+  const html = fs.readFileSync('web/index.html','utf8');
+  const translation = html.match(/<select id="translationEngine">([\s\S]*?)<\/select>/)[1];
+  const recognition = html.match(/<select id="asrEngine">([\s\S]*?)<\/select>/)[1];
+  assert.match(translation, /value="sglang"/);
+  assert.doesNotMatch(recognition, /value="sglang"/);
+  const app=loadApp();
+  assert.match(app.run("UI_TEXT.zh['models.sglang']"), /SGLang.*本地/);
+  assert.match(app.run("UI_TEXT.ja['models.sglang']"), /SGLang/);
+  assert.match(app.run("UI_TEXT.en['models.sglang']"), /SGLang/);
+});
+
 test('health refresh preserves a folder the user is editing', () => {
   const app = loadApp();
   app.elements.get('#modelDirectory').value = '/Volumes/外置硬盘/我的模型';

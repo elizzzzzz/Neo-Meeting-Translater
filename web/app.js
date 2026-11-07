@@ -110,7 +110,7 @@ let modelsReady = false;
 let lastHealth = null;
 let interfaceChoiceMade = false;
 let modelSelectionRevision = {asr: 0, translation: 0};
-const SERVICE_DEFAULT_URLS = {ollama: 'http://127.0.0.1:11434', llama: 'http://127.0.0.1:9931'};
+const SERVICE_DEFAULT_URLS = {ollama: 'http://127.0.0.1:11434', llama: 'http://127.0.0.1:9931', sglang: 'http://127.0.0.1:30000'};
 const serviceCapacities = new Map();
 let demoTimer;
 let demoStep = 0;
@@ -161,6 +161,13 @@ Object.assign(UI_TEXT.en, {'models.apple': 'Apple SpeechAnalyzer · on-device re
 UI_TEXT.zh['settings.directoryHint'] = '默认使用 Ollama 当前模型目录，可随时自定义。更改后重新检测，保存后自动加载；现有文件不会自动迁移。Ollama / llama.app 的模型仍由对应服务管理。';
 UI_TEXT.ja['settings.directoryHint'] = '初期値は Ollama のモデル保存先です。変更後に再検出し、保存後に自動で読み込みます。ファイルは自動移動しません。サービスのモデルは各 App が管理します。';
 UI_TEXT.en['settings.directoryHint'] = 'Defaults to the Ollama model folder; choose any local folder. Changes rescan files; save to load automatically. Files are not moved. Ollama / llama.app manage their own models.';
+Object.entries({
+  zh: {'models.sglang': 'SGLang · 本地推理服务', 'models.sglangHint': '先启动本机 SGLang 服务，默认端口 30000。模型文件与路径由 SGLang 启动配置管理，不会随这里的缓存目录迁移。'},
+  ja: {'models.sglang': 'SGLang · ローカル推論サービス', 'models.sglangHint': '先にこの Mac の SGLang を起動してください（標準ポート 30000）。モデルと保存先は SGLang の起動設定で管理します。'},
+  en: {'models.sglang': 'SGLang · local inference service', 'models.sglangHint': 'Start SGLang on this Mac first (default port 30000). SGLang launch settings manage its models and paths; changing this cache folder does not move them.'},
+}).forEach(([language, strings]) => Object.assign(UI_TEXT[language], strings));
+UI_TEXT.zh['settings.directoryHint'] = UI_TEXT.zh['settings.directoryHint'].replace('Ollama / llama.app', 'Ollama / llama.app / SGLang');
+UI_TEXT.en['settings.directoryHint'] = UI_TEXT.en['settings.directoryHint'].replace('Ollama / llama.app', 'Ollama / llama.app / SGLang');
 
 function detectInterfaceLanguage() {
   const locale = String(navigator.language || 'zh-CN');
@@ -199,6 +206,7 @@ function applyInterfaceLanguage() {
   });
   if (interfaceLanguage) interfaceLanguage.setAttribute?.('aria-label', uiText('language.interface'));
   updateAsrHint();
+  updateTranslationHint();
   if (asrEngine.value === 'apple' && lastAppleInventory) renderAppleAssetState(lastAppleInventory);
   updateCaptionHeaders(); updateSummary(); renderCaptions();
   if (lastHealth) updateHealth(lastHealth);
@@ -265,9 +273,10 @@ function updateHealth(health) {
   if (health.speaker?.available && !speakerChoiceMade && !(socket && socket.readyState < 3)) {
     speakerMode.value = 'embedding'; speakerChoiceMade = true; updateSummary();
   }
-  if (health.translation?.service?.provider === 'llama') {
+  if (['llama', 'sglang'].includes(health.translation?.service?.provider)) {
     const service = health.translation.service;
-    ollamaStatus.textContent = `llama.app · ${statusText(service.reachable ? health.translation.status : 'offline')}`;
+    const serviceName = service.provider === 'sglang' ? 'SGLang' : 'llama.app';
+    ollamaStatus.textContent = `${serviceName} · ${statusText(service.reachable ? health.translation.status : 'offline')}`;
     ollamaModelStatus.textContent = `${statusText(service.model_present ? health.translation.status : 'missing')} · ${formatModel(health.translation.model)}`;
   } else if (!health.ollama?.configured) {
     ollamaStatus.textContent = localized('未启用', '無効', 'Disabled');
@@ -436,6 +445,10 @@ async function checkAsrModel() {
 async function refreshModelSelections() {
   await Promise.all([refreshModelSelection('asr'), refreshModelSelection('translation')]);
 }
+function updateTranslationHint() {
+  const hint = document.querySelector('#translationEngineHint');
+  if (hint) hint.textContent = uiText(translationEngine.value === 'sglang' ? 'models.sglangHint' : 'models.translationHint');
+}
 async function refreshModelSelection(role) {
   const speech = role === 'asr';
   const engine = speech ? asrEngine : translationEngine;
@@ -445,6 +458,7 @@ async function refreshModelSelection(role) {
   const provider = engine.value || (speech ? 'whisper' : 'ollama');
   const revision = ++modelSelectionRevision[role];
   if (speech) updateAsrHint();
+  else updateTranslationHint();
   const remote = Boolean(SERVICE_DEFAULT_URLS[provider]);
   document.querySelector(speech ? '#asrServiceField' : '#translationServiceField').hidden = !remote;
   if (remote && !address.value) address.value = SERVICE_DEFAULT_URLS[provider];
@@ -465,8 +479,8 @@ async function refreshModelSelection(role) {
       if (info.max_loaded_models) serviceCapacities.set(address.value.replace(/\/v1\/?$|\/$/g, ''), info.max_loaded_models);
       const choices = (info.models || []).filter(item => item[speech ? 'asr' : 'translation']);
       fillModelChoices(model, choices, preferred);
-      status.textContent = !info.reachable ? localized('服务未连接，请启动对应 App', 'サービス未接続。App を起動してください', 'Service offline; start its App')
-        : !choices.length ? localized('已连接，未发现适用模型；请在服务 App 中添加后刷新', '接続済み。対応モデルを App に追加して更新してください', 'Connected; add a compatible model in the service App and refresh')
+      status.textContent = !info.reachable ? localized('服务未连接，请启动对应本机服务', 'サービス未接続。ローカルサービスを起動してください', 'Service offline; start the local model service')
+        : !choices.length ? localized('已连接，未发现适用模型；请在服务中配置后刷新', '接続済み。サービスで対応モデルを設定して更新してください', 'Connected; configure a compatible model in the service and refresh')
         : choices.some(item => item.id === model.value) ? localized('模型已找到 · 保存后自动加载', 'モデル検出 · 保存後に自動読み込み', 'Model found · loads when saved')
         : localized('所选模型未检测到，请重新选择', '選択モデルは未検出です', 'Selected model not found; choose another');
     } else if (provider === 'apple') {

@@ -66,6 +66,8 @@ MEETING_INTERPRETER_ICON_VARIANT=c ./scripts/build_macos_app.sh
 
 首次打开会出现三步使用提示。顶部“使用指南”可以再次查看；勾选“以后不再提醒”后，App 不会再次自动弹出。顶部“本地设置”会检查 Ollama 安装状态、运行状态、当前版本、最新版本和推荐模型，并提供升级、安装推荐模型和选择模型目录的入口。默认模型目录是 `~/Library/Application Support/LocalMeetingInterpreter/models`，更改后重新打开 App 生效。
 
+文字翻译还支持本机 SGLang。选择“文字翻译 → SGLang”后，默认连接 `http://127.0.0.1:30000`；请先自行启动 SGLang，再在 App 中刷新模型列表。SGLang 的模型权重和缓存路径由 SGLang 启动参数管理，不会自动迁移到 App 的模型目录。可先使用 `tencent/HY-MT1.5-1.8B` 做中日英低延迟翻译对比；当前 App 不会自动下载 SGLang 或模型。
+
 0.2.3 的“语音转文字引擎”提供 Whisper 与 SenseVoice（测试），保存设置并重新打开 App 生效。SenseVoice 需要所选模型目录下 `asr/sensevoice/model.int8.onnx`、`tokens.txt`、`silero_vad.onnx` 三个文件，运行时不下载；可用 `MEETING_INTERPRETER_SENSEVOICE_MODEL` 指定独立目录。日语可先保持 Whisper，中文可用相同录音对比 SenseVoice。详情见 [中日识别评估](asr-evaluation-0.2.3.md)。
 
 安装后第一次使用本地模型时仍需要准备模型缓存。不要把模型权重提交到 GitHub；可以在目标机器上下载，也可以把已验证的模型缓存复制到本机缓存目录。
