@@ -152,9 +152,9 @@ Object.entries({
   ja: {'models.speech': '音声認識 · 音声から文字へ', 'models.translation': '翻訳 · 中日英の相互翻訳', 'models.service': '実行サービス', 'models.address': 'ローカルサービスのアドレス', 'models.model': 'モデル', 'models.speechHint': 'Qwen3-ASR は原文を認識します。翻訳モデルは別に選択します。', 'models.translationHint': '文字生成モデルを表示します。認識と翻訳には別々のサービスを使えます。', 'models.restart': '保存後に App を再起動してください。更新はモデルを読み込み・ダウンロードしません。', 'models.refresh': 'モデル一覧を更新'},
   en: {'models.speech': 'Speech recognition · audio to text', 'models.translation': 'Translation · Chinese, Japanese, English', 'models.service': 'Model service', 'models.address': 'Local service address', 'models.model': 'Model', 'models.speechHint': 'Qwen3-ASR recognizes the source speech. Select a translation model separately.', 'models.translationHint': 'Lists text generation models. Recognition and translation can use different services.', 'models.restart': 'Save and reopen the App to apply. Refreshing does not load or download models.', 'models.refresh': 'Refresh model lists'},
 }).forEach(([language, strings]) => Object.assign(UI_TEXT[language], strings));
-Object.assign(UI_TEXT.zh, {'settings.title': '模型与服务设置', 'models.ollamaTools': 'Ollama 安装与下载（可选）', 'models.whisper': 'Whisper · 内置本地识别', 'models.sensevoice': 'SenseVoice · 内置本地识别', 'models.nllb': 'NLLB · 内置本地翻译'});
-Object.assign(UI_TEXT.ja, {'settings.title': 'モデルとサービスの設定', 'models.ollamaTools': 'Ollama のインストール・ダウンロード（任意）', 'models.whisper': 'Whisper · 内蔵音声認識', 'models.sensevoice': 'SenseVoice · 内蔵音声認識', 'models.nllb': 'NLLB · 内蔵翻訳'});
-Object.assign(UI_TEXT.en, {'settings.title': 'Models and services', 'models.ollamaTools': 'Ollama installation and downloads (optional)', 'models.whisper': 'Whisper · built-in recognition', 'models.sensevoice': 'SenseVoice · built-in recognition', 'models.nllb': 'NLLB · built-in translation'});
+Object.assign(UI_TEXT.zh, {'models.apple': 'Apple SpeechAnalyzer · Apple 本机语音识别', 'settings.title': '模型与服务设置', 'models.ollamaTools': 'Ollama 安装与下载（可选）', 'models.whisper': 'Whisper · 内置本地识别', 'models.sensevoice': 'SenseVoice · 内置本地识别', 'models.nllb': 'NLLB · 内置本地翻译'});
+Object.assign(UI_TEXT.ja, {'models.apple': 'Apple SpeechAnalyzer · Apple オンデバイス音声認識', 'settings.title': 'モデルとサービスの設定', 'models.ollamaTools': 'Ollama のインストール・ダウンロード（任意）', 'models.whisper': 'Whisper · 内蔵音声認識', 'models.sensevoice': 'SenseVoice · 内蔵音声認識', 'models.nllb': 'NLLB · 内蔵翻訳'});
+Object.assign(UI_TEXT.en, {'models.apple': 'Apple SpeechAnalyzer · on-device recognition', 'settings.title': 'Models and services', 'models.ollamaTools': 'Ollama installation and downloads (optional)', 'models.whisper': 'Whisper · built-in recognition', 'models.sensevoice': 'SenseVoice · built-in recognition', 'models.nllb': 'NLLB · built-in translation'});
 UI_TEXT.zh['settings.directoryHint'] = '默认使用 Ollama 当前模型目录，可随时自定义。更改后重新检测，保存并重启后加载；现有文件不会自动迁移。Ollama / llama.app 的模型仍由对应服务管理。';
 UI_TEXT.ja['settings.directoryHint'] = '初期値は Ollama のモデル保存先です。変更後に再検出し、保存・再起動後に読み込みます。ファイルは自動移動しません。サービスのモデルは各 App が管理します。';
 UI_TEXT.en['settings.directoryHint'] = 'Defaults to the Ollama model folder; choose any local folder. Changes rescan files; save and restart to load. Files are not moved. Ollama / llama.app manage their own models.';
@@ -195,6 +195,8 @@ function applyInterfaceLanguage() {
     element.title = element.querySelector('.status-label-text')?.textContent || element.title;
   });
   if (interfaceLanguage) interfaceLanguage.setAttribute?.('aria-label', uiText('language.interface'));
+  updateAsrHint();
+  if (asrEngine.value === 'apple' && lastAppleInventory) renderAppleAssetState(lastAppleInventory);
   updateCaptionHeaders(); updateSummary(); renderCaptions();
   if (lastHealth) updateHealth(lastHealth);
 }
@@ -351,6 +353,50 @@ function fillModelChoices(select, models, preferred = '') {
   select.value = selected;
   select.dataset.selected = '';
 }
+let lastAppleInventory = null;
+let applePreparationBusy = false;
+function renderAppleAssetState(info) {
+  lastAppleInventory = info;
+  const states = (info.languages || []).map(row => `${languageDisplayLabel(row.language)} ${row.installed ? '✓' : row.status === 'downloading' ? '↓' : '○'}`).join(' · ');
+  asrModelStatus.textContent = !info.available ? info.message || localized('当前系统不支持，需要 macOS 26+', 'macOS 26 以降が必要です', 'Requires macOS 26+')
+    : `${states} · ${info.installed ? localized('资源已就绪 · 保存并重启后使用', '準備完了 · 保存して再起動', 'Assets ready · save and restart') : localized('请准备当前会议语言资源', '会議の言語データを準備してください', 'Prepare assets for this meeting pair')}`;
+  downloadAsrBtn.disabled = applePreparationBusy || !info.available || Boolean(info.installed);
+  downloadAsrBtn.textContent = applePreparationBusy ? localized('正在准备…', '準備中…', 'Preparing…') : info.installed ? localized('Apple 语言资源已就绪', 'Apple 言語データ準備完了', 'Apple language assets ready') : localized('准备 Apple 语言资源', 'Apple 言語データを準備', 'Prepare Apple language assets');
+}
+function updateAsrHint() {
+  if (asrEngineHint) asrEngineHint.textContent = asrEngine.value === 'apple'
+    ? localized('需要 macOS 26+。语言资源由 macOS 管理，不使用自定义模型目录。双语自动判别为实验功能；可用源语言按钮纠正。仅识别原文，翻译模型独立运行。', 'macOS 26 以降が必要です。言語データは macOS が管理し、指定フォルダは使用しません。2 言語の自動判定は実験機能です。原言語ボタンで修正できます。翻訳モデルは別途使用します。', 'Requires macOS 26+. macOS manages language assets outside the custom model folder. Bilingual detection is experimental; correct it with source-language buttons. Translation uses a separate model.')
+    : uiText('models.speechHint');
+}
+async function prepareSpeechModel() {
+  if (asrEngine.value !== 'apple') {
+    await runSystemAction(downloadAsrBtn, '/system/download-asr', {engine: asrEngine.value || 'whisper', model: asrModel.value}, '正在下载所选语音识别模型…');
+    return checkAsrModel();
+  }
+  if (applePreparationBusy) return;
+  applePreparationBusy = true;
+  const revision = modelSelectionRevision.asr;
+  const languages = selectedLanguagePair.split('-');
+  downloadAsrBtn.disabled = true;
+  downloadAsrBtn.setAttribute?.('aria-busy', 'true');
+  asrModelStatus.textContent = localized('macOS 正在准备语言资源，首次下载需要联网，请稍候…', 'macOS が言語データを準備中です。初回ダウンロードにはネット接続が必要です…', 'macOS is preparing language assets; the first download needs internet. Please wait…');
+  try {
+    const response = await fetch('/system/download-asr', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({engine:'apple',languages})});
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw new Error(result.message || result.detail || '准备失败');
+    if (revision !== modelSelectionRevision.asr || asrEngine.value !== 'apple') return;
+    applePreparationBusy = false;
+    await checkAsrModel();
+  } catch(error) {
+    if (revision === modelSelectionRevision.asr && asrEngine.value === 'apple') {
+      asrModelStatus.textContent = `${localized('语言资源未准备完成', '言語データの準備未完了', 'Language assets not ready')}: ${error.message}`;
+      downloadAsrBtn.disabled = false;
+    }
+  } finally {
+    applePreparationBusy = false;
+    downloadAsrBtn.setAttribute?.('aria-busy', 'false');
+  }
+}
 async function checkAsrModel() {
   return refreshModelSelection('asr');
 }
@@ -365,6 +411,7 @@ async function refreshModelSelection(role) {
   const status = speech ? asrModelStatus : translationModelStatus;
   const provider = engine.value || (speech ? 'whisper' : 'ollama');
   const revision = ++modelSelectionRevision[role];
+  if (speech) updateAsrHint();
   const remote = Boolean(SERVICE_DEFAULT_URLS[provider]);
   document.querySelector(speech ? '#asrServiceField' : '#translationServiceField').hidden = !remote;
   if (remote && !address.value) address.value = SERVICE_DEFAULT_URLS[provider];
@@ -377,7 +424,7 @@ async function refreshModelSelection(role) {
   try {
     const response = await fetch(remote
       ? `/services/models?provider=${provider}&url=${encodeURIComponent(address.value)}`
-      : `/system/models?engine=${provider}&model=${encodeURIComponent(preferred)}&model_dir=${encodeURIComponent(modelDirectory.value.trim())}`);
+      : `/system/models?engine=${provider}&model=${encodeURIComponent(preferred)}&model_dir=${encodeURIComponent(modelDirectory.value.trim())}&language_pair=${selectedLanguagePair}`);
     const info = await response.json();
     if (revision !== modelSelectionRevision[role]) return;
     if (!response.ok) throw new Error(info.detail || '无法获取模型');
@@ -389,6 +436,10 @@ async function refreshModelSelection(role) {
         : !choices.length ? localized('已连接，未发现适用模型；请在服务 App 中添加后刷新', '接続済み。対応モデルを App に追加して更新してください', 'Connected; add a compatible model in the service App and refresh')
         : choices.some(item => item.id === model.value) ? localized('模型已找到 · 保存并重启后加载', 'モデル検出 · 保存・再起動後に読み込み', 'Model found · loads after save and restart')
         : localized('所选模型未检测到，请重新选择', '選択モデルは未検出です', 'Selected model not found; choose another');
+    } else if (provider === 'apple') {
+      model.value = ''; model.dataset.selected = '';
+      fillModelChoices(model, ['Apple SpeechAnalyzer'], 'Apple SpeechAnalyzer');
+      renderAppleAssetState(info);
     } else {
       model.value = ''; model.dataset.selected = '';
       fillModelChoices(model, info.models || [info.model || (provider === 'nllb' ? 'facebook/nllb-200-distilled-600M' : 'mlx-community/whisper-medium-mlx-8bit')], provider === 'sensevoice' ? 'SenseVoice-Small' : info.model || '');
@@ -415,6 +466,7 @@ function changeModelProvider(role) {
   const speech = role === 'asr';
   const provider = (speech ? asrEngine : translationEngine).value;
   const model = speech ? asrModel : translationModel;
+  if (speech) lastAppleInventory = null;
   model.value = ''; model.dataset.selected = '';
   (speech ? asrServiceUrl : translationServiceUrl).value = SERVICE_DEFAULT_URLS[provider] || '';
   refreshModelSelection(role);
@@ -1038,7 +1090,7 @@ asrModel?.addEventListener('change', () => { if (!SERVICE_DEFAULT_URLS[asrEngine
 asrModel?.addEventListener('change', updateModelCompatibility);
 translationModel?.addEventListener('change', updateModelCompatibility);
 refreshModelsBtn?.addEventListener('click', refreshModelSelections);
-downloadAsrBtn?.addEventListener('click', () => runSystemAction(downloadAsrBtn, '/system/download-asr', {engine: asrEngine.value || 'whisper', model: asrModel.value}, '正在下载所选语音识别模型…').then(checkAsrModel));
+downloadAsrBtn?.addEventListener('click', prepareSpeechModel);
 chooseModelDirectoryBtn?.addEventListener('click', () => {
   if (window.webkit?.messageHandlers?.native) window.webkit.messageHandlers.native.postMessage({ type: 'choose_model_directory' });
   else modelDirectory?.focus();

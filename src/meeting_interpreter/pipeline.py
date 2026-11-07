@@ -11,7 +11,7 @@ import os
 import re
 from dataclasses import replace
 
-from .asr import ASRBackend, MLXWhisperBackend, SenseVoiceBackend, ServiceASRBackend, MockASRBackend, create_asr_backend
+from .asr import AppleSpeechBackend, ASRBackend, MLXWhisperBackend, SenseVoiceBackend, ServiceASRBackend, MockASRBackend, create_asr_backend
 from .models import AudioEvent, CaptionEvent
 from .speaker import EmbeddingSpeakerBackend, PendingSpeakerBackend, PyannoteSpeakerBackend, SpeakerBackend
 from .translation import TranslationBackend, create_translation_backend
@@ -185,6 +185,8 @@ class Pipeline:
         self.context_correction_enabled = os.getenv("MEETING_INTERPRETER_CONTEXT_CORRECTION", "1").lower() not in {"0", "false", "no"}
         if self.mode == "local":
             self.asr: ASRBackend = (asr_backend.for_language(source_language) if isinstance(asr_backend, (MLXWhisperBackend, SenseVoiceBackend, ServiceASRBackend)) else asr_backend) or create_asr_backend(source_language)
+            if isinstance(self.asr, AppleSpeechBackend):
+                self.asr = self.asr.for_session(source_language, language_pair)
             self.translator = translator_backend if translator_backend is not None else create_translation_backend()
             selected_speaker_mode = speaker_mode or os.getenv("MEETING_INTERPRETER_SPEAKER_MODE", "none")
             if selected_speaker_mode == "embedding":
@@ -362,7 +364,7 @@ class Pipeline:
         result = await self.asr.transcribe(window, event.sample_rate, start_ms)
         self._decoded_has_timestamps[event.session_id] = bool(result and result.words)
         if result is None:
-            self.audio_status.update(state="rejected", message="未识别到可靠语音，请检查输入设备或靠近麦克风")
+            self.audio_status.update(state="rejected", message=getattr(self.asr, "last_message", "") or "未识别到可靠语音，请检查输入设备或靠近麦克风")
             return
         result_language = normalize_language(result.language)
         target_language = self.target_language

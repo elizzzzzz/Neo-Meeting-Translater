@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Protocol
 
 from .local_services import SERVICE_URLS, json_request, local_url
+from .apple_speech import AppleSpeechBackend
 
 
 @dataclass(frozen=True)
@@ -59,6 +60,8 @@ def sensevoice_model_directory() -> Path:
 
 def create_asr_backend(language: str | None = None) -> ASRBackend:
     engine = os.getenv('MEETING_INTERPRETER_ASR_BACKEND', 'whisper')
+    if engine == 'apple':
+        return AppleSpeechBackend(language)
     if engine == 'sensevoice':
         return SenseVoiceBackend(str(sensevoice_model_directory()), language)
     if engine in ('ollama', 'llama'):

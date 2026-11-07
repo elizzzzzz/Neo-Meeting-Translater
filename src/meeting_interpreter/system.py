@@ -202,7 +202,7 @@ def pull_ollama_model(model: str = RECOMMENDED_OLLAMA_MODEL, timeout: float = 18
 
 
 def save_model_directory(model_dir: str, asr_engine: object = None, selection: dict | None = None) -> dict[str, object]:
-    if asr_engine is not None and asr_engine not in ('whisper', 'sensevoice', 'ollama', 'llama'):
+    if asr_engine is not None and asr_engine not in ('whisper', 'sensevoice', 'apple', 'ollama', 'llama'):
         raise ValueError('请选择有效的语音识别引擎。')
     extra = {}
     if selection:
@@ -219,7 +219,7 @@ def save_model_directory(model_dir: str, asr_engine: object = None, selection: d
                     raise ValueError('请选择有效的模型名称。')
         if 'asr_model' in selection:
             key = 'MEETING_INTERPRETER_SERVICE_ASR_MODEL' if asr_engine in SERVICE_URLS else 'MEETING_INTERPRETER_ASR_MODEL'
-            if asr_engine != 'sensevoice':
+            if asr_engine not in ('sensevoice', 'apple'):
                 extra[key] = selection['asr_model'].strip()
         if asr_engine in SERVICE_URLS:
             extra['MEETING_INTERPRETER_ASR_URL'] = local_url(selection.get('asr_url') or SERVICE_URLS[asr_engine])
@@ -257,6 +257,8 @@ def save_model_directory(model_dir: str, asr_engine: object = None, selection: d
     if engine == 'sensevoice':
         values['MEETING_INTERPRETER_SENSEVOICE_MODEL'] = str(sensevoice_location(path))
         removed.update(('MEETING_INTERPRETER_ASR_MODEL', 'MEETING_INTERPRETER_SERVICE_ASR_MODEL', 'MEETING_INTERPRETER_ASR_URL'))
+    elif engine == 'apple':
+        removed.update(('MEETING_INTERPRETER_ASR_MODEL', 'MEETING_INTERPRETER_SENSEVOICE_MODEL', 'MEETING_INTERPRETER_SERVICE_ASR_MODEL', 'MEETING_INTERPRETER_ASR_URL'))
     elif engine == 'whisper':
         selected = previous.get('MEETING_INTERPRETER_ASR_MODEL', RECOMMENDED_ASR_MODEL)
         info = inspect_asr_models('whisper', selected, str(path))
@@ -441,7 +443,8 @@ def load_user_config() -> None:
     if 'MEETING_INTERPRETER_ASR_BACKEND' in values:
         engine = values['MEETING_INTERPRETER_ASR_BACKEND']
         keys = {'whisper': ('MEETING_INTERPRETER_SENSEVOICE_MODEL', 'MEETING_INTERPRETER_SERVICE_ASR_MODEL', 'MEETING_INTERPRETER_ASR_URL'),
-                'sensevoice': ('MEETING_INTERPRETER_ASR_MODEL', 'MEETING_INTERPRETER_SERVICE_ASR_MODEL', 'MEETING_INTERPRETER_ASR_URL')}.get(engine, ('MEETING_INTERPRETER_ASR_MODEL', 'MEETING_INTERPRETER_SENSEVOICE_MODEL'))
+                'sensevoice': ('MEETING_INTERPRETER_ASR_MODEL', 'MEETING_INTERPRETER_SERVICE_ASR_MODEL', 'MEETING_INTERPRETER_ASR_URL'),
+                'apple': ('MEETING_INTERPRETER_ASR_MODEL', 'MEETING_INTERPRETER_SENSEVOICE_MODEL', 'MEETING_INTERPRETER_SERVICE_ASR_MODEL', 'MEETING_INTERPRETER_ASR_URL')}.get(engine, ('MEETING_INTERPRETER_ASR_MODEL', 'MEETING_INTERPRETER_SENSEVOICE_MODEL'))
         for key in keys:
             values.pop(key, None)
             os.environ.pop(key, None)
@@ -453,6 +456,8 @@ def load_user_config() -> None:
     os.environ.update(MEETING_INTERPRETER_MODEL_DIR=str(root), HF_HOME=str(root / 'huggingface'),
                       HUGGINGFACE_HUB_CACHE=str(root / 'huggingface/hub'), TRANSFORMERS_CACHE=str(root / 'huggingface/transformers'))
     for key, engine in (('MEETING_INTERPRETER_ASR_MODEL', 'whisper'), ('MEETING_INTERPRETER_TRANSLATION_MODEL', 'nllb')):
+        if key == 'MEETING_INTERPRETER_ASR_MODEL' and os.getenv('MEETING_INTERPRETER_ASR_BACKEND') == 'apple':
+            continue
         selected = os.getenv(key, RECOMMENDED_ASR_MODEL if engine == 'whisper' else 'facebook/nllb-200-distilled-600M')
         resolved = resolve_model_location(selected, root, engine)
         if resolved:
@@ -485,14 +490,17 @@ def model_settings() -> dict:
     provider = values.get('MEETING_INTERPRETER_TRANSLATION_BACKEND', 'nllb')
     root = current_model_directory()
     return {'model_dir': root, 'model_dir_exists': Path(root).is_dir(), 'ollama_model_dir': ollama_model_directory(), 'asr_engine': engine,
-            'asr_model': 'SenseVoice-Small' if engine == 'sensevoice' else values.get('MEETING_INTERPRETER_SERVICE_ASR_MODEL', '') if engine in SERVICE_URLS else values.get('MEETING_INTERPRETER_ASR_MODEL', RECOMMENDED_ASR_MODEL),
+            'asr_model': 'Apple SpeechAnalyzer' if engine == 'apple' else 'SenseVoice-Small' if engine == 'sensevoice' else values.get('MEETING_INTERPRETER_SERVICE_ASR_MODEL', '') if engine in SERVICE_URLS else values.get('MEETING_INTERPRETER_ASR_MODEL', RECOMMENDED_ASR_MODEL),
             'asr_url': values.get('MEETING_INTERPRETER_ASR_URL', SERVICE_URLS.get(engine, '')),
             'translation_backend': provider,
             'translation_model': values.get({'ollama': 'MEETING_INTERPRETER_OLLAMA_MODEL', 'llama': 'MEETING_INTERPRETER_LLAMA_MODEL'}.get(provider, 'MEETING_INTERPRETER_TRANSLATION_MODEL'), 'translategemma:4b' if provider == 'ollama' else 'facebook/nllb-200-distilled-600M' if provider == 'nllb' else ''),
             'translation_url': values.get('MEETING_INTERPRETER_OLLAMA_URL' if provider == 'ollama' else 'MEETING_INTERPRETER_LLAMA_URL', SERVICE_URLS.get(provider, ''))}
 
 
-def inspect_asr_models(engine: str = 'whisper', model: str | None = None, model_dir: str | None = None) -> dict[str, object]:
+def inspect_asr_models(engine: str = 'whisper', model: str | None = None, model_dir: str | None = None, languages=None) -> dict[str, object]:
+    if engine == 'apple':
+        from .apple_speech import inspect_apple_speech
+        return inspect_apple_speech(languages)
     root = Path(model_dir or current_model_directory()).expanduser()
     if not root.is_absolute():
         raise ValueError('模型目录必须是绝对路径。')
@@ -528,7 +536,10 @@ def inspect_asr_models(engine: str = 'whisper', model: str | None = None, model_
             'missing': [] if installed else ['模型权重'], 'message': message}
 
 
-def download_asr_model(engine: str = "whisper", timeout: float = 3600.0, model: str | None = None) -> dict[str, object]:
+def download_asr_model(engine: str = "whisper", timeout: float = 3600.0, model: str | None = None, languages=None) -> dict[str, object]:
+    if engine == "apple":
+        from .apple_speech import install_apple_speech
+        return install_apple_speech(languages, timeout)
     if engine != "whisper":
         return {"ok": False, "message": "SenseVoice 权重需要导入本地 ONNX 文件；为避免下载错误版本，当前请在设置中指定模型目录。"}
     root = Path(current_model_directory()).expanduser()

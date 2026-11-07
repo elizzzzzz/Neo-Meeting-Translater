@@ -71,3 +71,16 @@ Use compact 30px source buttons with visible selection and keyboard focus. Show
 only Auto and the two languages in the current meeting pair, preserving space
 for captions. Live selection is confirmed after already accepted audio has
 finished processing; an expired native job must finish before decoder mutation.
+
+
+## Apple speech recognition
+
+Add Apple SpeechAnalyzer to the existing speech-engine selector; preserve the
+compact model/service settings layout. Explain the macOS 26 requirement, local
+recognition, system-owned language storage and independent translation model.
+Show each language's resource state and one explicit preparation button. Show
+preparation and failures inside the speech card even when optional Ollama tools
+are collapsed. A directory change must not suggest that Apple assets moved.
+Label app-level bilingual candidate comparison as experimental and keep source
+language correction buttons available. Missing assets block capture with an
+actionable message rather than silently selecting a different recognizer.

@@ -16,6 +16,7 @@ APP_VERSION="$("${PYTHON_CMD[@]}" -c 'import tomllib; print(tomllib.load(open("p
 trap 'rm -rf "$STAGING_DIR"' EXIT
 
 "${PYTHON_CMD[@]}" -c 'import PyInstaller, AppKit, WebKit, mlx_whisper, sherpa_onnx'
+bash scripts/build_apple_speech.sh "$STAGING_DIR/native"
 "${PYTHON_CMD[@]}" -m PyInstaller --noconfirm --clean --windowed \
   --distpath "$STAGING_DIR/frozen" \
   --workpath "$STAGING_DIR/work" \
@@ -26,6 +27,7 @@ trap 'rm -rf "$STAGING_DIR"' EXIT
   --paths "$PROJECT_ROOT/src" \
   --icon "$PROJECT_ROOT/$ICON_PATH" \
   --add-data "$PROJECT_ROOT/web:web" \
+  --add-binary "$STAGING_DIR/native/AppleSpeechBridge:native" \
   --exclude-module "torch" \
   --exclude-module "transformers" \
   --exclude-module "pyannote" \
@@ -63,6 +65,9 @@ trap 'rm -rf "$STAGING_DIR"' EXIT
 BUNDLE="$STAGING_DIR/frozen/LocalMeetingInterpreter.app"
 plutil -replace NSMicrophoneUsageDescription \
   -string "用于采集本地麦克风或会议回环音频，并在本机生成实时字幕。" \
+  "$BUNDLE/Contents/Info.plist"
+plutil -replace NSSpeechRecognitionUsageDescription \
+  -string "使用 Apple 本机语音识别生成会议原文，音频不上传到云端。" \
   "$BUNDLE/Contents/Info.plist"
 plutil -replace CFBundleShortVersionString -string "$APP_VERSION" "$BUNDLE/Contents/Info.plist"
 # The standalone COLLECT directory is already copied into the self-contained

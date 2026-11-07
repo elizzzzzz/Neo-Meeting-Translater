@@ -99,6 +99,15 @@ class LiveSession:
         language = self._pending_source_language
         if language is None or self._decode_task is not None:
             return
+        if hasattr(self.pipeline.asr, 'ensure_language_ready'):
+            try:
+                await self.pipeline.asr.ensure_language_ready(language)
+            except Exception as exc:
+                self._pending_source_language = None
+                await self.send({'type': 'source_language_changed', 'source_language': self.pipeline.source_language,
+                                 'target_language': self.pipeline.target_language,
+                                 'message': f'源语言未切换：{exc}'})
+                return
         self.pipeline.set_source_language(language)
         self._pending_source_language = None
         await self.send({'type': 'source_language_changed', 'source_language': language,

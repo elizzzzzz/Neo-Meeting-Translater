@@ -13,7 +13,7 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from .asr import MLXWhisperBackend, SenseVoiceBackend, ServiceASRBackend, create_asr_backend, sensevoice_model_directory
+from .asr import AppleSpeechBackend, MLXWhisperBackend, SenseVoiceBackend, ServiceASRBackend, create_asr_backend, sensevoice_model_directory
 from .local_services import SERVICE_URLS, SERVICE_NAMES, inspect_service, local_url
 from .models import AudioEvent, ErrorEvent, SessionConfig
 from .pipeline import Pipeline
@@ -31,7 +31,9 @@ def create_app() -> FastAPI:
     translation_backend = os.getenv("MEETING_INTERPRETER_TRANSLATION_BACKEND", "nllb").lower()
     asr_model = os.getenv("MEETING_INTERPRETER_ASR_MODEL", "mlx-community/whisper-medium-mlx-8bit")
     asr_engine = os.getenv('MEETING_INTERPRETER_ASR_BACKEND', 'whisper')
-    if asr_engine == 'sensevoice':
+    if asr_engine == 'apple':
+        asr_model = 'Apple SpeechAnalyzer · Apple 本机语音识别'
+    elif asr_engine == 'sensevoice':
         asr_model = f'SenseVoice · {sensevoice_model_directory()}'
     elif asr_engine in SERVICE_URLS:
         asr_model = os.getenv('MEETING_INTERPRETER_SERVICE_ASR_MODEL', '')
@@ -62,7 +64,7 @@ def create_app() -> FastAPI:
         "speaker_status": "loading" if speaker_model_path().is_file() and mode == "local" else "missing",
         "speaker_message": "声纹模型尚未连接，可手动换人",
     }
-    app = FastAPI(title="Local Meeting Interpreter", version="0.2.15")
+    app = FastAPI(title="Local Meeting Interpreter", version="0.2.16")
     app.mount("/web", StaticFiles(directory=WEB_DIR), name="web")
 
     @app.get("/health")
@@ -144,8 +146,12 @@ def create_app() -> FastAPI:
         return await asyncio.to_thread(pull_ollama_model, model if isinstance(model, str) else "translategemma:4b")
 
     @app.get("/system/models")
-    async def system_models(engine: str = "whisper", model: str | None = None, model_dir: str | None = None) -> dict[str, object]:
+    async def system_models(engine: str = "whisper", model: str | None = None, model_dir: str | None = None, language_pair: str | None = None) -> dict[str, object]:
         try:
+            if engine == "apple":
+                if language_pair not in (None, "zh-ja", "zh-en", "en-ja"):
+                    raise ValueError("请选择中日、中英或英日会议语言")
+                return await asyncio.to_thread(inspect_asr_models, "apple", languages=language_pair.split("-") if language_pair else None)
             return await asyncio.to_thread(inspect_asr_models, engine if engine in {"whisper", "sensevoice", 'nllb'} else "whisper", model, model_dir)
         except (OSError, ValueError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -154,6 +160,11 @@ def create_app() -> FastAPI:
     async def system_download_asr(payload: dict[str, object] | None = None) -> dict[str, object]:
         engine = payload.get("engine") if isinstance(payload, dict) else "whisper"
         model = payload.get('model') if isinstance(payload, dict) else None
+        if engine == 'apple':
+            languages = payload.get('languages') if isinstance(payload, dict) else None
+            if not isinstance(languages, list) or not languages or not all(isinstance(item, str) and item in {'zh', 'ja', 'en'} for item in languages) or len(languages) > 3:
+                raise HTTPException(status_code=400, detail='请选择需要准备的中文、日语或英语语言资源')
+            return await asyncio.to_thread(download_asr_model, 'apple', languages=languages)
         return await asyncio.to_thread(download_asr_model, engine if isinstance(engine, str) else "whisper", model=model if isinstance(model, str) else None)
 
     @app.get("/settings")
@@ -204,10 +215,13 @@ def create_app() -> FastAPI:
             await asyncio.sleep(0)
             try:
                 backend = create_asr_backend()
+                runtime["asr_backend"] = backend
                 runtime["warmup_message"] = "正在执行首次本地识别，建立热缓存…"
                 runtime["warmup_progress"] = 35
                 await asyncio.sleep(0)
-                if isinstance(backend, ServiceASRBackend):
+                if isinstance(backend, AppleSpeechBackend):
+                    await backend.warmup(initial=True)
+                elif isinstance(backend, ServiceASRBackend):
                     await backend.warmup()
                 elif isinstance(backend, SenseVoiceBackend):
                     await asyncio.to_thread(backend.warmup)
@@ -278,7 +292,17 @@ def create_app() -> FastAPI:
             except Exception:
                 return
 
-        asyncio.create_task(warm_all())
+        runtime['warmup_task'] = asyncio.create_task(warm_all())
+
+    @app.on_event("shutdown")
+    async def stop_native_speech() -> None:
+        task = runtime.get('warmup_task')
+        if task is not None and not task.done():
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+        backend = runtime.get('asr_backend')
+        if isinstance(backend, AppleSpeechBackend):
+            await asyncio.to_thread(backend.client.close)
 
     @app.get("/")
     async def index() -> FileResponse:
@@ -346,6 +370,13 @@ def create_app() -> FastAPI:
                         translate_inline=False)
                     session = LiveSession(pipeline, send)
                     effective_language = getattr(pipeline.asr, 'language', None) or 'auto'
+                    if mode == 'local' and isinstance(pipeline.asr, AppleSpeechBackend):
+                        await send({'type': 'status', 'stage': 'preparing', 'message': '正在准备 Apple 本机语音识别…'})
+                        try:
+                            await pipeline.asr.warmup()
+                        except Exception as exc:
+                            await send(ErrorEvent(message=f'Apple 识别尚未就绪，未开启收音：{exc}').model_dump(mode='json'))
+                            continue
                     if mode == 'local' and isinstance(pipeline.asr, SenseVoiceBackend):
                         language_name = {'zh': '中文', 'ja': '日语', 'en': '英语', 'auto': '自动识别'}.get(effective_language, effective_language)
                         await send({'type': 'status', 'stage': 'preparing', 'message': f'正在准备{language_name}识别；完成后开启收音，请稍候…'})

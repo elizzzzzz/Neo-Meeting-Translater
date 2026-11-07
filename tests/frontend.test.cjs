@@ -578,3 +578,56 @@ test('confirmed paragraph identity survives pending voice labels and chunk metad
   app.run("upsertCaption({session_id:'m',paragraph_id:'turn2',segment_id:'4',speaker_id:'SPEAKER_00',source_language:'zh',target_language:'ja',original_text:'下一发言'})");
   assert.equal(app.run('transcriptParagraphs().length'),2);
 });
+
+test('Apple speech selection shows system assets and a visible preparation action', async () => {
+  const app=loadApp();
+  await new Promise(resolve=>setImmediate(resolve));
+  app.context.fetch=async url=>({ok:true,json:async()=>({available:true,model:'Apple SpeechAnalyzer',installed:false,languages:[{language:'zh',installed:true},{language:'ja',installed:false},{language:'en',installed:false}]})});
+  app.run("asrEngine.value='apple';asrModel.value='/old/whisper';modelDirectory.value='/Volumes/offline';setDirection('zh','ja')");
+  await app.run("refreshModelSelection('asr')");
+  assert.equal(app.elements.get('#asrModel').value,'Apple SpeechAnalyzer');
+  assert.equal(app.elements.get('#asrServiceField').hidden,true);
+  assert.equal(app.elements.get('#downloadAsrBtn').hidden,false);
+  assert.equal(app.elements.get('#downloadAsrBtn').disabled,false);
+  assert.match(app.elements.get('#downloadAsrBtn').textContent,/Apple/);
+  assert.match(app.elements.get('#asrEngineHint').textContent,/macOS.*目录.*实验/);
+  assert.match(app.elements.get('#asrModelStatus').textContent,/中文 ✓.*日语 ○/);
+  assert.ok(!app.requests.some(request=>request.url==='/system/download-asr'));
+});
+
+test('Apple preparation failure remains visible inside the speech card', async () => {
+  const app=loadApp();
+  await new Promise(resolve=>setImmediate(resolve));
+  app.run("asrEngine.value='apple';setDirection('en','ja')");
+  const posts=[];
+  app.context.fetch=async (url,options)=>{
+    posts.push({url,body:JSON.parse(options.body)});
+    return {ok:true,json:async()=>({ok:false,message:'系统下载失败'})};
+  };
+  await app.run('prepareSpeechModel()');
+  assert.equal(posts[0].url,'/system/download-asr');
+  assert.deepEqual(posts[0].body,{engine:'apple',languages:['en','ja']});
+  assert.match(app.elements.get('#asrModelStatus').textContent,/系统下载失败/);
+  assert.equal(app.elements.get('#downloadAsrBtn').disabled,false);
+});
+
+test('unsupported Apple speech clearly disables preparation without suggesting a model folder', async () => {
+  const app=loadApp();
+  await new Promise(resolve=>setImmediate(resolve));
+  app.context.fetch=async()=>({ok:true,json:async()=>({available:false,installed:false,message:'需要 macOS 26 或更高版本'})});
+  app.run("asrEngine.value='apple'");
+  await app.run("refreshModelSelection('asr')");
+  assert.equal(app.elements.get('#downloadAsrBtn').disabled,true);
+  assert.match(app.elements.get('#asrModelStatus').textContent,/macOS 26/);
+  assert.doesNotMatch(app.elements.get('#asrModelStatus').textContent,/目录/);
+});
+
+test('Apple speech engine and fixed model persist through the existing save form', async () => {
+  const app=loadApp();
+  await new Promise(resolve=>setImmediate(resolve));
+  app.run("asrEngine.value='apple';asrModel.value='Apple SpeechAnalyzer';modelDirectory.value='/Volumes/offline';translationEngine.value='ollama';translationModel.value='translategemma:4b'");
+  await app.run('saveModelDirectory()');
+  const request=app.requests.find(request=>request.url==='/settings' && request.options?.method==='POST');
+  assert.equal(JSON.parse(request.options.body).asr_engine,'apple');
+  assert.equal(JSON.parse(request.options.body).asr_model,'Apple SpeechAnalyzer');
+});

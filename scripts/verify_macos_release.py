@@ -26,6 +26,11 @@ def verify_bundle(app: Path) -> None:
     assert (app / 'Contents/Frameworks/mlx.metallib').is_file(), 'Missing MLX GPU library beside libmlx.dylib; native ASR startup would crash'
     assert (app / 'Contents/Frameworks/sherpa_onnx/lib/libonnxruntime.dylib').is_file(), 'Missing local speech/voice runtime library'
     info = plistlib.loads((app / 'Contents/Info.plist').read_bytes())
+    helper = app / 'Contents/Frameworks/native/AppleSpeechBridge'
+    assert helper.is_file() and helper.stat().st_mode & 0o111, 'Missing executable Apple SpeechAnalyzer bridge'
+    assert b'arm64' in run('lipo', '-archs', str(helper)), 'Wrong Apple helper architecture'
+    run('codesign', '--verify', '--strict', str(helper))
+    assert info.get('NSSpeechRecognitionUsageDescription'), 'Missing native speech usage description'
     assert info.get('NSMicrophoneUsageDescription'), 'Missing microphone usage description'
     assert info.get('CFBundleIdentifier') == 'com.localmeetinginterpreter.app', 'Wrong bundle identifier'
     run('codesign', '--verify', '--deep', '--strict', str(app))

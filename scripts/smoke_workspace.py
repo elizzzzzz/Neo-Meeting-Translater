@@ -43,6 +43,21 @@ try:
     route.fulfill(json={'restart_required':True,'model_dir':saved_settings[-1]['model_dir']})
    else:route.fulfill(json={'model_dir':'/test/models','ollama_model_dir':'/test/ollama-models','asr_engine':'whisper','asr_model':'mlx-community/whisper-medium-mlx-8bit','translation_backend':'ollama','translation_model':'translategemma:4b'})
   page.route('**/settings',settings_route)
+  apple_fixture={'available':True,'installed':False,'model':'Apple SpeechAnalyzer','models':['Apple SpeechAnalyzer'],'storage':'macOS','languages':[{'language':language,'installed':False,'status':'missing'} for language in ['zh','ja','en']]}
+  apple_installs=[]
+  def asset_route(route):
+   if 'engine=apple' in route.request.url: route.fulfill(json=apple_fixture)
+   else: route.fallback()
+  def prepare_apple(route):
+   payload=route.request.post_data_json
+   assert payload['engine']=='apple'
+   apple_installs.append(payload['languages'])
+   for row in apple_fixture['languages']:
+    if row['language'] in payload['languages']: row.update(installed=True,status='installed')
+   apple_fixture['installed']=True
+   route.fulfill(json={'ok':True,'message':'测试：语言资源准备完成'})
+  page.route('**/system/models?**',asset_route)
+  page.route('**/system/download-asr',prepare_apple)
   page.route('**/services/models?**',lambda route:route.fulfill(json={'reachable':True,'models':[
    {'id':'qwen3-asr:1.7b','asr':True,'translation':False},
    {'id':'translategemma:4b','asr':False,'translation':True}]}))
@@ -162,6 +177,30 @@ try:
     assert page.locator('.modal-card').last.evaluate('e=>e.scrollWidth <= e.clientWidth')
   page.locator('#interfaceLanguage').select_option('zh')
   page.set_viewport_size({'width':1440,'height':900})
+  # Check Apple settings without downloading or touching system speech assets.
+  page.locator('#asrEngine').select_option('apple')
+  page.wait_for_function('document.querySelector("#asrModel").value === "Apple SpeechAnalyzer"')
+  assert not page.locator('#asrServiceField').is_visible()
+  assert 'macOS' in page.locator('#asrEngineHint').inner_text()
+  assert not apple_installs
+  page.locator('#downloadAsrBtn').click()
+  page.wait_for_function('document.querySelector("#asrModelStatus").textContent.includes("资源已就绪")')
+  assert apple_installs==[['zh','ja']]
+  assert page.locator('#downloadAsrBtn').is_disabled()
+  for language in ['zh','ja','en']:
+   page.locator('#interfaceLanguage').select_option(language)
+   assert 'macOS 26' in page.locator('#asrEngineHint').inner_text()
+   assert 'Apple' in page.locator('#asrEngine option:checked').inner_text()
+   assert 'Apple' in page.locator('#downloadAsrBtn').inner_text()
+   assert page.locator('.modal-card').last.evaluate('e=>e.scrollWidth <= e.clientWidth')
+  page.locator('#interfaceLanguage').select_option('zh')
+  page.locator('#asrSelectionTitle').scroll_into_view_if_needed()
+  page.screenshot(path=str(out/'apple-speech-settings.png'))
+  apple_fixture.update(available=False,installed=False,message='需要 macOS 26 或更高版本')
+  page.locator('#refreshModelsBtn').click()
+  page.wait_for_function('document.querySelector("#asrModelStatus").textContent.includes("需要 macOS 26")')
+  assert page.locator('#downloadAsrBtn').is_disabled()
+  page.locator('#asrEngine').select_option('whisper')
   page.locator('#useOllamaDirectoryBtn').click()
   page.wait_for_function('document.querySelector("#modelDirectory").value === "/test/ollama-models"')
   page.locator('#asrEngine').select_option('ollama')

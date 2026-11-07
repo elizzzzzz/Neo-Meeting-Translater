@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#f5f5f7" />
     <title>Local Interpreter · 实时会议</title>
-    <link rel="stylesheet" href="/web/styles.css?v=0.2.15" />
+    <link rel="stylesheet" href="/web/styles.css?v=0.2.16" />
   </head>
   <body>
     <header class="global-bar">
@@ -65,7 +65,7 @@
         <div class="model-selection-grid">
           <section class="model-selection-card" aria-labelledby="asrSelectionTitle">
             <h3 id="asrSelectionTitle" data-i18n="models.speech">语音识别 · 声音转文字</h3>
-            <label class="settings-field"><span data-i18n="models.service">运行服务</span><select id="asrEngine"><option value="whisper" data-i18n="models.whisper">Whisper · 内置本地识别</option><option value="sensevoice" data-i18n="models.sensevoice">SenseVoice · 内置本地识别</option><option value="ollama">Ollama</option><option value="llama">llama.app</option></select></label>
+            <label class="settings-field"><span data-i18n="models.service">运行服务</span><select id="asrEngine"><option value="whisper" data-i18n="models.whisper">Whisper · 内置本地识别</option><option value="sensevoice" data-i18n="models.sensevoice">SenseVoice · 内置本地识别</option><option value="apple" data-i18n="models.apple">Apple SpeechAnalyzer · Apple 本机语音识别</option><option value="ollama">Ollama</option><option value="llama">llama.app</option></select></label>
             <label id="asrServiceField" class="settings-field" hidden><span data-i18n="models.address">本机服务地址</span><input id="asrServiceUrl" type="url" spellcheck="false" placeholder="http://127.0.0.1:11434" /></label>
             <label class="settings-field"><span data-i18n="models.model">模型</span><select id="asrModel"></select></label>
             <small id="asrEngineHint" data-i18n="models.speechHint">Qwen3-ASR 通过所选服务识别原文；另一侧独立选择翻译模型。</small>
@@ -100,6 +100,6 @@
       </section>
     </div>
     <footer class="footer-bar"><span data-i18n="footer.config">文字模式 · M3 / 16G 配置</span><span id="footerStatus"><span data-i18n="footer.service">服务地址</span> <span id="serviceAddress">127.0.0.1:8000</span></span></footer>
-    <script src="/web/app.js?v=0.2.15" defer></script>
+    <script src="/web/app.js?v=0.2.16" defer></script>
   </body>
 </html>

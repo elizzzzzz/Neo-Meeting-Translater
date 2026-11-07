@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>CFBundleIdentifier</key><string>com.localmeetinginterpreter.speech</string>
+  <key>CFBundleName</key><string>LocalMeetingInterpreter Speech</string>
+  <key>CFBundleVersion</key><string>1</string>
+  <key>NSSpeechRecognitionUsageDescription</key><string>使用 Apple 本机语音识别生成会议原文，音频不上传到云端。</string>
+</dict></plist>

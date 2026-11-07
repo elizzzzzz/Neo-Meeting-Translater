@@ -2,11 +2,13 @@
 
 本地运行的中日 / 中英 / 英日多人会议实时字幕翻译 MVP。当前目标设备是 16G 统一内存的 Apple M3：文字输出优先，语音合成作为可选插件，不依赖云端 API。
 
+0.2.16 增加 **Apple SpeechAnalyzer · Apple 本机语音识别**。在“本地设置 → 语音识别”选择 Apple 引擎，点击“准备 Apple 语言资源”，保存设置并重开 App。需要 macOS 26+；语言资源由系统管理，首次准备需要联网，识别在本机执行。翻译继续使用独立的本地翻译模型。双语自动判别目前为应用层候选比较实验功能，可以用源语言快捷按钮锁定语言。验证范围和限制见 [0.2.16 说明](docs/release-0.2.16.md)。
+
 0.2.5 在 0.2.4 的音频保留和低延迟链路上增加中日固定双栏、源/译标注、稳定译文提交、稳定片段上下文校正、字幕模式和一键模型状态检查。长段中日自然语音的按时钟回放评估仍以 [0.2.4 实测](docs/asr-evaluation-0.2.4.md) 为准。
 
 0.2.3 增加同一发言人的连续双栏记录、历史滚动与“回到最新”、手动换人及本地声纹自动分人（测试）。已完成的识别片段保留，当前片段可修订；停止录音会补齐尾句。记录保留在当前 App 会话内，退出前请导出。
 
-“本地设置 → 语音转文字引擎”可选择 Whisper 或 SenseVoice（测试），保存并重开 App 生效。SenseVoice 需要本地 `asr/sensevoice/model.int8.onnx`、`tokens.txt`、`silero_vad.onnx`，不自动下载；原有 Whisper 配置保留。中日样本的实际结果、整句漏识别修复和限制见 [中日语音识别评估](docs/asr-evaluation-0.2.3.md) 与 [0.2.3 说明](docs/release-0.2.3.md)。真实麦克风、腾讯会议与 Teams 回环采集，以及自动分人准确率仍需独立验收；自动分人不能获得会议软件中的真实姓名。
+“本地设置 → 语音转文字引擎”可选择 Apple SpeechAnalyzer、Whisper、SenseVoice（测试），或通过 Ollama / llama.app 连接兼容的本地识别服务，保存并重开 App 生效。SenseVoice 需要本地 `asr/sensevoice/model.int8.onnx`、`tokens.txt`、`silero_vad.onnx`，不自动下载；原有 Whisper 配置保留。中日样本的实际结果、整句漏识别修复和限制见 [中日语音识别评估](docs/asr-evaluation-0.2.3.md) 与 [0.2.3 说明](docs/release-0.2.3.md)。真实麦克风、腾讯会议与 Teams 回环采集，以及自动分人准确率仍需独立验收；自动分人不能获得会议软件中的真实姓名。
 
 ## 当前范围
 
@@ -19,7 +21,7 @@
 - 可切换半透明、置顶、可移动的字幕浮窗，覆盖在腾讯会议或 Teams 上方
 - `mock` 模式用于在未下载模型时验证端到端流程
 
-已接入 MLX Whisper、SenseVoice 和本地 Ollama/NLLB 适配器。语音输出尚未接入；当前以文字为主。未设置运行模式时仍默认 `mock`，设置 `MEETING_INTERPRETER_MODE=local` 后才加载本地模型。
+已接入 Apple SpeechAnalyzer、MLX Whisper、SenseVoice，以及本地 Ollama / llama.app 服务和 NLLB 适配器。语音输出尚未接入；当前以文字为主。未设置运行模式时仍默认 `mock`，设置 `MEETING_INTERPRETER_MODE=local` 后才加载本地模型。
 
 如果已安装 Ollama，推荐使用 `translategemma:4b` 做本地翻译。先执行 `ollama pull translategemma:4b`，再使用以下配置：
 
@@ -69,7 +71,7 @@ python -m meeting_interpreter
 
 首次下载 pyannote 模型时需要在 Hugging Face 接受模型使用条件；下载完成后可以切换为本地模型目录，推理过程不需要联网。M3/16G 建议先使用 CPU 说话人区分，避免和 MLX Whisper、NLLB 同时占用统一内存。
 
-首次使用会按 `MEETING_INTERPRETER_ASR_MODEL` 下载 MLX Whisper 权重；App 启动后会自动冷启动 ASR 和翻译模型，界面显示加载进度，准备完成后保持热启动。M3/16G 默认使用 8-bit medium 模型，在保留本地翻译和 App 运行空间的同时提高中文、日文和英文会议识别准确率。若设备内存紧张，可手动切换为 `mlx-community/whisper-small-mlx-8bit`。
+选择 MLX Whisper 时，首次使用会按 `MEETING_INTERPRETER_ASR_MODEL` 下载权重；App 启动后会自动冷启动 ASR 和翻译模型，界面显示加载进度，准备完成后保持热启动。M3/16G 默认使用 8-bit medium 模型，在保留本地翻译和 App 运行空间的同时提高中文、日文和英文会议识别准确率。若设备内存紧张，可手动切换为 `mlx-community/whisper-small-mlx-8bit`。
 
 打开 App，选择输入设备后点击“开启音频输入”。界面支持中文 ↔ 日本語、中文 ↔ English、English ↔ 日本語三组双向方向，可用快捷按钮或交换按钮切换；源语言也可以保留为“自动识别”。
 
