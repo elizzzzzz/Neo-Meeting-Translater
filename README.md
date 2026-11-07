@@ -1,100 +1,138 @@
-# Local Meeting Interpreter
+# LocalMeetingInterpreter
 
-本地运行的中日 / 中英 / 英日多人会议实时字幕翻译 MVP。当前目标设备是 16G 统一内存的 Apple M3：文字输出优先，语音合成作为可选插件，不依赖云端 API。
+在 Apple Silicon Mac 上本地运行的多人会议字幕翻译工具，面向中文、日语和英语会议。应用优先提供实时文字字幕，音频和模型留在本机，不调用云端转写或翻译 API。
 
-0.2.17 起，模型、服务地址和模型目录保存后会自动应用，无需手动重启。录音期间保存会先收尾当前发言，保留屏幕记录，加载完成后恢复收音；等待期间可点“停止”取消恢复。加载失败会显示具体原因，修改后重新保存即可重试。详见 [0.2.17 说明](docs/release-0.2.17.md)。
+当前版本：**0.2.17**
+适用设备：Apple M3 / 16 GB 统一内存（也可在其他 macOS Apple Silicon 设备上运行）
+交付形式：macOS 原生 App、免安装 ZIP、DMG
 
-0.2.16 增加 **Apple SpeechAnalyzer · Apple 本机语音识别**。在“本地设置 → 语音识别”选择 Apple 引擎，点击“准备 Apple 语言资源”，保存设置后等待自动加载。需要 macOS 26+；语言资源由系统管理，首次准备需要联网，识别在本机执行。翻译继续使用独立的本地翻译模型。双语自动判别目前为应用层候选比较实验功能，可以用源语言快捷按钮锁定语言。验证范围和限制见 [0.2.16 说明](docs/release-0.2.16.md)。
+## 主要功能
 
-0.2.5 在 0.2.4 的音频保留和低延迟链路上增加中日固定双栏、源/译标注、稳定译文提交、稳定片段上下文校正、字幕模式和一键模型状态检查。长段中日自然语音的按时钟回放评估仍以 [0.2.4 实测](docs/asr-evaluation-0.2.4.md) 为准。
+- 中文、日语、英语之间的双向翻译：
+  - 中文 ↔ 日本語
+  - 中文 ↔ English
+  - English ↔ 日本語
+- 实时原文和译文双栏字幕，默认保持固定语言顺序。
+- 自动识别源语言，或用按钮快速锁定当前发言语言。
+- 多人发言记录、连续段落、历史滚动和回到最新位置。
+- 说话人标签与可选的本地说话人区分；默认显示匿名标签。
+- 半透明、置顶、可移动、可缩放的字幕浮窗。
+- 支持本机麦克风，以及通过 BlackHole / Loopback 接入腾讯会议、Microsoft Teams 和网页视频的系统音频。
+- 支持 Apple SpeechAnalyzer、MLX Whisper、SenseVoice，以及 Ollama / llama.app 兼容的本地服务。
+- 修改模型、服务地址和模型目录后立即应用，不需要重启 App。
+- 启动时显示使用提示和模型准备进度；准备完成后自动收起非主要信息，把空间留给字幕。
+- 单实例运行，重复打开不会启动多个本地服务副本。
 
-0.2.3 增加同一发言人的连续双栏记录、历史滚动与“回到最新”、手动换人及本地声纹自动分人（测试）。已完成的识别片段保留，当前片段可修订；停止录音会补齐尾句。记录保留在当前 App 会话内，退出前请导出。
+当前版本以文字输出为主，翻译语音输出尚未完成。
 
-“本地设置 → 语音转文字引擎”可选择 Apple SpeechAnalyzer、Whisper、SenseVoice（测试），或通过 Ollama / llama.app 连接兼容的本地识别服务，保存后自动应用。SenseVoice 需要本地 `asr/sensevoice/model.int8.onnx`、`tokens.txt`、`silero_vad.onnx`，不自动下载；原有 Whisper 配置保留。中日样本的实际结果、整句漏识别修复和限制见 [中日语音识别评估](docs/asr-evaluation-0.2.3.md) 与 [0.2.3 说明](docs/release-0.2.3.md)。真实麦克风、腾讯会议与 Teams 回环采集，以及自动分人准确率仍需独立验收；自动分人不能获得会议软件中的真实姓名。
+## 下载和运行
 
-## 当前范围
+从 [GitHub Releases](https://github.com/elizzzzzz/local-meeting-interpreter/releases) 下载：
 
-- 麦克风或在线会议回环音频接入的后端接口
-- 流式音频事件、说话人标签、原文和译文的数据模型
-- 可替换的 ASR、说话人区分和翻译适配器
-- 本地 FastAPI WebSocket 服务
-- 原生 macOS 窗口中的实时字幕页面
-- App 内音频设备选择，可选择 Mac 麦克风或 BlackHole 等会议回环设备
-- 可切换半透明、置顶、可移动的字幕浮窗，覆盖在腾讯会议或 Teams 上方
-- `mock` 模式用于在未下载模型时验证端到端流程
+- `LocalMeetingInterpreter-portable.zip`：解压后直接双击 `LocalMeetingInterpreter.app`，不需要拖入 Applications。
+- `LocalMeetingInterpreter.dmg`：适合按 macOS 常规方式安装。
 
-已接入 Apple SpeechAnalyzer、MLX Whisper、SenseVoice，以及本地 Ollama / llama.app 服务和 NLLB 适配器。语音输出尚未接入；当前以文字为主。未设置运行模式时仍默认 `mock`，设置 `MEETING_INTERPRETER_MODE=local` 后才加载本地模型。
+安装包不包含 ASR、翻译或 TTS 模型权重，也不会把模型提交到 GitHub。首次使用时，在 App 的“模型与服务设置”中选择本地引擎、模型目录和服务地址。
 
-如果已安装 Ollama，推荐使用 `translategemma:4b` 做本地翻译。先执行 `ollama pull translategemma:4b`，再使用以下配置：
+免安装 ZIP 不启动 Chrome、Safari、Edge 或其他浏览器，字幕页面嵌在原生 macOS App 窗口中。
+
+## 首次配置
+
+1. 打开 App，阅读“把会议内容留在本机”的使用提示。
+2. 在“模型与服务设置”中检查本机环境。
+3. 选择语音识别引擎和翻译服务。
+4. 选择模型保存目录。默认使用当前 Ollama 模型目录，也可以随时改为其他本地目录。
+5. 点击保存。设置会立即应用；如果正在录音，App 会先收尾并暂时暂停收音，模型就绪后自动恢复。切换期间可能产生音频缺口。
+6. 看到“模型可用 · 热启动”后，再开始会议。
+
+App 会显示 Ollama 是否已安装、服务是否运行、当前版本、可检查到的最新版本，以及推荐翻译模型状态。安装或升级 Ollama、安装模型和下载 ASR 权重都需要用户在界面中明确点击；程序不会在后台自行下载或升级。
+
+使用提示可以勾选“以后不再提醒”。之后仍可从顶部“使用指南”重新打开。
+
+## 语音识别引擎
+
+### Apple SpeechAnalyzer
+
+Apple SpeechAnalyzer 是 macOS 26+ 的本机语音识别引擎。它只负责语音转文字，翻译仍由独立的本地翻译模型完成。
+
+- Apple 语言资源由 macOS 管理，不保存在自定义模型目录中。
+- 只有点击“准备 Apple 语言资源”后，系统才会按需准备资源。
+- 中文、日语和英语资源的可用性取决于当前 macOS 安装情况。
+- 当前版本已完成接入和只读资源检测，但真实中文、日语识别准确率与端到端延时尚未完成正式实测。
+
+自动识别中文和日语目前属于应用层候选比较实验功能。需要稳定识别时，可使用字幕区域上方的源语言按钮锁定中文、日本語或 English。
+
+### MLX Whisper
+
+适合 Apple Silicon 的本地识别方案，可通过界面选择模型和缓存目录。源码运行时也可以使用环境变量：
 
 ```bash
 export MEETING_INTERPRETER_MODE=local
-export MEETING_INTERPRETER_TRANSLATION_BACKEND=ollama
-export MEETING_INTERPRETER_OLLAMA_MODEL=translategemma:4b
-python -m meeting_interpreter.desktop
+export MEETING_INTERPRETER_ASR_MODEL=mlx-community/whisper-medium-mlx-8bit
 ```
 
-Ollama 首次加载模型可能需要较长时间；后续翻译会复用已加载模型。若不设置 `MEETING_INTERPRETER_TRANSLATION_BACKEND=ollama`，项目继续使用 NLLB。
+M3 / 16 GB 建议从 8-bit medium 开始；如果内存紧张，可改用 `mlx-community/whisper-small-mlx-8bit`。
 
-## 运行
+### SenseVoice
+
+SenseVoice 作为可选本地引擎接入。使用前需要把模型文件放在所选目录中：
+
+```
+asr/sensevoice/model.int8.onnx
+asr/sensevoice/tokens.txt
+asr/sensevoice/silero_vad.onnx
+```
+
+程序不会自动下载这些文件。
+
+## 翻译模型和本地服务
+
+翻译可以使用内置 NLLB 适配器、Ollama 或 llama.app。Ollama / llama.app 负责管理各自的模型文件，App 只通过本机服务地址调用它们。
+
+Ollama 示例：
+
+```bash
+ollama pull translategemma:4b
+```
+
+源码运行示例：
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -e '.[dev]'
-python -m meeting_interpreter --mock
-```
-
-在 M3 上安装真实 ASR 适配器：
-
-```bash
 pip install -e '.[apple,translation,speaker]'
+
 export MEETING_INTERPRETER_MODE=local
-export MEETING_INTERPRETER_ASR_MODEL=mlx-community/whisper-medium-mlx-8bit
-export MEETING_INTERPRETER_TRANSLATION_MODEL=facebook/nllb-200-distilled-600M
-python -m meeting_interpreter
+export MEETING_INTERPRETER_TRANSLATION_BACKEND=ollama
+export MEETING_INTERPRETER_OLLAMA_MODEL=translategemma:4b
+
+python -m meeting_interpreter.desktop
 ```
 
-安装包和界面说明见 [macOS 安装包](docs/macos-install.md)。发布目录同时提供 DMG 和免安装 ZIP：解压 `LocalMeetingInterpreter-portable.zip` 后直接双击 `LocalMeetingInterpreter.app` 即可运行，不需要写入 Applications，也不会启动 Chrome、Edge 或其他浏览器。
+推荐模型是 `translategemma:4b`，但可以在 App 中更换为本机服务支持的其他模型。模型目录变更后会重新检测并立即应用；现有模型文件不会自动迁移。
 
-首次打开 App 会显示使用提示，并自动检查 Ollama 是否安装、服务是否运行、版本是否有更新以及推荐翻译模型 `translategemma:4b` 是否已下载。点击“本地设置”可以重新检查、显式安装或通过 Homebrew 升级 Ollama、安装推荐模型、检查或下载 Whisper 权重，并选择语音识别模型缓存目录（翻译模型仍由 Ollama 管理）。使用提示偏好独立保存在本机，不受服务端口变化影响；勾选“以后不再提醒”可以关闭启动提示；之后仍可从顶部“使用指南”再次打开。
+## 会议和网页音频接入
 
-界面中的 ASR 已标注为“语音识别”，Ollama 已标注为“本地翻译引擎”，模型状态和冷启动进度使用中文显示，方便非技术人员判断当前是否可以开始会议。会议语言快捷设置支持中文 ↔ 日本語、中文 ↔ English 和 English ↔ 日本語；自动识别时，系统会按每段实际源语言选择另一方翻译，双栏始终保持所选语言的固定顺序，并显示“源 / 译”标签。
+App 一次采集一个输入设备：
 
-启用本地多人区分：
+- 现场会议：选择 Mac 内置麦克风或耳机麦克风。
+- 腾讯会议、Microsoft Teams、网页视频：安装 BlackHole 2ch 或 Loopback，把会议软件的扬声器输出设置为回环设备，再在 App 中选择同名输入设备。
+- 需要同时听到原声时，可在 macOS“音频 MIDI 设置”中建立多输出设备。
 
-```bash
-pip install -e '.[diarization]'
-export HF_TOKEN=你的_HuggingFace_访问令牌
-export MEETING_INTERPRETER_SPEAKER_MODE=pyannote
-export MEETING_INTERPRETER_MAX_SPEAKERS=4
-python -m meeting_interpreter
-```
+详细步骤见 [macOS 会议音频接入](docs/macos-meeting-audio.md)。
 
-首次下载 pyannote 模型时需要在 Hugging Face 接受模型使用条件；下载完成后可以切换为本地模型目录，推理过程不需要联网。M3/16G 建议先使用 CPU 说话人区分，避免和 MLX Whisper、NLLB 同时占用统一内存。
+应用不会调用腾讯会议或 Teams 的云端转写接口。回环设备只是把系统音频作为本地输入交给识别管线。
 
-选择 MLX Whisper 时，首次使用会按 `MEETING_INTERPRETER_ASR_MODEL` 下载权重；App 启动后会自动冷启动 ASR 和翻译模型，界面显示加载进度，准备完成后保持热启动。M3/16G 默认使用 8-bit medium 模型，在保留本地翻译和 App 运行空间的同时提高中文、日文和英文会议识别准确率。若设备内存紧张，可手动切换为 `mlx-community/whisper-small-mlx-8bit`。
+## 本地服务接口
 
-打开 App，选择输入设备后点击“开启音频输入”。界面支持中文 ↔ 日本語、中文 ↔ English、English ↔ 日本語三组双向方向，可用快捷按钮或交换按钮切换；源语言也可以保留为“自动识别”。
+源码运行时提供以下本地接口，便于集成自己的音频采集器：
 
-## 字幕模式
+- \`GET /health\`：查看服务状态和当前运行模式。
+- \`WS /ws\`：发送音频事件并接收实时字幕事件。
 
-点击“字幕模式”会进入只显示真实会议字幕的半透明浮窗，不会生成模拟文字。浮窗可以置顶、移动和缩放；本地设置可以选择双栏、仅源文或仅译文。原生 App 的“导出记录”使用 macOS 保存对话框，将原文和译文保存为 UTF-8 文字文件。
+音频事件示例：
 
-没有模型或模型未就绪时，真实音频输入按钮保持禁用；顶部和右侧会显示具体状态。真实识别、翻译延时及腾讯会议 / Teams 音频接入需在模型连接后另行验证。
-
-开发验证：`pytest -q`、`node --test tests/frontend.test.cjs`；安装 Playwright 和 Chromium 后可以运行 `python scripts/smoke_workspace.py`，检查桌面单屏布局、设置输入保持、示例字幕与浮窗。此检查不连接真实模型。
-
-## 服务接口
-
-- `GET /health`：健康检查
-- `WS /ws`：接收 JSON 音频事件并返回实时字幕事件
-
-腾讯会议和 Teams 的 macOS 音频回环配置见 [macOS 会议音频接入](docs/macos-meeting-audio.md)。
-
-WebSocket 输入示例：
-
-```json
+\`\`\`json
 {
   "type": "audio",
   "session_id": "demo",
@@ -103,23 +141,98 @@ WebSocket 输入示例：
   "channels": 1,
   "source": "microphone"
 }
+\`\`\`
+
+## 字幕模式
+
+点击“字幕模式”进入只显示真实收到的原文和译文的半透明浮窗。它不会生成模拟字幕。
+
+浮窗支持：
+
+- 置顶、拖动和缩放；
+- 双栏显示、仅源文、仅译文；
+- 历史记录滚轮查看；
+- 原文在左、译文在右；
+- 记录导出为 UTF-8 文本。
+
+“源 / 译”标志只在检测到新段落或源语言发生变化时显示，避免连续发言时反复闪烁。源语言选择按钮可以在识别不确定时立即锁定语言。
+
+## 本地隐私
+
+- 音频、识别结果、翻译结果和模型文件默认留在本机。
+- 不提交或内置模型权重。
+- Ollama / llama.app 仅访问配置的本机服务地址。
+- App 不会因为启动、刷新模型列表或打开设置而自动下载 Apple 语言资源、ASR 模型或 Ollama 模型。
+- 导出的会议记录由用户主动选择保存位置。
+
+## 已知限制
+
+- Apple SpeechAnalyzer 需要 macOS 26+。
+- Apple 语言资源受 macOS 版本和系统安装状态影响；它们不受 App 自定义模型目录控制。
+- 尚未完成真实 Apple 中文、日语识别准确率和会议端到端延时的正式基准测试。
+- 自动中日/中英/英日语言判断是应用层候选比较实验功能；嘈杂或短句场景建议使用源语言按钮。
+- 录音中保存设置会短暂停止收音，切换期间可能缺少少量音频。
+- 说话人区分只能生成匿名标签，不能从会议软件获得真实姓名；混合回环音频中的多人同时讲话会降低区分效果。
+- 语音合成输出尚未完成，当前交付以文字字幕为主。
+- 会议音频需要 macOS 音频回环设备，App 本身不会直接读取腾讯会议或 Teams 的内部音频通道。
+
+## 开发者运行
+
+```bash
+git clone https://github.com/elizzzzzz/local-meeting-interpreter.git
+cd local-meeting-interpreter
+
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e '.[dev]'
+python -m meeting_interpreter --mock
 ```
 
-## 设计约束
+启动桌面 App：
 
-1. 临时字幕可以被后续 ASR / 翻译结果修正。
-2. 稳定字幕才进入可选 TTS 队列，避免重复播放。
-3. 说话人默认显示为 `SPEAKER_00` 等匿名标签；声纹登记在后续版本加入。
-4. 所有模型文件放在本机缓存目录，运行时不调用云端服务。
+```bash
+python -m meeting_interpreter.desktop
+```
 
-## 后续里程碑
+运行测试：
 
-- `M1`：在 M3 上接入 MLX Whisper 或 whisper.cpp 的真实流式 ASR。
-- `M2`：已接入可选 pyannote Community-1 说话人区分，默认限制 2–4 位并发说话人。
-- `M3`：接入 NLLB-200 600M 的中英 / 中日翻译。
-- `M4`：接入 BlackHole、WASAPI Loopback 或 PipeWire 音频适配器。
-- `M5`：按需加载 VoxCPM2，输出翻译语音。
+```bash
+pytest -q
+node --test tests/frontend.test.cjs
+```
 
-## GitHub
+构建 arm64 安装包：
 
-本项目预期上传到 GitHub 私有仓库。模型权重不提交到 Git；请使用本地缓存或私有制品存储。
+```bash
+pip install -e '.[apple,installer,speaker]'
+./scripts/build_macos_app.sh
+```
+
+构建结果：
+
+- `dist/LocalMeetingInterpreter.app`
+- `dist/LocalMeetingInterpreter-portable.zip`
+- `dist/LocalMeetingInterpreter.dmg`
+
+可通过 `MEETING_INTERPRETER_ICON_VARIANT=a|b|c` 选择三种内置图标方案后重新构建。
+
+## 版本 0.2.17
+
+本版本重点是“设置保存后立即生效”：
+
+- 模型、服务地址和模型目录无需重启即可应用。
+- 录音中切换设置会安全收尾旧音频，模型就绪后自动恢复。
+- 连续保存时只采用最新配置，旧检测结果不会覆盖新状态。
+- 加载失败会显示具体原因，可修改设置后直接重试。
+- Apple SpeechAnalyzer 资源仍需用户显式点击准备。
+- 原生 macOS 窗口、字幕浮窗、中文状态说明和单实例行为保持可用。
+
+发布验证结果：
+
+- 148 项 Python 测试通过，1 项跳过。
+- 58 项前端测试通过。
+- Chromium 界面回归通过。
+- arm64 ZIP 解压、DMG 挂载、可执行权限和签名检查通过。
+- 验证使用隔离配置与模拟识别/翻译，不下载模型、不录制真实麦克风、不改变用户模型设置。
+
+完整变更记录见 [docs/release-0.2.17.md](docs/release-0.2.17.md)。
