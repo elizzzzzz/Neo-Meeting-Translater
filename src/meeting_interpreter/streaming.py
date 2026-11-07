@@ -40,6 +40,7 @@ class LiveSession:
         self._translation_task = None
         self._recovery_event = None
         self._recovery_samples = 0
+        self._pending_source_language = None
 
     def start(self):
         self._workers = [asyncio.create_task(self._recognize()), asyncio.create_task(self._translate())]
@@ -85,6 +86,25 @@ class LiveSession:
     def change_speaker(self):
         self._records.append(('speaker', None, 0, 0, time.monotonic() + self.latency_budget))
         self._available.set()
+
+    def change_source_language(self, language):
+        if language not in {'auto', 'zh', 'ja', 'en'}:
+            raise ValueError('源语言只能选择自动、中文、日语或英语')
+        if language != 'auto' and self.pipeline.language_pair and language not in self.pipeline.language_pair.split('-'):
+            raise ValueError('请选择当前会议语言组合内的源语言')
+        self._records.append(('language', language, 0, 0, time.monotonic() + self.latency_budget))
+        self._available.set()
+
+    async def _apply_source_language(self):
+        language = self._pending_source_language
+        if language is None or self._decode_task is not None:
+            return
+        self.pipeline.set_source_language(language)
+        self._pending_source_language = None
+        await self.send({'type': 'source_language_changed', 'source_language': language,
+                         'asr_language': language, 'target_language': self.pipeline.target_language,
+                         'language_pair': self.pipeline.language_pair,
+                         'message': '已恢复自动识别' if language == 'auto' else f'源语言已锁定为{dict(zh="中文", ja="日语", en="英语")[language]}'})
 
     def metrics(self):
         return {'received_samples': self.received_samples, 'processed_samples': self.processed_samples,
@@ -157,6 +177,8 @@ class LiveSession:
     async def _recognize(self):
         try:
             while True:
+                self._recover_decoder()
+                await self._apply_source_language()
                 if not self._records:
                     if self._ended:
                         break
@@ -165,6 +187,12 @@ class LiveSession:
                     continue
                 kind, event, offset, size, deadline = self._records.popleft()
                 self._recover_decoder()
+                if kind == 'language':
+                    self._pending_source_language = event
+                    if self._decode_task is not None:
+                        self._decode_task.add_done_callback(lambda _: self._available.set())
+                    await self._apply_source_language()
+                    continue
                 if kind == 'speaker':
                     # Keep manual boundaries even when a native decode is late.
                     if self._decode_task is not None:

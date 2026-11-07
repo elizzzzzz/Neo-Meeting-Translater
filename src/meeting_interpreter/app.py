@@ -62,7 +62,7 @@ def create_app() -> FastAPI:
         "speaker_status": "loading" if speaker_model_path().is_file() and mode == "local" else "missing",
         "speaker_message": "声纹模型尚未连接，可手动换人",
     }
-    app = FastAPI(title="Local Meeting Interpreter", version="0.2.14")
+    app = FastAPI(title="Local Meeting Interpreter", version="0.2.15")
     app.mount("/web", StaticFiles(directory=WEB_DIR), name="web")
 
     @app.get("/health")
@@ -358,6 +358,16 @@ def create_app() -> FastAPI:
                     await send({'type': 'configured', 'source_language': config.source_language, 'asr_language': effective_language, 'target_language': config.target_language, 'language_pair': pipeline.language_pair})
                     language_label = {'zh': '锁定中文', 'ja': '锁定日语', 'en': '锁定英语', 'auto': '自动识别'}.get(effective_language, effective_language)
                     await send({'type': 'status', 'stage': 'models', 'message': f'语音识别已配置：{language_label}；翻译模型状态：{runtime["translation_status"]}'})
+                    continue
+                if kind == 'source_language':
+                    try:
+                        session.change_source_language(payload.get('source_language', 'auto'))
+                    except ValueError as exc:
+                        await send(ErrorEvent(message=str(exc)).model_dump(mode='json'))
+                        continue
+                    if not started:
+                        session.start()
+                        started = True
                     continue
                 if not started:
                     session.start()

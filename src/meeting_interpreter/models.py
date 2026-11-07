@@ -31,6 +31,7 @@ class CaptionEvent(BaseModel):
     session_id: str
     segment_id: str
     speaker_id: str
+    paragraph_id: str | None = None
     source_language: str
     target_language: str
     language_pair: LanguagePair | None = None

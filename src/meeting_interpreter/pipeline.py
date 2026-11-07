@@ -151,9 +151,11 @@ class Pipeline:
         self.target_language = target_language
         if language_pair not in (None, "zh-ja", "zh-en", "en-ja"):
             raise ValueError("请选择中日、中英或英日会议语言。")
-        self.language_pair = language_pair if source_language == "auto" else None
+        self.language_pair = language_pair
         self.mode = mode or os.getenv("MEETING_INTERPRETER_MODE", "mock")
         self._sequence = itertools.count(1)
+        self._paragraph_sequence = itertools.count(1)
+        self._paragraph_ids: dict[str, str] = {}
         self._clock_ms = 0
         self._buffers: dict[str, bytearray] = {}
         self._audio_ms: dict[str, int] = {}
@@ -256,6 +258,8 @@ class Pipeline:
                              "message": "收到声音，正在识别" if active_ms else "静音或音量较低，等待讲话"}
         session = event.session_id
         self._last_events[session] = event
+        if session not in self._paragraph_ids:
+            self._paragraph_ids[session] = f"turn-{next(self._paragraph_sequence):06d}"
         buffer = self._buffers.setdefault(session, bytearray())
         previous_audio_ms = self._audio_ms.get(session, 0)
         self._audio_samples[session] = self._audio_samples.get(session, 0) + len(raw_audio) // 2
@@ -311,6 +315,8 @@ class Pipeline:
                     if new_caption_needed:
                         self._active_segment_id[session] = f"seg-{next(self._sequence):06d}"
                     self._active_start_ms[session] = split_ms
+                if previous_identity != "SPEAKER_PENDING":
+                    self._paragraph_ids[session] = f"turn-{next(self._paragraph_sequence):06d}"
                 self._speaker_ids[session] = identity
                 self._last_text[session] = ""
                 self._last_infer_ms.pop(session, None)
@@ -424,6 +430,7 @@ class Pipeline:
             session_id=event.session_id,
             segment_id=self._active_segment_id[event.session_id],
             speaker_id=speaker_id,
+            paragraph_id=self._paragraph_ids.get(event.session_id),
             source_language=result.language,
             target_language=target_language,
             language_pair=self.language_pair,
@@ -466,6 +473,18 @@ class Pipeline:
         self._committed_until_ms[session] = boundary
         self._active_start_ms[session] = boundary
 
+    def set_source_language(self, language: str) -> None:
+        """Apply only between decode jobs; preserve the active speech paragraph."""
+        self.source_language = language
+        if hasattr(self.asr, 'for_language'):
+            self.asr = self.asr.for_language(language)
+        if self.language_pair:
+            pair = self.language_pair.split('-')
+            self.target_language = pair[1] if language == 'auto' else next(item for item in pair if item != language)
+        self._last_infer_ms.clear()
+        self._last_text.clear()
+        self._context_text.clear()
+
     async def change_speaker(self) -> AsyncIterator[CaptionEvent]:
         """Manual boundary: finish the current audio, then start a fresh paragraph."""
         async for caption in self.flush_audio():
@@ -480,5 +499,6 @@ class Pipeline:
             buffer.clear()
             self._last_voice_ms.pop(session, None)
             self._speaker_ids[session] = f"MANUAL_{self._manual_speaker_number}"
+            self._paragraph_ids[session] = f"turn-{next(self._paragraph_sequence):06d}"
         self._manual_label = f"MANUAL_{self._manual_speaker_number}"
         self.speaker = PendingSpeakerBackend()

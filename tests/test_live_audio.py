@@ -196,6 +196,44 @@ def test_websocket_chinese_config_applies_to_warmed_decoder(monkeypatch, tmp_pat
     assert languages[-1] == "zh"  # actual recording reuses weights with the lock
 
 
+def test_websocket_source_language_button_updates_active_decoder(monkeypatch, tmp_path):
+    from fastapi.testclient import TestClient
+    from meeting_interpreter.app import create_app
+
+    monkeypatch.setattr("meeting_interpreter.app.speaker_model_path", lambda: tmp_path / "absent.onnx")
+    languages = []
+    monkeypatch.setattr("meeting_interpreter.app.create_translation_backend", lambda: Translator())
+    monkeypatch.setattr("meeting_interpreter.pipeline.create_translation_backend", lambda: Translator())
+
+    def recognize(self, pcm, start_ms):
+        languages.append(self.language)
+        return ASRResult("これは会議です。", self.language or "ja", start_ms, start_ms + 600)
+
+    monkeypatch.setenv("MEETING_INTERPRETER_MODE", "local")
+    monkeypatch.setenv("MEETING_INTERPRETER_TRANSLATION_BACKEND", "nllb")
+    monkeypatch.setattr(MLXWhisperBackend, "_transcribe_sync", recognize)
+    with TestClient(create_app()) as client:
+        for _ in range(50):
+            if client.get("/health").json()["models"]["ready"]:
+                break
+        with client.websocket_connect("/ws") as ws:
+            ws.receive_json()
+            ws.send_json({"type": "config", "source_language": "auto", "target_language": "ja", "language_pair": "zh-ja"})
+            ws.receive_json(); ws.receive_json()
+            ws.send_json({"type": "source_language", "source_language": "ja"})
+            status = ws.receive_json()
+            assert status["type"] == "source_language_changed"
+            ws.send_json(audio([2000, -2000] * 4800).model_dump())
+            while True:
+                result = ws.receive_json()
+                if result["type"] == "caption":
+                    assert result["source_language"] == "ja"
+                    assert result["target_language"] == "zh"
+                    assert result["language_pair"] == "zh-ja"
+                    break
+    assert languages[-1] == "ja"
+
+
 @pytest.mark.asyncio
 async def test_stopping_during_inference_does_not_report_an_asr_failure(monkeypatch):
     import json
@@ -386,3 +424,33 @@ def test_selected_sensevoice_language_is_warm_before_configuration_ack(monkeypat
                 assert event['type'] != 'error'
             assert warmed == [None,'ja']
             assert event['asr_language']=='ja'
+
+
+@pytest.mark.asyncio
+async def test_long_speech_and_pauses_keep_one_paragraph_until_manual_change():
+    pipeline = Pipeline(mode='local', source_language='zh', target_language='zh', asr_backend=Recognizer())
+    captions = []
+    for _ in range(20):
+        captions.extend([c async for c in pipeline.process_audio(audio([2000,-2000]*8000))])
+    for event in [audio([0]*32000), audio([2000,-2000]*8000)]:
+        captions.extend([c async for c in pipeline.process_audio(event)])
+    assert len({c.segment_id for c in captions}) >= 4
+    assert len({c.paragraph_id for c in captions}) == 1
+    old_id = captions[-1].paragraph_id
+    _ = [c async for c in pipeline.change_speaker()]
+    after = [c async for c in pipeline.process_audio(audio([2000,-2000]*8000))]
+    assert after[-1].paragraph_id != old_id
+
+
+@pytest.mark.asyncio
+async def test_first_confirmed_voice_identity_does_not_start_new_paragraph():
+    class Speakers:
+        async def identify(self, pcm, rate, start):
+            return 'SPEAKER_PENDING' if start < 8000 else 'SPEAKER_00'
+    pipeline = Pipeline(mode='local', source_language='zh', target_language='zh', asr_backend=Recognizer())
+    pipeline.speaker = Speakers()
+    captions = []
+    for _ in range(14):
+        captions.extend([c async for c in pipeline.process_audio(audio([2000,-2000]*8000))])
+    assert {c.speaker_id for c in captions} == {'SPEAKER_PENDING', 'SPEAKER_00'}
+    assert len({c.paragraph_id for c in captions}) == 1

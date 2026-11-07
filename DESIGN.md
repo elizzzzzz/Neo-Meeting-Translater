@@ -12,7 +12,7 @@ Preserve the Apple reference at revision `3b605329240ce735b510037cca322f1831fdd7
 
 ## Audio diagnostics
 
-Show the microphone's actual track name after permission, a compact native input meter with Chinese signal labels, and the server-confirmed recognition language. The meter indicates sound energy, not proof of recognized speech. Keep all twelve status rows within the existing single-screen panel. Lock input and language controls during recording so the visible settings match the active decoder; stop recording to change them. Rejected recognition is explained in the diagnostic row and never inserted as a subtitle.
+Show the microphone's actual track name after permission, a compact native input meter with Chinese signal labels, and the server-confirmed recognition language. The meter indicates sound energy, not proof of recognized speech. Keep all twelve status rows within the existing single-screen panel. Lock audio device and model controls during recording. Keep the source-language correction buttons available; show the active decoder language after the service confirms the ordered change. Rejected recognition is explained in the diagnostic row and never inserted as a subtitle.
 
 ## Persistent bilingual speech
 
@@ -29,9 +29,12 @@ the icon-based status rail. Move audio device, speaker detection, and explicit
 interface language choices into settings; automatic interface language follows
 the system and manual Chinese/Japanese/English choices persist across ports.
 
-Meeting language pairs always use automatic source detection and route the
-translation to the other member. Keep language columns fixed and use full
-Source/Translation role badges for each chunk. A timed-out translation retains
+Meeting language pairs default to automatic source detection and route the
+translation to the other member. Offer compact buttons for Auto and the two
+selected meeting languages; the source override preserves the pair and column
+positions. Use one Source/Translation badge per column at the paragraph start,
+not per decoder chunk. A mixed-language turn uses one combined badge; individual
+chunks retain their role in a hover description. A timed-out translation retains
 its source and an explicit skipped marker; never imply complete meeting coverage
 after audio or translation was dropped. Real-time inference and translation
 share a capture deadline below five seconds rather than extending each stage.
@@ -55,3 +58,16 @@ action next to the folder picker. Rescan an edited path before saving, retain
 manual edits during health polling, and show missing disks separately from
 missing weights. Loading a changed configuration requires saving and restarting;
 service-managed files remain owned by Ollama / llama.app.
+
+
+## Stable speech paragraphs and quick corrections
+
+Keep a paragraph identity independent of ASR chunks, pauses and initial pending
+speaker labels. Only a confirmed speaker change, a manual boundary or a new
+session starts a new speech paragraph. Speaker clustering requires sustained
+agreement; two brief inconsistent probes do not create a new voice identity.
+Keep existing scroll position and history during source-language corrections.
+Use compact 30px source buttons with visible selection and keyboard focus. Show
+only Auto and the two languages in the current meeting pair, preserving space
+for captions. Live selection is confirmed after already accepted audio has
+finished processing; an expired native job must finish before decoder mutation.

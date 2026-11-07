@@ -317,3 +317,81 @@ async def test_streamed_translation_is_visible_before_generation_finishes():
         assert [e for e in sent if e['type']=='caption'][-1]['translated_text']=='正在翻译。'
     finally:
         release.set();await session.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('pair,first,second', [('zh-ja','zh','ja'), ('zh-en','zh','en'), ('en-ja','en','ja')])
+async def test_live_language_switch_is_ordered_and_routes_to_other_pair_member(pair, first, second):
+    entered, release = asyncio.Event(), asyncio.Event()
+    calls, sent = [], []
+    class LanguageRecognizer:
+        def __init__(self, language): self.language = language
+        def for_language(self, language): return LanguageRecognizer(language)
+        async def transcribe(self, pcm, rate, start):
+            language = self.language
+            calls.append(language)
+            if len(calls) == 1:
+                entered.set()
+                await release.wait()
+            detected = language if language != 'auto' else first
+            text = {'zh':'今天讨论会议。', 'ja':'これは会議です。', 'en':'This is a meeting.'}[detected]
+            return ASRResult(text, detected, start, start + len(pcm)//32)
+    async def send(payload): sent.append(payload)
+    class LocalTranslator:
+        async def translate(self, *args): return '本地测试译文'
+    pipeline = Pipeline(mode='local', source_language=first, target_language=second, language_pair=pair,
+                        asr_backend=LanguageRecognizer(first), translator_backend=LocalTranslator(), translate_inline=False)
+    session = LiveSession(pipeline, send)
+    session.start()
+    try:
+        for _ in range(4): session.feed(audio())
+        await asyncio.wait_for(entered.wait(), 1)
+        session.change_source_language(second)
+        for _ in range(4): session.feed(audio())
+        assert pipeline.source_language == first
+        release.set()
+        await wait_until(lambda: any(e['type']=='source_language_changed' for e in sent))
+        await wait_until(lambda: len(calls) >= 2)
+        first_caption = next(e for e in sent if e['type']=='caption')
+        assert first_caption['source_language'] == first
+        switched = [e for e in sent if e['type']=='caption' and e['source_language']==second]
+        assert switched and switched[-1]['target_language']==first
+        assert switched[-1]['paragraph_id']==first_caption['paragraph_id']
+        session.change_source_language('auto')
+        for _ in range(4): session.feed(audio())
+        await session.finish()
+        assert pipeline.source_language=='auto' and pipeline.language_pair==pair
+        assert 'auto' in calls
+        assert session.dropped_samples==0
+    finally:
+        release.set()
+        await session.close()
+
+
+@pytest.mark.asyncio
+async def test_language_change_waits_for_expired_native_decode_without_reusing_late_result():
+    entered, release = asyncio.Event(), asyncio.Event()
+    class Slow(Recognizer):
+        async def transcribe(self, *args):
+            entered.set()
+            await release.wait()
+            return await super().transcribe(*args)
+    sent=[]
+    async def send(payload): sent.append(payload)
+    pipeline = Pipeline(mode='local', source_language='zh', target_language='zh', asr_backend=Slow(), translate_inline=False)
+    session=LiveSession(pipeline,send,latency_budget=.03)
+    session.start()
+    try:
+        for _ in range(4): session.feed(audio())
+        await asyncio.wait_for(entered.wait(),1)
+        await wait_until(lambda:any(e['type']=='segment_skipped' for e in sent))
+        session.change_source_language('auto')
+        await asyncio.sleep(.01)
+        assert pipeline.source_language=='zh'
+        release.set()
+        await wait_until(lambda:any(e['type']=='source_language_changed' for e in sent))
+        assert pipeline.source_language=='auto'
+        assert not [e for e in sent if e['type']=='caption']
+    finally:
+        release.set()
+        await session.close()

@@ -75,6 +75,75 @@ try:
    print('layout',w,h,page.evaluate('({width:innerWidth,height:innerHeight,scrollW:document.body.scrollWidth,scrollH:document.body.scrollHeight,captions:document.querySelector("#captions").clientHeight})'))
   page.evaluate("setInterfaceLanguage('zh')")
   page.set_viewport_size({'width':1440,'height':900})
+  # Exercise real select semantics and real click handlers without opening audio
+  # hardware. The local WebSocket fixture confirms startup and live overrides.
+  page.evaluate("""() => {
+    window.__languageMessages = [];
+    window.__realWebSocket = window.WebSocket;
+    class TestSocket {
+      static OPEN=1; static CONNECTING=0;
+      constructor() { this.readyState=0; queueMicrotask(() => {this.readyState=1; this.onopen?.();}); }
+      send(raw) {
+        const message=JSON.parse(raw); window.__languageMessages.push(message);
+        if (message.type==='config' || message.type==='source_language') queueMicrotask(() => {
+          const pair=message.language_pair || selectedLanguagePair;
+          const language=message.source_language;
+          const target=language==='auto' ? pair.split('-')[1] : pair.split('-').find(item=>item!==language);
+          this.onmessage?.({data:JSON.stringify({type:message.type==='config'?'configured':'source_language_changed',source_language:language,asr_language:language,target_language:target,language_pair:pair})});
+        });
+        if (message.type==='finish') this.close();
+      }
+      close() {this.readyState=3; this.onclose?.();}
+    }
+    window.WebSocket=TestSocket;
+    window.__realAudioContext=window.AudioContext;
+    window.AudioContext=class {
+      constructor(){this.sampleRate=48000;this.destination={};}
+      createMediaStreamSource(){return {connect(){}};}
+      createScriptProcessor(){return {connect(){},disconnect(){}};}
+      createGain(){return {gain:{value:0},connect(){}};}
+      async resume(){} async close(){}
+    };
+    window.__realGetUserMedia=navigator.mediaDevices.getUserMedia;
+    navigator.mediaDevices.getUserMedia=async()=>({getAudioTracks:()=>[{label:'UI test input'}],getTracks:()=>[{stop(){}}]});
+  }""")
+  for left,right in [('zh','ja'),('zh','en'),('en','ja')]:
+   page.locator(f'.direction-button[data-source="{left}"][data-target="{right}"]').click()
+   assert page.locator('.source-language-button:visible').count()==3
+   page.locator(f'.source-language-button[data-language="{right}"]').click()
+   assert page.locator('#sourceLanguage').input_value()==right
+   assert page.locator('#targetLanguage').input_value()==left
+   page.locator('#startBtn').click()
+   page.wait_for_function('document.querySelector("#runtimeText").textContent.includes("运行中")')
+   message=page.evaluate('window.__languageMessages.filter(m=>m.type==="config").at(-1)')
+   assert message['source_language']==right and message['target_language']==left
+   assert message['language_pair']==f'{left}-{right}'
+   page.locator(f'.source-language-button[data-language="{left}"]').click()
+   page.wait_for_function('language=>document.querySelector("#sourceLanguage").value===language',arg=left)
+   assert page.locator(f'.source-language-button[data-language="{left}"]').get_attribute('aria-pressed')=='true'
+   assert page.locator('#targetLanguage').input_value()==right
+   assert '自动' not in page.locator('#recognitionLanguageStatus').inner_text()
+   page.locator('.source-language-button[data-language="auto"]').click()
+   page.wait_for_function('document.querySelector("#recognitionLanguageStatus").textContent.includes("自动")')
+   page.locator('#stopBtn').click()
+   page.wait_for_function('document.querySelector("#startBtn").disabled===false')
+  page.evaluate("""() => {
+    WebSocket=window.__realWebSocket; AudioContext=window.__realAudioContext;
+    navigator.mediaDevices.getUserMedia=window.__realGetUserMedia;
+    setDirection('zh','ja');
+    for(let i=0;i<30;i++)upsertCaption({session_id:'ui-test',paragraph_id:'one',segment_id:String(i),speaker_id:i<2?'SPEAKER_PENDING':'SPEAKER_00',source_language:'zh',target_language:'ja',start_ms:i*8000,end_ms:(i+1)*8000,original_text:'测试记录：同一人的长段发言持续保留。'.repeat(4),translated_text:'テスト記録：同じ話者の長い発言を保持します。'.repeat(4),is_final:true});
+    renderCaptions();
+  }""")
+  assert page.locator('.caption-row').count()==1
+  assert page.locator('.caption-role').count()==2
+  assert page.locator('#captions').evaluate('e=>e.scrollHeight>e.clientHeight')
+  page.locator('#captions').hover()
+  page.mouse.wheel(0,-700)
+  page.wait_for_function('document.querySelector("#latestBtn").hidden===false')
+  page.screenshot(path=str(out/'continuous-paragraph.png'))
+  page.locator('#latestBtn').click()
+  assert page.locator('#captions').evaluate('e=>e.scrollHeight-e.scrollTop-e.clientHeight<3')
+  page.locator('#clearBtn').click()
   page.locator('#settingsBtn').click()
   page.locator('.service-management summary').click()
   page.locator('#ollamaInstallStatus').get_by_text('未安装',exact=True).wait_for()

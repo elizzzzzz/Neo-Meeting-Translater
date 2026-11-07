@@ -277,6 +277,30 @@ test('same speaker retains complete speech across chunks and pauses, next speake
   assert.equal(paragraphs[2].original_text,'谢谢。');
 });
 
+test('role badges appear once per paragraph and language buttons switch the active source', () => {
+  const app = loadApp();
+  app.run(`
+    setDirection('zh','ja');
+    upsertCaption({session_id:'m',segment_id:'1',speaker_id:'A',source_language:'zh',target_language:'ja',original_text:'第一句',translated_text:'一文目',is_final:true});
+    upsertCaption({session_id:'m',segment_id:'2',speaker_id:'A',source_language:'zh',target_language:'ja',original_text:'第二句',translated_text:'二文目',is_final:true});
+    renderCaptions();
+    setSourceLanguage('ja');
+  `);
+  const html = app.elements.get('#captions').innerHTML;
+  assert.equal((html.match(/caption-role/g) || []).length, 2);
+  assert.equal(app.run('sourceLanguage.value'), 'ja');
+  assert.equal(app.run('selectedLanguagePair'), 'zh-ja');
+});
+
+test('language pair changes do not split a continuous speaker paragraph', () => {
+  const app = loadApp();
+  app.run(`
+    upsertCaption({session_id:'m',segment_id:'1',speaker_id:'A',source_language:'zh',target_language:'ja',original_text:'中文发言',translated_text:'日本語訳',is_final:true});
+    upsertCaption({session_id:'m',segment_id:'2',speaker_id:'A',source_language:'ja',target_language:'zh',original_text:'日本語の続き',translated_text:'中文翻译',is_final:true});
+  `);
+  assert.equal(app.run('transcriptParagraphs().length'), 1);
+});
+
 test('revising the current chunk preserves older speech and its last translation until corrected translation arrives', () => {
   const app=loadApp();
   app.run(`
@@ -522,4 +546,35 @@ test('pending restart displays saved selection instead of the old active ASR pat
   assert.match(app.elements.get('#asrStatus').textContent,/SenseVoice/);
   assert.doesNotMatch(app.elements.get('#asrStatus').textContent,/old/);
   assert.equal(app.elements.get('#startBtn').disabled,true);
+});
+
+
+test('source override preserves each meeting pair and selects its opposite target', () => {
+  const app=loadApp();
+  for (const [a,b] of [['zh','ja'],['zh','en'],['en','ja']]) {
+    app.run(`setDirection('${a}','${b}');setSourceLanguage('${b}')`);
+    assert.equal(app.run('selectedLanguagePair'), `${a}-${b}`);
+    assert.equal(app.run('targetLanguage.value'), a);
+    app.run(`setSourceLanguage('${a}')`);
+    assert.equal(app.run('targetLanguage.value'), b);
+    app.run("setSourceLanguage('auto')");
+    assert.equal(app.run('sourceLanguage.value'), 'auto');
+  }
+});
+
+test('confirmed paragraph identity survives pending voice labels and chunk metadata revisions', () => {
+  const app=loadApp();
+  app.run(`
+    upsertCaption({session_id:'m',paragraph_id:'turn1',segment_id:'1',speaker_id:'SPEAKER_PENDING',source_language:'zh',target_language:'ja',original_text:'第一句',start_ms:0,end_ms:8000});
+    upsertCaption({session_id:'m',paragraph_id:'turn1',segment_id:'2',speaker_id:'SPEAKER_00',source_language:'zh',target_language:'ja',language_pair:'zh-ja',original_text:'第二句',start_ms:10000,end_ms:16000});
+    upsertCaption({session_id:'m',paragraph_id:'turn1',segment_id:'3',speaker_id:'SPEAKER_00',source_language:'ja',target_language:'zh',original_text:'日本語の続き',start_ms:16000,end_ms:24000});
+    renderCaptions();
+  `);
+  assert.equal(app.run('transcriptParagraphs().length'),1);
+  assert.equal(app.run('transcriptParagraphs()[0].speaker_id'),'SPEAKER_00');
+  const html=app.elements.get('#captions').innerHTML;
+  assert.equal((html.match(/caption-role/g)||[]).length,2);
+  assert.equal((html.match(/源 \/ 译/g)||[]).length,2);
+  app.run("upsertCaption({session_id:'m',paragraph_id:'turn2',segment_id:'4',speaker_id:'SPEAKER_00',source_language:'zh',target_language:'ja',original_text:'下一发言'})");
+  assert.equal(app.run('transcriptParagraphs().length'),2);
 });

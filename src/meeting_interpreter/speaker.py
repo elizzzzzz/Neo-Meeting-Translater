@@ -34,6 +34,7 @@ class SpeakerClusters:
         self.candidate: list[float] | None = None
         self.candidate_id = -1
         self.candidate_at_ms = 0
+        self.candidate_count = 0
         self.changed_at_ms = 0
 
     def assign(self, embedding: list[float], at_ms: int) -> str:
@@ -48,8 +49,11 @@ class SpeakerClusters:
         scores = [sum(a*b for a,b in zip(vector, centroid)) for centroid in self.centroids]
         best = max(range(len(scores)), key=scores.__getitem__)
         proposed = best if scores[best] >= self.threshold else -1
+        if proposed != self.active and proposed >= 0 and scores[best] - scores[self.active] < .10:
+            proposed = self.active
         if proposed == self.active:
             self.candidate = None
+            self.candidate_count = 0
             # Update only high-confidence observations, not mixed transitions.
             if scores[best] >= .75:
                 averaged = [.9*a + .1*b for a,b in zip(self.centroids[best], vector)]
@@ -59,8 +63,10 @@ class SpeakerClusters:
         same_candidate = self.candidate is not None and self.candidate_id == proposed and sum(a*b for a,b in zip(vector, self.candidate)) >= .70
         if not same_candidate:
             self.candidate, self.candidate_id, self.candidate_at_ms = vector, proposed, at_ms
+            self.candidate_count = 1
             return self.label
-        if at_ms - self.candidate_at_ms < 600:
+        self.candidate_count += 1
+        if self.candidate_count < 3 or at_ms - self.candidate_at_ms < 1600:
             return self.label
         if proposed < 0:
             if len(self.centroids) >= self.max_speakers:

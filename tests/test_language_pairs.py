@@ -62,5 +62,5 @@ def test_pair_config_preserves_legacy_single_direction_and_auto_decoder():
     assert pair.asr.language is None
     assert warm.language == 'zh'
     locked = Pipeline(mode='local', source_language='en', language_pair='en-ja', asr_backend=warm)
-    assert locked.language_pair is None
+    assert locked.language_pair == 'en-ja'
     assert locked.asr.language == 'en'
