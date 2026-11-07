@@ -540,9 +540,9 @@ test('empty changed folder clears the historical speech model option', async () 
   assert.doesNotMatch(app.elements.get('#asrModel').innerHTML,/old\/model/);
 });
 
-test('pending restart displays saved selection instead of the old active ASR path', () => {
+test('applying settings displays saved selection instead of the old active ASR path', () => {
   const app=loadApp();
-  app.run("updateHealth({mode:'local',models:{ready:false,stage:'restart',message:'设置已保存，请重启'},asr:{status:'ready',model:'/old/whisper'},settings:{restart_required:true,asr_model:'SenseVoice-Small'}})");
+  app.run("updateHealth({mode:'local',models:{ready:false,stage:'applying',message:'设置正在应用'},asr:{status:'ready',model:'/old/whisper'},settings:{applying:true,asr_model:'SenseVoice-Small'}})");
   assert.match(app.elements.get('#asrStatus').textContent,/SenseVoice/);
   assert.doesNotMatch(app.elements.get('#asrStatus').textContent,/old/);
   assert.equal(app.elements.get('#startBtn').disabled,true);
@@ -630,4 +630,59 @@ test('Apple speech engine and fixed model persist through the existing save form
   const request=app.requests.find(request=>request.url==='/settings' && request.options?.method==='POST');
   assert.equal(JSON.parse(request.options.body).asr_engine,'apple');
   assert.equal(JSON.parse(request.options.body).asr_model,'Apple SpeechAnalyzer');
+});
+
+test('saving model settings applies immediately and preserves transcript', async () => {
+  const app=loadApp();
+  await new Promise(resolve=>setImmediate(resolve));
+  app.run("modelDirectory.value='/models';captionRows=[{session_id:'old',segment_id:'1',original_text:'会议记录',translated_text:'会議記録',speaker_id:'SPEAKER_00',start_ms:0}]");
+  app.context.fetch=async url=>({ok:true,json:async()=>url==='/health'?{mode:'local',asr:{backend:'apple',model:'Apple SpeechAnalyzer',status:'loading'},models:{ready:false,stage:'applying',progress:5,message:'正在应用设置'},settings:{applying:true,restart_required:false}}:{saved:true,restart_required:false,applying:true,revision:1}});
+  await app.run('saveModelDirectory()');
+  const notice=app.elements.get('#modelSaveNotice').textContent;
+  assert.match(notice,/应用|加载/);
+  assert.doesNotMatch(notice,/重启|重新打开/);
+  assert.equal(app.run('captionRows.length'),1);
+  app.run("updateHealth({mode:'local',asr:{backend:'apple',model:'Apple SpeechAnalyzer',status:'ready'},models:{ready:true,stage:'ready'},settings:{applying:false,revision:1}})");
+  assert.match(app.elements.get('#modelSaveNotice').textContent,/已生效/);
+});
+
+test('saving while recording finishes old audio then resumes once with the new models', async () => {
+  const app=loadApp();const order=[];
+  await new Promise(resolve=>setImmediate(resolve));
+  app.context.window.closeListener=null;
+  app.run(`modelDirectory.value='/models';runtimeMode='LOCAL';modelsReady=true;audioFrames=2;
+    socket={readyState:1,addEventListener(type,callback){window.closeListener=callback},send(body){if(JSON.parse(body).type==='finish'){window.finished=true;this.readyState=3;window.closeListener()}},close(){this.readyState=3;window.closeListener?.()}};
+    startSession=async function(){window.resumed=(window.resumed||0)+1};`);
+  app.context.fetch=async url=>{
+    if(url==='/settings'){order.push('saved');assert.equal(app.context.window.finished,true);}
+    return {ok:true,json:async()=>url==='/health'?{mode:'local',models:{ready:false},settings:{applying:true,revision:0,requested_revision:1}}:{saved:true,revision:1,applying:true}};
+  };
+  await app.run('saveModelDirectory()');
+  assert.deepEqual(order,['saved']);
+  assert.equal(app.context.window.resumed,undefined);
+  for(let i=0;i<2;i++)app.run("updateHealth({mode:'local',models:{ready:true},settings:{applying:false,revision:1}})");
+  assert.equal(app.context.window.resumed,1);
+});
+
+test('a failed model reload shows the error and does not resume recording', async () => {
+  const app=loadApp();
+  app.run("settingsApplyRevision=2;resumeAfterSettings=true;startSession=async function(){window.resumed=true}");
+  app.run("updateHealth({mode:'local',models:{ready:false,stage:'error'},settings:{revision:2,applying:false},last_error:'日语资源缺失'})");
+  assert.match(app.elements.get('#modelSaveNotice').textContent,/加载失败.*日语资源缺失/);
+  assert.equal(app.context.window.resumed,undefined);
+  assert.equal(app.run('resumeAfterSettings'),false);
+});
+
+test('Stop cancels pending automatic audio resume during model switching', () => {
+  const app=loadApp();
+  app.run("resumeAfterSettings=true;settingsApplyRevision=3;stopSession();startSession=async function(){window.resumed=true}");
+  app.run("updateHealth({mode:'local',models:{ready:true},settings:{revision:3,applying:false}})");
+  assert.equal(app.context.window.resumed,undefined);
+  assert.equal(app.run('resumeAfterSettings'),false);
+});
+
+test('automatic resume waits for the previous audio socket to finish closing', () => {
+  const app=loadApp();
+  app.run("resumeAfterSettings=true;runtimeMode='LOCAL';modelsReady=true;socket={readyState:2};startSession=async function(){window.resumed=true};maybeResumeAfterSettings()");
+  assert.equal(app.context.window.resumed,undefined);
 });

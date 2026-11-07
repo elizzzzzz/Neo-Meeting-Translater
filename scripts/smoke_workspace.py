@@ -39,8 +39,8 @@ try:
   def settings_route(route):
    if route.request.method=='POST':
     saved_settings.append(route.request.post_data_json)
-    health_fixture.update(models={'ready':False,'stage':'restart','progress':0,'message':'设置已保存，请重启'},settings={'restart_required':True,**saved_settings[-1]})
-    route.fulfill(json={'restart_required':True,'model_dir':saved_settings[-1]['model_dir']})
+    health_fixture.update(asr={'backend':saved_settings[-1]['asr_engine'],'model':saved_settings[-1]['asr_model'],'status':'loading'},models={'ready':False,'stage':'applying','progress':25,'message':'设置已保存，正在应用'},settings={'restart_required':False,'applying':True,'revision':len(saved_settings)-1,'requested_revision':len(saved_settings),**saved_settings[-1]})
+    route.fulfill(json={'saved':True,'restart_required':False,'applying':True,'revision':len(saved_settings),'model_dir':saved_settings[-1]['model_dir']})
    else:route.fulfill(json={'model_dir':'/test/models','ollama_model_dir':'/test/ollama-models','asr_engine':'whisper','asr_model':'mlx-community/whisper-medium-mlx-8bit','translation_backend':'ollama','translation_model':'translategemma:4b'})
   page.route('**/settings',settings_route)
   apple_fixture={'available':True,'installed':False,'model':'Apple SpeechAnalyzer','models':['Apple SpeechAnalyzer'],'storage':'macOS','languages':[{'language':language,'installed':False,'status':'missing'} for language in ['zh','ja','en']]}
@@ -97,7 +97,7 @@ try:
     window.__realWebSocket = window.WebSocket;
     class TestSocket {
       static OPEN=1; static CONNECTING=0;
-      constructor() { this.readyState=0; queueMicrotask(() => {this.readyState=1; this.onopen?.();}); }
+      constructor() { this.closeListeners=[]; this.readyState=0; queueMicrotask(() => {this.readyState=1; this.onopen?.();}); }
       send(raw) {
         const message=JSON.parse(raw); window.__languageMessages.push(message);
         if (message.type==='config' || message.type==='source_language') queueMicrotask(() => {
@@ -108,7 +108,8 @@ try:
         });
         if (message.type==='finish') this.close();
       }
-      close() {this.readyState=3; this.onclose?.();}
+      addEventListener(name,callback) {if(name==='close')this.closeListeners.push(callback);}
+      close() {if(this.readyState===3)return;this.readyState=3; this.onclose?.();this.closeListeners.forEach(callback=>callback());}
     }
     window.WebSocket=TestSocket;
     window.__realAudioContext=window.AudioContext;
@@ -142,6 +143,29 @@ try:
    page.wait_for_function('document.querySelector("#recognitionLanguageStatus").textContent.includes("自动")')
    page.locator('#stopBtn').click()
    page.wait_for_function('document.querySelector("#startBtn").disabled===false')
+  # Change real UI controls during the simulated recording, retaining history.
+  page.locator('.direction-button[data-source="zh"][data-target="ja"]').click()
+  page.locator('#startBtn').click()
+  page.wait_for_function('document.querySelector("#runtimeText").textContent.includes("运行中")')
+  page.evaluate("upsertCaption({session_id:'before-switch',paragraph_id:'kept',segment_id:'one',speaker_id:'SPEAKER_00',source_language:'zh',target_language:'ja',start_ms:0,end_ms:600,original_text:'切换前的记录',translated_text:'切り替え前の記録',is_final:true});renderCaptions()")
+  page.locator('#settingsBtn').click()
+  assert page.locator('#asrEngine').is_enabled()
+  assert page.locator('#saveSettingsBtn').is_enabled()
+  page.locator('#asrEngine').select_option('ollama')
+  page.wait_for_function('document.querySelector("#asrModel").value === "qwen3-asr:1.7b"')
+  page.locator('#saveSettingsBtn').click()
+  page.wait_for_function('document.querySelector("#modelSaveNotice").textContent.includes("正在自动应用")')
+  assert page.locator('.caption-row').count()==1
+  assert page.locator('#stopBtn').is_enabled()
+  health_fixture.update(models={'ready':True,'stage':'ready','progress':100,'message':'测试：新模型就绪'},settings={**health_fixture['settings'],'applying':False,'revision':len(saved_settings)})
+  page.evaluate('health=>updateHealth(health)',health_fixture)
+  page.wait_for_function('document.querySelector("#runtimeText").textContent.includes("运行中")')
+  assert page.locator('.caption-row').count()==1
+  assert '切换前的记录' in page.locator('#captions').inner_text()
+  page.keyboard.press('Escape')
+  page.locator('#stopBtn').click()
+  page.wait_for_function('document.querySelector("#startBtn").disabled===false')
+  page.locator('#clearBtn').click()
   page.evaluate("""() => {
     WebSocket=window.__realWebSocket; AudioContext=window.__realAudioContext;
     navigator.mediaDevices.getUserMedia=window.__realGetUserMedia;
@@ -220,7 +244,12 @@ try:
   page.wait_for_function('document.querySelector("#systemNotice").textContent.includes("已保存")')
   assert saved_settings[-1]['asr_engine']=='ollama' and saved_settings[-1]['translation_backend']=='llama'
   assert page.locator('#startBtn').is_disabled()
-  assert '待重启加载' in page.locator('#asrStatus').inner_text()
+  assert '正在应用' in page.locator('#asrStatus').inner_text()
+  assert '重启' not in page.locator('#modelSaveNotice').inner_text()
+  health_fixture.update(models={'ready':True,'stage':'ready','progress':100,'message':'测试：新模型就绪'},settings={**health_fixture['settings'],'applying':False,'revision':len(saved_settings)})
+  page.evaluate('health=>updateHealth(health)',health_fixture)
+  assert '已生效' in page.locator('#modelSaveNotice').inner_text()
+  assert page.locator('#startBtn').is_enabled()
   page.keyboard.press('Escape');page.locator('#demoBtn').click()
   assert page.locator('body').evaluate("e=>e.classList.contains('floating-mode')")
   assert page.locator('.caption-row').count()==0

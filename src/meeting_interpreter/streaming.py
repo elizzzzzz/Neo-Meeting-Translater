@@ -349,14 +349,16 @@ class LiveSession:
         if self._failure:
             raise self._failure
 
-    async def close(self):
+    async def close(self, drain=False):
         for worker in self._workers:
             worker.cancel()
         await asyncio.gather(*self._workers, return_exceptions=True)
         if self._decode_task is not None:
-            self._decode_task.cancel()
+            if not drain:
+                self._decode_task.cancel()
             await asyncio.gather(self._decode_task, return_exceptions=True)
         if self._translation_task is not None:
-            self._translation_task.cancel()
+            if not drain:
+                self._translation_task.cancel()
             await asyncio.gather(self._translation_task, return_exceptions=True)
         self._audio.close()

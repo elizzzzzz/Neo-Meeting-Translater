@@ -291,7 +291,7 @@ def save_model_directory(model_dir: str, asr_engine: object = None, selection: d
     persisted = saved_config()
     if any(persisted.get(key) != value for key, value in values.items()) or removed.intersection(persisted):
         raise OSError('配置写入后核对失败，请重新保存设置。')
-    return {"model_dir": str(path), "config_path": str(config), "restart_required": True,
+    return {"model_dir": str(path), "config_path": str(config), "restart_required": False,
             "saved": True, "settings": model_settings()}
 
 

@@ -18,7 +18,7 @@ Show the microphone's actual track name after permission, a compact native input
 
 Use one paragraph per consecutive speaker turn, with a compact speaker/time line above equal-width source and translation columns. Keep the columns side by side in the main window and floating window. A bounded recognition chunk can be revised without replacing completed chunks. Keep the previous translation visible while a correction is pending. Retain every paragraph until the user clears the transcript; export uses the same grouping. The transcript alone scrolls, and following pauses when the user scrolls into history. A small blue “回到最新” action resumes following. Automatic voice identification is explicitly marked as experimental and is only selectable when its local model has loaded; otherwise show manual boundaries in plain Chinese.
 
-Keep the optional speech-engine choice inside local settings. Use the Chinese description “语音转文字引擎”; display the SenseVoice model's local availability and state that applying settings requires reopening the App. Keep Whisper available for Japanese comparisons. Model selection never downloads weights implicitly.
+Keep the optional speech-engine choice inside local settings. Use the Chinese description “语音转文字引擎”; display the SenseVoice model's local availability and state that saving applies settings automatically. Keep Whisper available for Japanese comparisons. Model selection never downloads weights implicitly.
 
 ## Conversation-first ready state
 
@@ -56,7 +56,7 @@ Model-folder controls keep the existing compact Apple settings style. Default to
 Ollama's detected storage folder and offer one secondary “Use Ollama folder”
 action next to the folder picker. Rescan an edited path before saving, retain
 manual edits during health polling, and show missing disks separately from
-missing weights. Loading a changed configuration requires saving and restarting;
+missing weights. Saving a changed configuration applies it automatically;
 service-managed files remain owned by Ollama / llama.app.
 
 
@@ -84,3 +84,13 @@ are collapsed. A directory change must not suggest that Apple assets moved.
 Label app-level bilingual candidate comparison as experimental and keep source
 language correction buttons available. Missing assets block capture with an
 actionable message rather than silently selecting a different recognizer.
+
+
+## Apply settings without restarting
+
+Keep model editing available during recording. Saving finishes the old audio
+session, keeps the transcript, and shows bounded preparation progress while
+replacing the engines. Resume the microphone only after the saved revision is
+ready; the Stop action cancels that pending resume. Show save success separately
+from model loading failure, with the exact actionable error in the settings
+receipt. Do not ask the user to restart. Updating model lists remains read-only.

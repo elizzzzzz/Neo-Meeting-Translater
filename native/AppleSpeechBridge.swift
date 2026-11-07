@@ -104,7 +104,7 @@ enum AppleSpeech {
                 throw BridgeFailure(message: "Apple \(language) 语言资源尚未安装完成，请检查系统网络后重试")
             }
         }
-        return ["installed": true, "languages": languages, "message": "Apple 语言资源已准备好，保存设置并重启后使用"]
+        return ["installed": true, "languages": languages, "message": "Apple 语言资源已准备好，保存设置后自动加载"]
     }
 
     static func recognize(_ pcm: Data, rate: Int, start: Int, language: String) async throws -> Candidate {

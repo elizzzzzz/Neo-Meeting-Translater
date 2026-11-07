@@ -104,8 +104,8 @@ class NLLBTranslationBackend:
             device = "mps" if torch.backends.mps.is_available() else "cpu"
         dtype = torch.float16 if device == "mps" else torch.float32
         self._torch = torch
-        self._tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-        self._model = AutoModelForSeq2SeqLM.from_pretrained(self.model_name, torch_dtype=dtype)
+        self._tokenizer = AutoTokenizer.from_pretrained(self.model_name, cache_dir=os.getenv('HUGGINGFACE_HUB_CACHE'))
+        self._model = AutoModelForSeq2SeqLM.from_pretrained(self.model_name, torch_dtype=dtype, cache_dir=os.getenv('HUGGINGFACE_HUB_CACHE'))
         self._model.to(device)
         self.device_name = device
 

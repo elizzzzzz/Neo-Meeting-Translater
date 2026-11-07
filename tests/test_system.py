@@ -35,7 +35,7 @@ def test_save_model_directory_writes_cache_locations(monkeypatch, tmp_path: Path
     monkeypatch.setattr(system, "user_config_path", lambda: config)
     result = system.save_model_directory(str(tmp_path / "models"))
     text = config.read_text(encoding="utf-8")
-    assert result["restart_required"] is True
+    assert result["restart_required"] is False
     assert f"MEETING_INTERPRETER_MODEL_DIR={tmp_path / 'models'}" in text
     assert f"HF_HOME={tmp_path / 'models' / 'huggingface'}" in text
 
@@ -187,7 +187,7 @@ def test_asr_service_save_survives_unmounted_root_and_process_restart(monkeypatc
         for key, value in desired.items():
             assert result['settings'][key] == value
             assert client.get('/settings').json()[key] == value
-        assert client.get('/health').json()['settings']['restart_required']
+        assert not client.get('/health').json()['settings']['restart_required']
     # A fresh process must override the historical inherited ASR settings too.
     restarted = subprocess.run([sys.executable, '-c', '''
 import json, sys
@@ -359,7 +359,7 @@ def test_settings_reports_sensevoice_selection_without_inherited_whisper_path(mo
     assert system.model_settings()['asr_model'] == 'SenseVoice-Small'
 
 
-def test_settings_save_marks_current_model_pending_restart(monkeypatch, tmp_path):
+def test_settings_save_applies_current_model_without_restart(monkeypatch, tmp_path):
     from fastapi.testclient import TestClient
     from meeting_interpreter.app import create_app
     config = tmp_path / '.env'
@@ -370,7 +370,6 @@ def test_settings_save_marks_current_model_pending_restart(monkeypatch, tmp_path
         response = client.post('/settings', json={'model_dir':str(tmp_path / 'new'), 'asr_engine':'sensevoice', 'asr_model':'SenseVoice-Small'})
         assert response.status_code == 200
         health = client.get('/health').json()
-        assert health['settings']['restart_required']
-        assert not health['models']['ready']
-        assert health['models']['stage'] == 'restart'
-        assert '重启' in health['models']['message']
+        assert not health['settings']['restart_required']
+        assert health['settings']['requested_revision'] == 1
+        assert '重启' not in health['models']['message']

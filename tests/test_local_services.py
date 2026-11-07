@@ -106,7 +106,7 @@ def test_independent_model_selections_survive_restart_and_preserve_other_setting
     result = system.save_model_directory(str(tmp_path / 'models'), 'ollama', {
         'asr_model': 'frozenlab/qwen3-asr:1.7b', 'asr_url': 'http://127.0.0.1:11434',
         'translation_backend': 'llama', 'translation_model': 'translate-local', 'translation_url': 'http://127.0.0.1:9931/v1'})
-    assert result['restart_required']
+    assert not result['restart_required']
     assert 'MEETING_INTERPRETER_OLLAMA_MODEL=old-model' in config.read_text()
     assert 'MEETING_INTERPRETER_SPEAKER_MODE=none' in config.read_text()
     settings = system.model_settings()

@@ -19,7 +19,7 @@ from .models import AudioEvent, ErrorEvent, SessionConfig
 from .pipeline import Pipeline
 from .speaker import EmbeddingSpeakerBackend, speaker_model_path
 from .streaming import LiveSession
-from .system import current_model_directory, download_asr_model, inspect_asr_models, inspect_ollama, install_ollama, model_settings, pull_ollama_model, read_preferences, save_preferences, save_model_directory, upgrade_ollama
+from .system import current_model_directory, download_asr_model, inspect_asr_models, inspect_ollama, install_ollama, load_user_config, model_settings, pull_ollama_model, read_preferences, save_preferences, save_model_directory, upgrade_ollama
 from .translation import create_translation_backend
 
 ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[2]))
@@ -28,20 +28,24 @@ WEB_DIR = ROOT / "web"
 
 def create_app() -> FastAPI:
     mode = os.getenv("MEETING_INTERPRETER_MODE", "mock")
-    translation_backend = os.getenv("MEETING_INTERPRETER_TRANSLATION_BACKEND", "nllb").lower()
-    asr_model = os.getenv("MEETING_INTERPRETER_ASR_MODEL", "mlx-community/whisper-medium-mlx-8bit")
-    asr_engine = os.getenv('MEETING_INTERPRETER_ASR_BACKEND', 'whisper')
-    if asr_engine == 'apple':
-        asr_model = 'Apple SpeechAnalyzer · Apple 本机语音识别'
-    elif asr_engine == 'sensevoice':
-        asr_model = f'SenseVoice · {sensevoice_model_directory()}'
-    elif asr_engine in SERVICE_URLS:
-        asr_model = os.getenv('MEETING_INTERPRETER_SERVICE_ASR_MODEL', '')
-    translation_model = os.getenv("MEETING_INTERPRETER_OLLAMA_MODEL", "translategemma:4b") if translation_backend == "ollama" else os.getenv("MEETING_INTERPRETER_TRANSLATION_MODEL", "facebook/nllb-200-distilled-600M")
-    if translation_backend == 'llama':
-        translation_model = os.getenv('MEETING_INTERPRETER_LLAMA_MODEL', '')
-    translation_url = os.getenv('MEETING_INTERPRETER_OLLAMA_URL' if translation_backend == 'ollama' else 'MEETING_INTERPRETER_LLAMA_URL', SERVICE_URLS.get(translation_backend, ''))
-    asr_url = os.getenv('MEETING_INTERPRETER_ASR_URL', SERVICE_URLS.get(asr_engine, ''))
+    def read_model_options():
+        translation_backend = os.getenv("MEETING_INTERPRETER_TRANSLATION_BACKEND", "nllb").lower()
+        asr_model = os.getenv("MEETING_INTERPRETER_ASR_MODEL", "mlx-community/whisper-medium-mlx-8bit")
+        asr_engine = os.getenv('MEETING_INTERPRETER_ASR_BACKEND', 'whisper')
+        if asr_engine == 'apple':
+            asr_model = 'Apple SpeechAnalyzer · Apple 本机语音识别'
+        elif asr_engine == 'sensevoice':
+            asr_model = f'SenseVoice · {sensevoice_model_directory()}'
+        elif asr_engine in SERVICE_URLS:
+            asr_model = os.getenv('MEETING_INTERPRETER_SERVICE_ASR_MODEL', '')
+        translation_model = os.getenv("MEETING_INTERPRETER_OLLAMA_MODEL", "translategemma:4b") if translation_backend == "ollama" else os.getenv("MEETING_INTERPRETER_TRANSLATION_MODEL", "facebook/nllb-200-distilled-600M")
+        if translation_backend == 'llama':
+            translation_model = os.getenv('MEETING_INTERPRETER_LLAMA_MODEL', '')
+        translation_url = os.getenv('MEETING_INTERPRETER_OLLAMA_URL' if translation_backend == 'ollama' else 'MEETING_INTERPRETER_LLAMA_URL', SERVICE_URLS.get(translation_backend, ''))
+        asr_url = os.getenv('MEETING_INTERPRETER_ASR_URL', SERVICE_URLS.get(asr_engine, ''))
+        return translation_backend, asr_model, asr_engine, translation_model, translation_url, asr_url
+
+    translation_backend, asr_model, asr_engine, translation_model, translation_url, asr_url = read_model_options()
     runtime = {
         "asr_status": "loading" if mode == "local" else "mock",
         "translation_status": "loading" if mode == "local" and translation_backend in SERVICE_URLS else ("configured" if mode == "local" else "mock"),
@@ -57,18 +61,25 @@ def create_app() -> FastAPI:
         "warmup_message": "模型尚未预热" if mode == "local" else "可直接使用模拟字幕",
         "warmup_progress": 0 if mode == "local" else 100,
         "startup_ready": mode != "local",
-        "settings_pending_restart": False,
+        "applying": False, "revision": 0, "requested_revision": 0, "generation": 0,
         "asr_backend": None,
         "translator_backend_instance": None,
         "speaker_backend": None,
         "speaker_status": "loading" if speaker_model_path().is_file() and mode == "local" else "missing",
         "speaker_message": "声纹模型尚未连接，可手动换人",
     }
-    app = FastAPI(title="Local Meeting Interpreter", version="0.2.16")
+    settings_lock = asyncio.Lock()
+    connections = {}
+    cleanup_tasks = set()
+    runtime["options"] = read_model_options()
+    app = FastAPI(title="Local Meeting Interpreter", version="0.2.17")
     app.mount("/web", StaticFiles(directory=WEB_DIR), name="web")
 
     @app.get("/health")
     async def health() -> dict[str, object]:
+        generation = runtime['generation']
+        translation_backend, asr_model, asr_engine, translation_model, translation_url, asr_url = runtime['options']
+        translation_status, asr_status = runtime['translation_status'], runtime['asr_status']
         ollama = {"configured": translation_backend == "ollama", "reachable": False, "model_present": None, "model_loaded": False, "loaded_models": []}
         if translation_backend == "ollama":
             try:
@@ -90,21 +101,21 @@ def create_app() -> FastAPI:
         runtime["last_health_at"] = time.time()
         if translation_backend == "ollama":
             if not ollama["reachable"]:
-                runtime["translation_status"] = "offline"
+                translation_status = "offline"
             elif not ollama["model_present"]:
-                runtime["translation_status"] = "missing"
-            elif ollama["model_loaded"] and runtime["translation_status"] not in {"processing", "error"}:
-                runtime["translation_status"] = "running"
-            elif runtime["translation_status"] not in {"processing", "loading", "error"}:
-                runtime["translation_status"] = "ready"
+                translation_status = "missing"
+            elif ollama["model_loaded"] and translation_status not in {"processing", "error"}:
+                translation_status = "running"
+            elif translation_status not in {"processing", "loading", "error"}:
+                translation_status = "ready"
         translation_service = dict(ollama, provider=translation_backend, name=SERVICE_NAMES.get(translation_backend, '内置翻译'))
         if translation_backend == 'llama':
             translation_service = await asyncio.to_thread(inspect_service, 'llama', translation_url, .8)
             translation_service['model_present'] = any(m['id'] == translation_model for m in translation_service['models'])
             if not translation_service['reachable']:
-                runtime['translation_status'] = 'offline'
+                translation_status = 'offline'
             elif not translation_service['model_present']:
-                runtime['translation_status'] = 'missing'
+                translation_status = 'missing'
         connected = runtime['startup_ready']
         if translation_backend in SERVICE_URLS:
             connected = connected and translation_service['reachable'] and translation_service['model_present']
@@ -114,16 +125,17 @@ def create_app() -> FastAPI:
             present = any(m['id'] == asr_model for m in asr_service['models'])
             connected = connected and asr_service['reachable'] and present
             if not asr_service['reachable'] or not present:
-                runtime['asr_status'] = 'offline' if not asr_service['reachable'] else 'missing'
-        pending = runtime['settings_pending_restart']
-        settings_state = {'model_dir': current_model_directory(), 'restart_required': pending}
-        if pending:
-            settings_state.update(model_settings())
-            connected = False
-        model_state = {'stage': 'restart' if pending else runtime['warmup_stage'],
-                       'message': '设置已保存，请重启 App（完全退出后重新打开），以加载新目录中的模型。' if pending else runtime['warmup_message'] if connected or not runtime['startup_ready'] else '所选模型服务已断开或模型不可用，请检查本地设置。',
-                       'progress': 0 if pending else runtime['warmup_progress'], 'ready': bool(connected)}
-        return {"status": "ok", "mode": mode, "asr": {"status": runtime["asr_status"], "model": asr_model, 'backend': asr_engine, 'service': asr_service}, "speaker": {"available": runtime["speaker_backend"] is not None, "status": runtime["speaker_status"], "message": runtime["speaker_message"]}, "translation": {"status": runtime["translation_status"], "backend": translation_backend, "model": translation_model, "last_response_ms": runtime["last_translation_ms"], 'service': translation_service}, "ollama": ollama, "audio": {"frames": runtime["audio_frames"], "last_audio_at": runtime["last_audio_at"]}, "models": model_state, "settings": settings_state, "last_error": '' if pending else runtime['last_error'], "checked_at": runtime["last_health_at"]}
+                asr_status = 'offline' if not asr_service['reachable'] else 'missing'
+        if generation != runtime['generation']:
+            return await health()
+        applying = runtime['applying']
+        settings_state = {**model_settings(), 'restart_required': False, 'applying': applying,
+                          'revision': runtime['revision'], 'requested_revision': runtime['requested_revision']}
+        connected = connected and not applying
+        model_state = {'stage': 'applying' if applying else runtime['warmup_stage'],
+                       'message': (runtime['warmup_message'] if runtime.get('apply_phase') == 'loading' else runtime['apply_message']) if applying else runtime['warmup_message'] if connected or not runtime['startup_ready'] else '所选模型服务已断开或模型不可用，请检查本地设置。',
+                       'progress': 0 if applying and runtime.get('apply_phase') != 'loading' else runtime['warmup_progress'], 'ready': bool(connected)}
+        return {"status": "ok", "mode": mode, "asr": {"status": asr_status, "model": asr_model, 'backend': asr_engine, 'service': asr_service}, "speaker": {"available": runtime["speaker_backend"] is not None, "status": runtime["speaker_status"], "message": runtime["speaker_message"]}, "translation": {"status": translation_status, "backend": translation_backend, "model": translation_model, "last_response_ms": runtime["last_translation_ms"], 'service': translation_service}, "ollama": ollama, "audio": {"frames": runtime["audio_frames"], "last_audio_at": runtime["last_audio_at"]}, "models": model_state, "settings": settings_state, "last_error": '' if applying else runtime['last_error'], "checked_at": runtime["last_health_at"]}
 
     @app.get("/system/check")
     async def system_check() -> dict[str, object]:
@@ -195,13 +207,80 @@ def create_app() -> FastAPI:
         model_dir = payload.get("model_dir")
         if not isinstance(model_dir, str) or not model_dir.strip():
             raise HTTPException(status_code=400, detail="请提供模型保存目录。")
+        async with settings_lock:
+            try:
+                selection = {key: payload[key] for key in ('asr_model', 'asr_url', 'translation_backend', 'translation_model', 'translation_url') if key in payload}
+                result = await asyncio.to_thread(save_model_directory, model_dir.strip(), payload.get('asr_engine'), selection)
+            except (OSError, ValueError) as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            runtime['requested_revision'] += 1
+            runtime.update(applying=True, apply_phase='draining', startup_ready=False, apply_message='设置已保存，正在应用模型配置…')
+            if runtime.get('apply_task') is None or runtime['apply_task'].done():
+                runtime['apply_task'] = asyncio.create_task(apply_saved_settings())
+            return {**result, 'restart_required': False, 'applying': True, 'revision': runtime['requested_revision']}
+
+    async def release_models():
+        backend = runtime.get('asr_backend')
+        if isinstance(backend, AppleSpeechBackend):
+            await asyncio.to_thread(backend.client.close)
+        runtime.update(asr_backend=None, translator_backend_instance=None, speaker_backend=None)
+        # All native work has drained before releasing process-global MLX weights.
+        # Avoid importing an unused engine just to clear its cache.
+        def collect():
+            import gc
+            module = sys.modules.get('mlx_whisper.transcribe')
+            holder = getattr(module, 'ModelHolder', None)
+            if holder is not None:
+                holder.model = holder.model_path = None
+            gc.collect()
+        await asyncio.to_thread(collect)
+
+    async def apply_saved_settings():
+        nonlocal translation_backend, asr_model, asr_engine, translation_model, translation_url, asr_url
         try:
-            selection = {key: payload[key] for key in ('asr_model', 'asr_url', 'translation_backend', 'translation_model', 'translation_url') if key in payload}
-            result = await asyncio.to_thread(save_model_directory, model_dir.strip(), payload.get('asr_engine'), selection)
-            runtime['settings_pending_restart'] = True
-            return result
-        except (OSError, ValueError) as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+            # Clients normally finish accepted audio before POSTing settings.
+            # Retire any other open client and await its native jobs as well.
+            for websocket, (done, retire) in list(connections.items()):
+                retire.set()
+                try:
+                    await websocket.send_json({'type': 'settings_applying', 'message': '正在应用新模型，收音暂停；已显示的发言记录保留。'})
+                    await websocket.close(code=1012)
+                except (RuntimeError, WebSocketDisconnect):
+                    pass
+                await done.wait()
+            while runtime['revision'] < runtime['requested_revision']:
+                previous = runtime.get('warmup_task')
+                if previous is not None and not previous.done():
+                    runtime['apply_message'] = '正在等待当前模型操作结束，随后自动应用新设置…'
+                    # Cancelling a Python await cannot stop a native GPU/thread job.
+                    await asyncio.shield(previous)
+                revision = runtime['requested_revision']
+                runtime['apply_phase'] = 'draining'
+                runtime['apply_message'] = '正在释放旧模型并应用最新设置…'
+                await release_models()
+                await asyncio.to_thread(load_user_config)
+                translation_backend, asr_model, asr_engine, translation_model, translation_url, asr_url = read_model_options()
+                runtime['options'] = read_model_options()
+                runtime['generation'] += 1
+                runtime.update(asr_model=asr_model, translation_backend=translation_backend, translation_model=translation_model,
+                               startup_ready=False, asr_status='loading', translation_status='loading', last_error='',
+                               last_translation_ms=None, warmup_progress=0, warmup_stage='applying',
+                               speaker_status='missing', speaker_message='声纹模型尚未连接，可手动换人')
+                runtime['apply_phase'] = 'loading'
+                runtime['apply_message'] = '设置已应用，正在加载所选模型…'
+                await warm_models()
+                if mode == 'local':
+                    await asyncio.shield(runtime['warmup_task'])
+                else:
+                    runtime.update(startup_ready=True, warmup_stage='ready', warmup_progress=100,
+                                   warmup_message='设置已生效', asr_status='mock', translation_status='mock')
+                runtime['revision'] = revision
+            runtime['applying'] = False
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            runtime.update(applying=False, startup_ready=False, warmup_stage='error', last_error=str(exc),
+                           warmup_message=f'设置已保存，应用失败：{exc}', revision=runtime['requested_revision'])
 
     @app.on_event("startup")
     async def warm_models() -> None:
@@ -240,6 +319,7 @@ def create_app() -> FastAPI:
 
         async def warm_translation() -> None:
             if translation_backend not in SERVICE_URLS:
+                runtime["translator_backend_instance"] = create_translation_backend()
                 runtime["translation_status"] = "ready"
                 runtime["warmup_progress"] = 100
                 runtime["warmup_stage"] = "ready"
@@ -296,6 +376,10 @@ def create_app() -> FastAPI:
 
     @app.on_event("shutdown")
     async def stop_native_speech() -> None:
+        apply_task = runtime.get('apply_task')
+        if apply_task is not None and not apply_task.done():
+            apply_task.cancel()
+            await asyncio.gather(apply_task, return_exceptions=True)
         task = runtime.get('warmup_task')
         if task is not None and not task.done():
             task.cancel()
@@ -317,15 +401,21 @@ def create_app() -> FastAPI:
     @app.websocket("/ws")
     async def websocket_endpoint(websocket: WebSocket) -> None:
         await websocket.accept()
-        if runtime['settings_pending_restart']:
-            await websocket.send_json({'type':'error', 'message':'模型设置已更改，请重启 App 后开始录音。'})
+        if runtime['applying']:
+            await websocket.send_json({'type':'error', 'message':'模型设置正在自动应用，请等待模型就绪后开始录音。'})
             await websocket.close(code=1008)
             return
+        done = asyncio.Event()
         await websocket.send_json({"type": "status", "stage": "service", "message": f"本地服务已连接；ASR：{asr_model}；翻译：{translation_model}"})
+        if runtime['applying']:
+            await websocket.close(code=1012)
+            return
         send_lock = asyncio.Lock()
 
         async def send(payload):
             async with send_lock:
+                if runtime['applying']:
+                    return
                 if payload['type'] == 'caption':
                     runtime['asr_status'] = 'ready'
                 elif payload['type'] == 'translation_status':
@@ -344,12 +434,27 @@ def create_app() -> FastAPI:
 
         pipeline = Pipeline(mode=mode, asr_backend=runtime.get('asr_backend'), translator_backend=runtime.get('translator_backend_instance'), translate_inline=False)
         session = LiveSession(pipeline, send)
+        retire = asyncio.Event()
+        connections[websocket] = (done, retire)
         started = False
         rejected_samples = 0
         try:
             while True:
                 await asyncio.sleep(0)
-                payload = json.loads(await websocket.receive_text())
+                if retire.is_set():
+                    return
+                receiving = asyncio.create_task(websocket.receive_text())
+                retiring = asyncio.create_task(retire.wait())
+                try:
+                    await asyncio.wait((receiving, retiring), return_when=asyncio.FIRST_COMPLETED)
+                    if retire.is_set():
+                        return
+                    payload = json.loads(receiving.result())
+                finally:
+                    for pending in (receiving, retiring):
+                        if not pending.done():
+                            pending.cancel()
+                    await asyncio.gather(receiving, retiring, return_exceptions=True)
                 kind = payload.get('type')
                 if kind == 'ping':
                     await send({'type': 'pong'})
@@ -431,10 +536,24 @@ def create_app() -> FastAPI:
                     else:
                         await send(ErrorEvent(message=str(exc)).model_dump(mode='json'))
                     await send({'type': 'audio_ack', 'accepted': False})
-        except (WebSocketDisconnect, RuntimeError):
+        except (WebSocketDisconnect, RuntimeError, asyncio.CancelledError):
             return
         finally:
-            await session.close()
+            async def drain_session():
+                try:
+                    await session.close(drain=True)
+                finally:
+                    connections.pop(websocket, None)
+                    done.set()
+            # A disconnected client may cancel its endpoint while native work
+            # is still running. Keep cleanup alive until that work truly ends.
+            cleanup = asyncio.create_task(drain_session())
+            cleanup_tasks.add(cleanup)
+            cleanup.add_done_callback(cleanup_tasks.discard)
+            try:
+                await asyncio.shield(cleanup)
+            except asyncio.CancelledError:
+                pass
 
     return app
 
