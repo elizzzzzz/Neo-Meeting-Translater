@@ -2,7 +2,7 @@
 
 项目针对 Apple M3 / 16G 统一内存提供三种运行方式：源码运行适合开发和模型调试，DMG 适合固定安装，免安装 ZIP 适合直接解压运行。安装包只包含程序和界面，不包含语音识别、翻译或 TTS 模型权重。
 
-免安装方式：解压 `LocalMeetingInterpreter-portable.zip`，直接双击里面的 `LocalMeetingInterpreter.app`。App 不需要拖入 Applications，也不会启动浏览器。
+免安装方式：解压 `NMT-portable.zip`，直接双击里面的 `NMT.app`。App 不需要拖入 Applications，也不会启动浏览器。
 
 ## 从源码运行
 
@@ -18,7 +18,7 @@ python -m meeting_interpreter.desktop
 
 点击“字幕浮窗”可切换为半透明、置顶、可移动的字幕窗口。浮窗会缩小到会议软件上方的一块区域，并可拖动标题栏移动；点击“退出浮窗”恢复完整工作台。App 使用单实例锁，重复双击安装包不会再启动第二个本地服务副本。
 
-如果之前打开过旧版本，先关闭旧的 `LocalMeetingInterpreter` 窗口，再启动新安装包，避免同时运行多个本地服务实例。
+如果之前打开过旧版本，先关闭旧的 `LocalMeetingInterpreter` 或 `NMT` 窗口，再启动新安装包，避免同时运行多个本地服务实例。
 
 ## DMG 本地模型配置
 
@@ -35,7 +35,7 @@ MEETING_INTERPRETER_ASR_MODEL=mlx-community/whisper-medium-mlx-8bit
 EOF
 ```
 
-重新打开 DMG 后，页面右上角应显示 `LOCAL`，健康检查地址也会返回 `mode=local`。首次使用 Whisper 模型会下载模型权重；下载完成后，识别和翻译均在本机运行。
+重新打开 DMG 后，页面右上角应显示 `LOCAL`，健康检查地址也会返回 `mode=local`。需要的语音模型请先在设置中明确点击下载或选择已有模型；资源就绪后，识别和翻译均在本机运行。
 
 ## 构建 DMG
 
@@ -53,11 +53,11 @@ MEETING_INTERPRETER_BUILD_PYTHON=/opt/homebrew/bin/python3 ./scripts/build_macos
 
 构建脚本会解压 ZIP、挂载 DMG 并检查依赖、arm64 和签名，通过后发布两个归档；App 可从 ZIP 解压得到：
 
-- `dist/LocalMeetingInterpreter.app`
-- `dist/LocalMeetingInterpreter.dmg`
-- `dist/LocalMeetingInterpreter-portable.zip`
+- `dist/NMT.app`
+- `dist/NMT.dmg`
+- `dist/NMT-portable.zip`
 
-默认使用图标方案 A（双语气泡）。如需使用 B（声谱门）或 C（翻译书签）重新构建：
+默认使用 NMT 图标。如需使用历史方案 B（声谱门）或 C（翻译书签）重新构建：
 
 ```bash
 MEETING_INTERPRETER_ICON_VARIANT=b ./scripts/build_macos_app.sh

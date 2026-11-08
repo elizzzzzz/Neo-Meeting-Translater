@@ -1,10 +1,10 @@
 # NMT · Neo Meeting Translater
 
-> 当前源码：NMT 0.2.20，采用 LM Studio 风格的工作区，支持亮色、暗色及跟随系统。新构建产物命名为 `NMT.app`、`NMT-portable.zip` 和 `NMT.dmg`。本机已构建并验证 0.2.20；GitHub 已发布的 0.2.17 安装包仍为旧界面。名称变更保留原配置、模型目录和麦克风授权。
+> 当前源码：NMT 0.2.20，采用 LM Studio 风格的工作区，支持亮色、暗色及跟随系统。新构建产物命名为 `NMT.app`、`NMT-portable.zip` 和 `NMT.dmg`。0.2.20 的 arm64 免安装 ZIP 和 DMG 已发布到 GitHub 私库 Release。名称变更保留原配置、模型目录和麦克风授权。
 
 在 Apple Silicon Mac 上本地运行的多人会议字幕翻译工具，面向中文、日语和英语会议。应用优先提供实时文字字幕，音频和模型留在本机，不调用云端转写或翻译 API。
 
-当前源码版本：**0.2.20** · 已发布安装包：**0.2.17**
+当前源码版本：**0.2.20** · 已发布安装包：**0.2.20**
 适用设备：Apple M3 / 16 GB 统一内存（也可在其他 macOS Apple Silicon 设备上运行）
 交付形式：macOS 原生 App、免安装 ZIP、DMG
 
@@ -34,10 +34,11 @@
 
 ## 下载和运行
 
-从 [v0.2.17 发布页](https://github.com/elizzzzzz/local-meeting-interpreter/releases/tag/v0.2.17) 下载（私有仓库需要登录有访问权限的 GitHub 账号）：
+从 [v0.2.20 发布页](https://github.com/elizzzzzz/local-meeting-interpreter/releases/tag/v0.2.20) 下载（私有仓库需要登录有访问权限的 GitHub 账号）：
 
-- `LocalMeetingInterpreter-portable.zip`：解压后直接双击 `LocalMeetingInterpreter.app`，不需要拖入 Applications。
-- `LocalMeetingInterpreter.dmg`：适合按 macOS 常规方式安装。
+- `NMT-portable.zip`：解压后直接双击 `NMT.app`，不需要拖入 Applications。
+- `NMT.dmg`：打开后运行 `NMT.app`，也可复制到本机常用目录。
+- `NMT-0.2.20.sha256`：下载文件的 SHA-256 校验值。在下载目录运行 `shasum -a 256 -c NMT-0.2.20.sha256` 验证。
 
 安装包不包含 ASR、翻译或 TTS 模型权重，也不会把模型提交到 GitHub。首次使用时，在 App 的“模型与服务设置”中选择本地引擎、模型目录和服务地址。
 
@@ -247,6 +248,8 @@ pip install -e '.[apple,audio,installer,speaker]'
 
 ## 文档与评估
 
+- [0.2.20 设置流程简化与当前发布说明](docs/release-0.2.20.md)
+- [0.2.19 亮色、暗色与跟随系统](docs/release-0.2.19.md)
 - [0.2.18 NMT 视觉更新](docs/release-0.2.18.md)
 
 - [0.2.17 设置即时生效说明](docs/release-0.2.17.md)
@@ -254,23 +257,15 @@ pip install -e '.[apple,audio,installer,speaker]'
 - [中日识别评估](docs/asr-evaluation-0.2.3.md)
 - [长段中日语音回放评估](docs/asr-evaluation-0.2.4.md)
 
-## 版本 0.2.17
+## 版本 0.2.20
 
-本版本重点是“设置保存后立即生效”：
+本次 Release 包含 0.2.17 之后的 NMT 界面及设置流程更新：
 
-- 模型、服务地址和模型目录无需重启即可应用。
-- 录音中切换设置会安全收尾旧音频，模型就绪后自动恢复。
-- 连续保存时只采用最新配置，旧检测结果不会覆盖新状态。
-- 加载失败会显示具体原因，可修改设置后直接重试。
-- Apple SpeechAnalyzer 资源仍需用户显式点击准备。
-- 原生 macOS 窗口、字幕浮窗、中文状态说明和单实例行为保持可用。
+- 名称简化为 NMT，采用更大的双语字幕区域和紧凑图标侧栏。
+- 亮色、暗色、跟随系统三种外观，主窗口和半透明字幕浮窗同步切换。
+- “保存并返回”自动关闭设置，模型在后台加载；已配置用户再次打开时不重复弹出引导。
+- 继续保留原模型路径、界面语言、权限身份和单实例锁，兼容旧版配置。
 
-已有的 0.2.17 构建验证记录如下；本次发布仅整理文档并上传同一组安装包：
+验证：170 项 Python 测试通过，1 项跳过；73 项前端测试通过。隔离配置的界面回归覆盖保存后返回、重新载入跳过引导、三种界面语言、亮暗切换、历史滚动和字幕浮窗。arm64 ZIP 解压、DMG 挂载和签名检查通过。此次验证不代表真实语音识别准确率或推理延时实测。
 
-- 148 项 Python 测试通过，1 项跳过。
-- 58 项前端测试通过。
-- Chromium 界面回归通过。
-- arm64 ZIP 解压、DMG 挂载、可执行权限和签名检查通过。
-- 验证使用隔离配置与模拟识别/翻译，不下载模型、不录制真实麦克风、不改变用户模型设置。
-
-完整变更记录见 [docs/release-0.2.17.md](docs/release-0.2.17.md)。
+完整变更及下载说明见 [0.2.20 发布说明](docs/release-0.2.20.md)，历史版本说明保留在 `docs/release-*.md`。
