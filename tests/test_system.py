@@ -385,7 +385,7 @@ def test_appearance_persists_across_other_preferences_and_app_clients(monkeypatc
             assert client.post('/preferences', json={'appearance': mode}).json()['appearance'] == mode
         client.post('/preferences', json={'show_tips': False, 'interface_language': 'ja'})
     with TestClient(create_app()) as client:
-        assert client.get('/preferences').json() == {'appearance': 'system', 'show_tips': False, 'interface_language': 'ja'}
+        assert client.get('/preferences').json() == {'appearance': 'system', 'show_tips': False, 'interface_language': 'ja', 'setup_completed': False}
         for invalid in ['sepia', '', 4, [], {}]:
             assert client.post('/preferences', json={'appearance': invalid}).status_code == 400
         assert client.get('/preferences').json()['appearance'] == 'system'
@@ -397,3 +397,47 @@ def test_old_or_invalid_appearance_preferences_allow_system_default(monkeypatch,
     assert system.read_preferences().get('appearance', 'system') == 'system'
     path.write_text('{"appearance":"invalid","show_tips":false}')
     assert system.read_preferences() == {'show_tips': False}
+
+
+def test_existing_configuration_skips_setup_without_checking_model_availability(monkeypatch, tmp_path):
+    config = tmp_path / '.env'
+    monkeypatch.setattr(system, 'user_config_path', lambda: config)
+    config.write_text('MEETING_INTERPRETER_MODEL_DIR=/Volumes/disconnected/models\n')
+    system.save_preferences(show_tips=True, appearance='dark', interface_language='ja')
+    assert system.startup_preferences() == {
+        'show_tips': False, 'setup_completed': True, 'appearance': 'dark', 'interface_language': 'ja'}
+    # Reading startup state never rewrites the user's preference or model file.
+    assert system.read_preferences()['show_tips'] is True
+    assert config.read_text() == 'MEETING_INTERPRETER_MODEL_DIR=/Volumes/disconnected/models\n'
+
+
+def test_first_launch_and_environment_defaults_do_not_complete_setup(monkeypatch, tmp_path):
+    config = tmp_path / '.env'
+    config.write_text('MEETING_INTERPRETER_MODE=local\n')
+    monkeypatch.setattr(system, 'user_config_path', lambda: config)
+    monkeypatch.setenv('MEETING_INTERPRETER_MODEL_DIR', '/environment-default')
+    assert system.startup_preferences() == {'show_tips': True, 'setup_completed': False}
+    system.save_preferences(show_tips=False)
+    assert system.startup_preferences() == {'show_tips': False, 'setup_completed': False}
+    config.write_text('MEETING_INTERPRETER_ASR_BACKEND=apple\n')
+    assert system.startup_preferences()['setup_completed'] is True
+
+
+def test_successful_settings_save_is_remembered_across_new_app_instances(monkeypatch, tmp_path):
+    from fastapi.testclient import TestClient
+    from meeting_interpreter.app import create_app
+    monkeypatch.setenv('MEETING_INTERPRETER_MODE', 'mock')
+    config = tmp_path / '.env'
+    config.write_text('')
+    monkeypatch.setattr(system, 'user_config_path', lambda: config)
+    system.save_preferences(show_tips=True, appearance='light')
+    with TestClient(create_app()) as client:
+        assert client.get('/preferences').json()['setup_completed'] is False
+        assert client.post('/settings', json={'model_dir':'relative/path','asr_engine':'apple'}).status_code == 400
+        assert client.get('/preferences').json()['setup_completed'] is False
+        saved = client.post('/settings', json={'model_dir':str(tmp_path/'offline-models'),'asr_engine':'apple'})
+        assert saved.status_code == 200
+    with TestClient(create_app()) as client:
+        preferences = client.get('/preferences').json()
+        assert preferences['setup_completed'] is True and preferences['show_tips'] is False
+        assert preferences['appearance'] == 'light'

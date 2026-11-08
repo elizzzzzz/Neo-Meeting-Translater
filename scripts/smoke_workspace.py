@@ -43,6 +43,7 @@ try:
   def settings_route(route):
    if route.request.method=='POST':
     saved_settings.append(route.request.post_data_json)
+    preferences['setup_completed']=True
     health_fixture.update(asr={'backend':saved_settings[-1]['asr_engine'],'model':saved_settings[-1]['asr_model'],'status':'loading'},models={'ready':False,'stage':'applying','progress':25,'message':'设置已保存，正在应用'},settings={'restart_required':False,'applying':True,'revision':len(saved_settings)-1,'requested_revision':len(saved_settings),**saved_settings[-1]})
     route.fulfill(json={'saved':True,'restart_required':False,'applying':True,'revision':len(saved_settings),'model_dir':saved_settings[-1]['model_dir']})
    else:route.fulfill(json={'model_dir':'/test/models','ollama_model_dir':'/test/ollama-models','asr_engine':'whisper','asr_model':'mlx-community/whisper-medium-mlx-8bit','translation_backend':'ollama','translation_model':'translategemma:4b'})
@@ -177,6 +178,8 @@ try:
   page.wait_for_function('document.querySelector("#asrModel").value === "qwen3-asr:1.7b"')
   page.locator('#saveSettingsBtn').click()
   page.wait_for_function('document.querySelector("#modelSaveNotice").textContent.includes("正在自动应用")')
+  assert not page.locator('#settingsModal').is_visible()
+  assert not page.locator('#tipsModal').is_visible()
   assert page.locator('.caption-row').count()==1
   assert page.locator('#stopBtn').is_enabled()
   health_fixture.update(models={'ready':True,'stage':'ready','progress':100,'message':'测试：新模型就绪'},settings={**health_fixture['settings'],'applying':False,'revision':len(saved_settings)})
@@ -326,6 +329,8 @@ try:
   page.screenshot(path=str(out/'model-selection.png'))
   page.locator('#saveSettingsBtn').click()
   page.wait_for_function('document.querySelector("#systemNotice").textContent.includes("已保存")')
+  assert not page.locator('#settingsModal').is_visible()
+  assert page.locator('#settingsBtn').is_visible()
   assert saved_settings[-1]['asr_engine']=='ollama' and saved_settings[-1]['translation_backend']=='llama'
   assert page.locator('#startBtn').is_disabled()
   assert '正在应用' in page.locator('#asrStatus').inner_text()
@@ -350,6 +355,17 @@ try:
   page.reload(wait_until='networkidle')
   page.wait_for_function('document.documentElement.dataset.theme==="light"')
   assert page.evaluate('appearanceMode')=='light'
+  assert not page.locator('#tipsModal').is_visible()
+  assert not page.locator('#settingsModal').is_visible()
+  # Help remains available explicitly, while settings save/restart never opens it.
+  page.locator('#tipsBtn').click()
+  assert page.locator('#tipsModal').is_visible()
+  page.locator('#closeTipsBtn').click()
+  page.locator('#tipsModal').wait_for(state='hidden')
+  page.set_viewport_size({'width':1440,'height':900})
+  page.evaluate("runtimeText.textContent='UI 测试';modelReadiness.textContent='界面预览 · 未连接真实模型';modelReadiness.classList.remove('ready');setDiagnostic('流程测试：保存后自动返回，重新打开不重复提示设置')")
+  page.screenshot(path=str(out/'settings-saved-return.png'))
+  print('onboarding: successful save returns, restart skips guidance, manual help remains available')
   print('appearance: light/dark/system, toggle, floating, history and reload passed')
   print('page_errors',errors)
   assert not errors

@@ -824,3 +824,82 @@ test('appearance toggle has localized accessible labels', async () => {
     assert.equal(button.title,label);
   }
 });
+
+
+test('saving settings returns to the conversation before model loading completes', async () => {
+  const app=loadApp();await new Promise(resolve=>setImmediate(resolve));
+  const modal=app.elements.get('#settingsModal');modal.hidden=false;
+  app.run("modelDirectory.value='/models';captionRows=[{segment_id:'kept',original_text:'保留记录'}]");
+  let finishHealth;
+  app.context.fetch=async url=>url==='/health'
+    ? new Promise(resolve=>finishHealth=()=>resolve({ok:true,json:async()=>({mode:'local',models:{ready:false,stage:'applying'},settings:{applying:true}})}))
+    : {ok:true,json:async()=>({saved:true,revision:1,applying:true})};
+  const saving=app.run('saveModelDirectory()');
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(modal.hidden,true);
+  assert.equal(app.run('setupCompleted'),true);
+  assert.equal(app.run('captionRows[0].original_text'),'保留记录');
+  assert.equal(app.elements.get('#tipsModal').hidden,true);
+  assert.match(app.elements.get('#diagnosticStatus').textContent,/保存|应用/);
+  finishHealth();await saving;
+  app.run("updateHealth({mode:'local',models:{ready:false,stage:'error',message:'模型缺失'},last_error:'模型缺失',settings:{applying:false,revision:1}})");
+  assert.equal(modal.hidden,true);
+  assert.match(app.elements.get('#diagnosticStatus').textContent,/模型缺失/);
+});
+
+test('a rejected settings save keeps the editor and entered values available', async () => {
+  const app=loadApp();await new Promise(resolve=>setImmediate(resolve));
+  app.elements.get('#settingsModal').hidden=false;
+  app.run("modelDirectory.value='/chosen/models';asrEngine.value='apple'");
+  app.context.fetch=async()=>({ok:false,json:async()=>({detail:'配置无法写入'})});
+  await app.run('saveModelDirectory()');
+  assert.equal(app.elements.get('#settingsModal').hidden,false);
+  assert.equal(app.elements.get('#modelDirectory').value,'/chosen/models');
+  assert.equal(app.run('setupCompleted'),false);
+  assert.match(app.elements.get('#modelSaveNotice').textContent,/配置无法写入/);
+  assert.equal(app.elements.get('#saveSettingsBtn').disabled,false);
+});
+
+test('existing setup skips startup guidance even if old tips preference was enabled', async () => {
+  const app=loadApp({preferences:{show_tips:true,setup_completed:true}});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(app.elements.get('#tipsModal').hidden,true);
+  assert.equal(app.elements.get('#settingsModal').hidden,true);
+  assert.equal(app.elements.get('#rememberTips').checked,true);
+  app.elements.get('#tipsBtn').listeners.click();
+  assert.equal(app.elements.get('#tipsModal').hidden,false);
+});
+
+test('first launch still offers guidance and respects explicit dismissal', async () => {
+  const app=loadApp({preferences:{show_tips:true,setup_completed:false}});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(app.elements.get('#tipsModal').hidden,false);
+  await app.run('closeTips()');
+  assert.equal(app.elements.get('#tipsModal').hidden,true);
+});
+
+test('late startup responses cannot reopen guidance after saving settings or opening help', async () => {
+  let resolve;
+  const app=loadApp({preferences:new Promise(finish=>resolve=finish)});
+  app.run("modelDirectory.value='/models'");
+  app.context.fetch=async url=>({ok:true,json:async()=>url==='/health'?{mode:'mock',models:{ready:true}}:{saved:true}});
+  await app.run('saveModelDirectory()');
+  resolve({show_tips:true,setup_completed:false});
+  await new Promise(finish=>setImmediate(finish));
+  assert.equal(app.elements.get('#tipsModal').hidden,true);
+  assert.equal(app.run('setupCompleted'),true);
+  let complete;
+  const help=loadApp({preferences:new Promise(finish=>complete=finish)});
+  help.elements.get('#tipsBtn').listeners.click();
+  complete({show_tips:false,setup_completed:true});
+  await new Promise(finish=>setImmediate(finish));
+  assert.equal(help.elements.get('#tipsModal').hidden,false,'manual help remains available');
+});
+
+test('startup preference failure does not invent a new setup request', async () => {
+  const app=loadApp();await new Promise(resolve=>setImmediate(resolve));
+  app.context.fetch=async()=>{throw Error('offline')};
+  await app.run('loadPreferences()');
+  assert.equal(app.elements.get('#tipsModal').hidden,true);
+  assert.match(app.elements.get('#diagnosticStatus').textContent,/启动偏好/);
+});

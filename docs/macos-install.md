@@ -64,7 +64,7 @@ MEETING_INTERPRETER_ICON_VARIANT=b ./scripts/build_macos_app.sh
 MEETING_INTERPRETER_ICON_VARIANT=c ./scripts/build_macos_app.sh
 ```
 
-首次打开会出现三步使用提示。顶部“使用指南”可以再次查看；勾选“以后不再提醒”后，App 不会再次自动弹出。顶部“本地设置”会检查 Ollama 安装状态、运行状态、当前版本、最新版本和推荐模型，并提供升级、安装推荐模型和选择模型目录的入口。默认模型目录是 `~/Library/Application Support/LocalMeetingInterpreter/models`，更改后重新打开 App 生效。
+首次打开会出现三步使用提示。保存配置后会自动返回主界面，下次启动不再弹出引导，旧版已保存的配置同样适用。侧栏“使用指南”可以随时查看；未完成配置也可以勾选“以后不再提醒”。侧栏“本地设置”会检查 Ollama 安装状态、运行状态、当前版本、最新版本和推荐模型，并提供升级、安装推荐模型和选择模型目录的入口。默认模型目录跟随当前 Ollama 的模型目录，可自定义；更改并保存后自动应用，无需重启。
 
 文字翻译还支持本机 SGLang。选择“文字翻译 → SGLang”后，默认连接 `http://127.0.0.1:30000`；请先自行启动 SGLang，再在 App 中刷新模型列表。SGLang 的模型权重和缓存路径由 SGLang 启动参数管理，不会自动迁移到 App 的模型目录。可先使用 `tencent/HY-MT1.5-1.8B` 做中日英低延迟翻译对比；当前 App 不会自动下载 SGLang 或模型。
 

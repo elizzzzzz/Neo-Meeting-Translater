@@ -19,7 +19,7 @@ from .models import AudioEvent, ErrorEvent, SessionConfig
 from .pipeline import Pipeline
 from .speaker import EmbeddingSpeakerBackend, speaker_model_path
 from .streaming import LiveSession
-from .system import current_model_directory, download_asr_model, inspect_asr_models, inspect_ollama, install_ollama, load_user_config, model_settings, pull_ollama_model, read_preferences, save_preferences, save_model_directory, upgrade_ollama
+from .system import current_model_directory, download_asr_model, inspect_asr_models, inspect_ollama, install_ollama, load_user_config, model_settings, pull_ollama_model, save_preferences, save_model_directory, startup_preferences, upgrade_ollama
 from .translation import create_translation_backend
 
 ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[2]))
@@ -72,7 +72,7 @@ def create_app() -> FastAPI:
     connections = {}
     cleanup_tasks = set()
     runtime["options"] = read_model_options()
-    app = FastAPI(title="NMT · Neo Meeting Translater", version="0.2.19")
+    app = FastAPI(title="NMT · Neo Meeting Translater", version="0.2.20")
     app.mount("/web", StaticFiles(directory=WEB_DIR), name="web")
 
     @app.get("/health")
@@ -193,7 +193,7 @@ def create_app() -> FastAPI:
 
     @app.get("/preferences")
     async def get_preferences() -> dict[str, object]:
-        return await asyncio.to_thread(read_preferences)
+        return await asyncio.to_thread(startup_preferences)
 
     @app.post("/preferences")
     async def update_preferences(payload: dict[str, object]) -> dict[str, object]:

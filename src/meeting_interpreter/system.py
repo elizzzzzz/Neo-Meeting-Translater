@@ -57,6 +57,22 @@ def read_preferences() -> dict[str, object]:
     return result
 
 
+def startup_preferences() -> dict[str, object]:
+    preferences = read_preferences()
+    # Saving configuration, rather than model availability, completes setup.
+    # This also recognizes releases that predate the onboarding preference.
+    configured = saved_config()
+    completed = any(configured.get(key) for key in (
+        'MEETING_INTERPRETER_MODEL_DIR', 'MEETING_INTERPRETER_ASR_BACKEND',
+        'MEETING_INTERPRETER_ASR_MODEL', 'MEETING_INTERPRETER_SERVICE_ASR_MODEL',
+        'MEETING_INTERPRETER_TRANSLATION_BACKEND', 'MEETING_INTERPRETER_OLLAMA_MODEL',
+        'MEETING_INTERPRETER_TRANSLATION_MODEL', 'MEETING_INTERPRETER_LLAMA_MODEL',
+        'MEETING_INTERPRETER_SGLANG_MODEL',
+    ))
+    return {**preferences, 'setup_completed': completed,
+            'show_tips': bool(preferences['show_tips']) and not completed}
+
+
 def save_preferences(show_tips: bool | None = None, interface_language: str | None = None, appearance: str | None = None) -> dict[str, object]:
     if show_tips is None and interface_language is None and appearance is None:
         raise ValueError('请提供提示、界面语言或外观设置。')

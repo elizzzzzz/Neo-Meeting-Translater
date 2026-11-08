@@ -148,3 +148,16 @@ translucent surface and readable foreground in both modes. Appearance updates
 must not re-render transcript nodes, move the user's history position, restart
 recording or reload models. Resolve the saved mode before the first stylesheet
 paint where local storage is available. Keep all labels localized in zh/ja/en.
+
+
+## Finish setup once · 0.2.20
+
+Use one primary “Save and return” action. After the local service confirms the
+configuration was saved, close settings and focus its sidebar entry. Show model
+preparation and any later error in the main workspace; do not make the user close
+another dialog or reopen onboarding on a loading failure. A rejected save keeps
+entered values and its error inside settings. Read saved configuration to identify
+returning users, including older releases without onboarding preferences and
+models on disconnected disks. Automatic startup guidance only applies before
+setup; explicit Help and Settings remain available. Late preference responses
+must not override a user's current help/settings interaction.
