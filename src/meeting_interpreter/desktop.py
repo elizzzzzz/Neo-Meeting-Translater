@@ -13,6 +13,8 @@ from pathlib import Path
 import objc
 from AppKit import (
     NSApplication,
+    NSAppearance,
+    NSAppearanceNameDarkAqua,
     NSApplicationActivateIgnoringOtherApps,
     NSApplicationActivationPolicyRegular,
     NSBackingStoreBuffered,
@@ -168,7 +170,7 @@ class _NativeAppDelegate(NSObject):
             self.window.setOpaque_(False)
             self.window.setBackgroundColor_(NSColor.clearColor())
             self.window.setMovableByWindowBackground_(True)
-            self.window.setTitle_("实时字幕浮窗")
+            self.window.setTitle_("NMT · 实时字幕")
         else:
             if self.normal_frame is not None:
                 self.window.setFrame_display_(self.normal_frame, True)
@@ -177,11 +179,12 @@ class _NativeAppDelegate(NSObject):
             self.window.setAlphaValue_(1.0)
             self.window.setOpaque_(True)
             self.window.setBackgroundColor_(NSColor.windowBackgroundColor())
-            self.window.setTitle_("Local Meeting Interpreter")
+            self.window.setTitle_("NMT · Neo Meeting Translater")
         self.floating = enabled
 
     def applicationDidFinishLaunching_(self, _notification):
         app = NSApplication.sharedApplication()
+        app.setAppearance_(NSAppearance.appearanceNamed_(NSAppearanceNameDarkAqua))
         app.setActivationPolicy_(NSApplicationActivationPolicyRegular)
 
         screen = NSScreen.mainScreen()
@@ -195,7 +198,7 @@ class _NativeAppDelegate(NSObject):
         self.window = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
             frame, style, NSBackingStoreBuffered, False
         )
-        self.window.setTitle_("Local Meeting Interpreter")
+        self.window.setTitle_("NMT · Neo Meeting Translater")
         # visibleFrame includes the title bar; using it as a content rect alone
         # makes the resulting window taller than the available screen.
         self.window.setFrame_display_(frame, True)
@@ -246,7 +249,7 @@ def main() -> None:
             break
         except Exception:
             time.sleep(0.1)
-    app_url = f"http://{host}:{port}/?v=0.2.17"
+    app_url = f"http://{host}:{port}/?v=0.2.18"
     if not ready:
         print(f"Local Meeting Interpreter server did not become ready: {health_url}")
     _open_native_window(app_url)

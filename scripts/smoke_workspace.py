@@ -47,7 +47,7 @@ try:
   apple_installs=[]
   def asset_route(route):
    if 'engine=apple' in route.request.url: route.fulfill(json=apple_fixture)
-   else: route.fallback()
+   else: route.fulfill(json={'installed':True,'model':'mlx-community/whisper-medium-mlx-8bit','models':['mlx-community/whisper-medium-mlx-8bit'],'path':'/test/models/speech'})
   def prepare_apple(route):
    payload=route.request.post_data_json
    assert payload['engine']=='apple'
@@ -81,6 +81,9 @@ try:
 
    for language in ['zh','ja','en']:
     page.evaluate('language=>setInterfaceLanguage(language)',language)
+    assert page.title() == 'NMT · Neo Meeting Translater'
+    assert page.locator('#settingsBtn').get_attribute('aria-label') == page.locator('#settingsBtn').get_attribute('title')
+    assert page.locator('#settingsBtn').get_attribute('title') == {'zh':'本地设置','ja':'ローカル設定','en':'Local settings'}[language]
     assert not page.locator('#startupIntro').is_visible()
     assert page.evaluate('document.body.scrollWidth <= innerWidth && document.body.scrollHeight <= innerHeight')
     assert page.locator('#captions').evaluate('e=>e.clientHeight') > h*.6
@@ -149,6 +152,7 @@ try:
   page.wait_for_function('document.querySelector("#runtimeText").textContent.includes("运行中")')
   page.evaluate("upsertCaption({session_id:'before-switch',paragraph_id:'kept',segment_id:'one',speaker_id:'SPEAKER_00',source_language:'zh',target_language:'ja',start_ms:0,end_ms:600,original_text:'切换前的记录',translated_text:'切り替え前の記録',is_final:true});renderCaptions()")
   page.locator('#settingsBtn').click()
+  page.wait_for_function('document.querySelector("#modelDirectory").value === "/test/models" && document.querySelector("#asrModel").value === "mlx-community/whisper-medium-mlx-8bit" && document.querySelector("#asrModel").dataset.selected === ""')
   assert page.locator('#asrEngine').is_enabled()
   assert page.locator('#saveSettingsBtn').is_enabled()
   page.locator('#asrEngine').select_option('ollama')
@@ -182,6 +186,40 @@ try:
   page.screenshot(path=str(out/'continuous-paragraph.png'))
   page.locator('#latestBtn').click()
   assert page.locator('#captions').evaluate('e=>e.scrollHeight-e.scrollTop-e.clientHeight<3')
+  page.locator('#clearBtn').click()
+  page.evaluate('''() => {
+    const samples = [
+      ['zh', 'ja', 'UI 测试样例：今天先讨论本地会议翻译的使用体验。中文和日语发言会保留在固定的两列里，方便大家连续阅读。', 'UI テスト例：まずはローカル会議翻訳の使い心地について話しましょう。中国語と日本語の発言を固定の二列に残し、続けて読めるようにします。'],
+      ['ja', 'zh', '次に、オンライン会議でも字幕を小さなウィンドウで表示したいです。共有画面を隠さずに、必要な情報をすぐ確認できると助かります。', '接下来，希望在线会议也能用一个小窗口显示字幕。这样就能随时查看所需信息，同时不遮挡共享画面。'],
+      ['zh', 'ja', '可以。我们会保留整段发言，正在修正时也不清空已有译文。需要查看前面的内容时，只要向上滚动即可。', 'はい。発言全体を残し、修正中も訳文を消しません。前の内容を確認するときは、上にスクロールするだけです。']
+    ];
+    samples.forEach(([source,target,original,translation],i) => upsertCaption({
+      session_id:'design-test',paragraph_id:'turn-'+i,segment_id:'turn-'+i,
+      speaker_id:'SPEAKER_0'+(i%2),source_language:source,target_language:target,
+      start_ms:i*18000,end_ms:(i+1)*18000,original_text:original,translated_text:translation,is_final:true
+    }));
+    updateSummary(); renderCaptions();
+    runtimeText.textContent='UI 测试';
+    modelReadiness.textContent='界面预览 · 未连接真实模型';
+    modelReadiness.classList.remove('ready');
+    sourceStatus.textContent='未使用麦克风';
+    modeStatus.textContent='界面测试';
+    asrStatus.textContent='未连接真实模型';
+    ollamaStatus.textContent='未连接真实服务';
+    ollamaModelStatus.textContent='未连接';
+    translationStatus.textContent='样例字幕';
+    audioStatus.textContent='未采集音频';
+    diagnosticStatus.textContent='仅用于布局验证';
+  }''')
+  page.screenshot(path=str(out/'nmt-conversation.png'))
+  page.locator('#demoBtn').click()
+  page.set_viewport_size({'width':900,'height':360})
+  assert page.locator('#floatingBtn').get_attribute('aria-pressed') == 'true'
+  assert page.locator('#floatingBtn').get_attribute('title') == '退出浮窗'
+  page.screenshot(path=str(out/'nmt-floating.png'))
+  page.locator('#floatingBtn').click()
+  assert page.locator('#floatingBtn').get_attribute('title') == '字幕浮窗'
+  page.set_viewport_size({'width':1440,'height':900})
   page.locator('#clearBtn').click()
   page.locator('#settingsBtn').click()
   page.locator('.service-management summary').click()

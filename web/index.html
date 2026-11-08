@@ -3,18 +3,26 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#f5f5f7" />
-    <title>Local Interpreter · 实时会议</title>
-    <link rel="stylesheet" href="/web/styles.css?v=0.2.17" />
+    <meta name="theme-color" content="#18191d" />
+    <title>NMT · Neo Meeting Translater</title>
+    <link rel="icon" href="/web/nmt-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/web/styles.css?v=0.2.18" />
   </head>
   <body>
     <header class="global-bar">
-      <div class="brand-lockup"><span class="brand-mark">LI</span><span data-i18n="brand.name">LOCAL INTERPRETER</span></div>
-      <div class="runtime"><span id="runtimeDot" class="runtime-dot"></span><span id="runtimeText">待机</span><span id="modelReadiness" class="model-readiness">模型检查中…</span></div>
+      <div class="brand-lockup"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name" data-i18n="brand.name">NMT</span><span class="brand-expanded">Neo Meeting Translater</span></div>
+      <div class="runtime"><span id="modeBadge" class="mode-badge" data-i18n="mode.local">本地</span><span id="runtimeDot" class="runtime-dot"></span><span id="runtimeText">待机</span><span id="modelReadiness" class="model-readiness">模型检查中…</span></div>
     </header>
-    <nav class="sub-bar" aria-label="工作区导航">
-      <div><span class="eyebrow" data-i18n="nav.workspace">MEETING WORKSPACE</span><strong data-i18n="nav.liveMeeting">实时会议</strong></div>
-      <div class="sub-actions"><span id="modeBadge" class="mode-badge" data-i18n="mode.local">本地</span><button id="tipsBtn" class="button button-ghost" type="button" data-i18n="actions.guide">使用指南</button><button id="settingsBtn" class="button button-ghost" type="button" data-i18n="actions.settings">本地设置</button><button id="demoBtn" class="button button-ghost" type="button" data-i18n="actions.subtitleMode">字幕模式</button><button id="exportBtn" class="button button-ghost" type="button" data-i18n="actions.export">导出记录</button></div>
+    <nav class="sub-bar" aria-label="工作区导航" data-i18n-aria-label="nav.workspace">
+      <div class="rail-monogram" aria-hidden="true">n</div>
+      <div class="rail-current" aria-current="page" aria-label="实时会议" data-i18n-aria-label="nav.liveMeeting" title="实时会议" data-i18n-title="nav.liveMeeting"><span class="rail-wave" aria-hidden="true">▥</span></div>
+      <div class="sub-actions">
+        <button id="demoBtn" class="button button-ghost rail-button" type="button" data-i18n="actions.subtitleMode" data-i18n-title="actions.subtitleMode" data-i18n-aria-label="actions.subtitleMode">字幕模式</button>
+        <button id="exportBtn" class="button button-ghost rail-button" type="button" data-i18n="actions.export" data-i18n-title="actions.export" data-i18n-aria-label="actions.export">导出记录</button>
+        <span class="rail-spacer"></span>
+        <button id="tipsBtn" class="button button-ghost rail-button" type="button" data-i18n="actions.guide" data-i18n-title="actions.guide" data-i18n-aria-label="actions.guide">使用指南</button>
+        <button id="settingsBtn" class="button button-ghost rail-button" type="button" data-i18n="actions.settings" data-i18n-title="actions.settings" data-i18n-aria-label="actions.settings">本地设置</button>
+      </div>
     </nav>
     <main class="page-shell">
       <section id="startupIntro" class="intro-row" aria-live="polite">
@@ -30,7 +38,7 @@
       </section>
       <section class="workspace-grid">
         <article class="transcript-panel">
-          <div class="panel-header"><div><span class="section-label" data-i18n="transcript.eyebrow">LIVE TRANSCRIPT</span><h2 data-i18n="transcript.title">发言记录</h2><span id="captionCount" class="transcript-count">0</span></div><div class="panel-header-actions"><span id="sessionLabel" class="session-label" data-i18n="session.waitingAudio">等待音频输入</span><button id="latestBtn" class="button button-primary compact-button" type="button" hidden data-i18n="actions.latest">回到最新 ↓</button><button id="changeSpeakerBtn" class="button button-ghost compact-button" type="button" disabled title="自动分人不准确时，切换到手动并标记换人" data-i18n="speaker.manual">手动换人</button><button id="clearBtn" class="button button-ghost compact-button" type="button" data-i18n="actions.clear">清空</button><button id="floatingBtn" class="button button-ghost compact-button" type="button" data-i18n="actions.floating">字幕浮窗</button></div></div>
+          <div class="panel-header"><div><span class="section-label" data-i18n="transcript.eyebrow">LIVE TRANSCRIPT</span><h2 data-i18n="transcript.title">发言记录</h2><span id="captionCount" class="transcript-count">0</span></div><div class="panel-header-actions"><span id="sessionLabel" class="session-label" data-i18n="session.waitingAudio">等待音频输入</span><button id="latestBtn" class="button button-primary compact-button" type="button" hidden data-i18n="actions.latest">回到最新 ↓</button><button id="changeSpeakerBtn" class="button button-ghost compact-button" type="button" disabled title="自动分人不准确时，切换到手动并标记换人" data-i18n="speaker.manual">手动换人</button><button id="clearBtn" class="button button-ghost compact-button icon-action" data-i18n-title="actions.clear" data-i18n-aria-label="actions.clear" type="button" data-i18n="actions.clear">清空</button><button id="floatingBtn" class="button button-ghost compact-button icon-action" data-i18n-title="actions.floating" data-i18n-aria-label="actions.floating" type="button" data-i18n="actions.floating">字幕浮窗</button></div></div>
           <div class="transcript-head"><span id="captionSourceHeader">中文</span><span id="captionTranslationHeader">日本語</span></div>
           <div id="captions" class="captions" role="region" aria-label="双语发言记录，可滚动查看历史" tabindex="0"><div class="empty-state"><strong>还没有字幕</strong><span>选择麦克风或 BlackHole 回环设备后开始会议。</span></div></div>
           <div class="transcript-footnote" data-i18n="transcript.footnote">同一发言人连续记录 · 向上滚动查看历史，回到底部继续跟随</div>
@@ -100,6 +108,6 @@
       </section>
     </div>
     <footer class="footer-bar"><span data-i18n="footer.config">文字模式 · M3 / 16G 配置</span><span id="footerStatus"><span data-i18n="footer.service">服务地址</span> <span id="serviceAddress">127.0.0.1:8000</span></span></footer>
-    <script src="/web/app.js?v=0.2.17" defer></script>
+    <script src="/web/app.js?v=0.2.18" defer></script>
   </body>
 </html>

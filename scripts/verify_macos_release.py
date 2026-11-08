@@ -26,6 +26,7 @@ def verify_bundle(app: Path) -> None:
     assert (app / 'Contents/Frameworks/mlx.metallib').is_file(), 'Missing MLX GPU library beside libmlx.dylib; native ASR startup would crash'
     assert (app / 'Contents/Frameworks/sherpa_onnx/lib/libonnxruntime.dylib').is_file(), 'Missing local speech/voice runtime library'
     info = plistlib.loads((app / 'Contents/Info.plist').read_bytes())
+    assert info.get('CFBundleDisplayName') == 'NMT', 'Wrong product display name'
     helper = app / 'Contents/Frameworks/native/AppleSpeechBridge'
     assert helper.is_file() and helper.stat().st_mode & 0o111, 'Missing executable Apple SpeechAnalyzer bridge'
     assert b'arm64' in run('lipo', '-archs', str(helper)), 'Wrong Apple helper architecture'
@@ -38,20 +39,20 @@ def verify_bundle(app: Path) -> None:
 
 
 def main(directory: Path) -> None:
-    archive = directory / 'LocalMeetingInterpreter-portable.zip'
+    archive = directory / 'NMT-portable.zip'
     assert archive.is_file() and archive.stat().st_size > 0, f'Missing portable archive: {archive}'
     with zipfile.ZipFile(archive) as zipped:
         assert not any(Path(name).name.startswith('._') or name.startswith('__MACOSX/') for name in zipped.namelist()), 'ZIP contains resource-fork metadata'
     with tempfile.TemporaryDirectory(prefix='lmi-zip-verify-', dir='/private/tmp') as folder:
         run('ditto', '-x', '-k', str(archive), folder)
-        verify_bundle(Path(folder) / 'LocalMeetingInterpreter.app')
-    image = directory / 'LocalMeetingInterpreter.dmg'
+        verify_bundle(Path(folder) / 'NMT.app')
+    image = directory / 'NMT.dmg'
     assert image.is_file() and image.stat().st_size > 0, f'Missing DMG archive: {image}'
     attached = plistlib.loads(run('hdiutil', 'attach', '-readonly', '-nobrowse', '-plist', str(image)))
     mounts = [Path(item['mount-point']) for item in attached['system-entities'] if item.get('mount-point')]
     assert mounts, 'DMG did not mount'
     try:
-        verify_bundle(mounts[0] / 'LocalMeetingInterpreter.app')
+        verify_bundle(mounts[0] / 'NMT.app')
     finally:
         run('hdiutil', 'detach', str(mounts[0]))
     print('Portable ZIP extraction and mounted DMG verification passed.', flush=True)

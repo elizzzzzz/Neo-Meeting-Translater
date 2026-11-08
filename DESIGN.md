@@ -1,29 +1,56 @@
-# Local Meeting Interpreter UI
+# NMT · Neo Meeting Translater
 
-Visual reference: the local Apple design reference (`awesome-design-md/design-md/apple`).
+## Visual direction · 2026-11-08
 
-The app keeps the existing Apple inspired language: SF Pro system fallbacks, white surfaces on a pearl canvas, Action Blue `#0066cc`, 11px panel corners, fine `#e0e0e0` dividers, and restrained status chips. Runtime diagnostics are intentionally compact and use the same caption scale so they support troubleshooting without competing with the live transcript.
+The user requested an LM Studio inspired redesign and the product name **NMT
+(Neo Meeting Translater)**. The spelling “Translater” is intentional. The new
+workspace replaces the previous Apple pearl/blue appearance. Reference: official
+LM Studio product site, https://lmstudio.ai/, inspected on 2026-11-08. Adapt its
+quiet desktop workspace, compact tool rail and purple identity to live bilingual
+transcription; do not copy its logo or add nonfunctional chat navigation.
+
+The local `awesome-design-md` catalog has no LM Studio entry. Supplementary
+reference: `linear.app`, upstream revision
+`3b605329240ce735b510037cca322f1831fdd7f8`, for restrained surface hierarchy and
+sparse lavender accents. This is a product workspace, not a marketing page.
+
+### Tokens and composition
+
+- Canvas `#18191d`, tool rail `#141519`, surface `#202126`, raised `#282930`.
+- Text `#e8e8ed`, secondary `#a2a3b1`, quiet `#7e8090`, dividers `#36373f`.
+- Accent `#b5a2fa` / hover `#ccbdff`; success `#86d8af`, warning `#e6c18b`.
+- System SF Pro / Hiragino Sans / PingFang SC; 16px transcript with 1.9 line
+  height, 12px controls, 10–11px metadata. No downloaded fonts or remote assets.
+- 64px left tool rail, 56px identity/status bar, compact language toolbar;
+  transcript takes the remaining height with equal language columns. A quiet
+  184px status rail retains diagnostics. Corners 5–10px, spacing 4/8/12/16/24px.
+- Use a custom NMT monogram, sparse lavender accents and monochrome line icons.
+  Icon actions retain localized accessible labels and native hover tooltips.
+- At 1024px, shrink status rail to 160px. Below 760px, use a 48px tool rail,
+  wrap controls and hide the secondary diagnostic rail. Preserve two columns.
+- Hover changes take 120ms; reduced-motion disables transitions. No animated
+  background, gradients, or decorative motion competing with the transcript.
 
 Status values use plain language and explicit stages: configured, loading, ready, receiving audio, and error. Model names remain visible in the session panel so a user can distinguish microphone, ASR, Ollama, and translation failures.
 
 ## Onboarding and offline preview
 
-Preserve the Apple reference at revision `3b605329240ce735b510037cca322f1831fdd7f8`. Use compact Chinese labels, a single blue primary action, and the existing pearl surfaces. Tips and local settings appear as keyboard-accessible dialogs with Escape support. Preview explicitly uses sample text; never label it as warmed or ready for live recognition. Settings are persisted in Application Support independently of the local service port. Model directory editing must survive health polling. Show the speech model cache separately from Ollama-managed translation files until directory migration is supported.
+Use the NMT surface scale, localized labels and one lavender primary action. Tips and local settings appear as keyboard-accessible dialogs with Escape support. Preview explicitly uses sample text; never label it as warmed or ready for live recognition. Settings are persisted in Application Support independently of the local service port. Model directory editing must survive health polling. Show the speech model cache separately from Ollama-managed translation files until directory migration is supported.
 
 ## Audio diagnostics
 
-Show the microphone's actual track name after permission, a compact native input meter with Chinese signal labels, and the server-confirmed recognition language. The meter indicates sound energy, not proof of recognized speech. Keep all twelve status rows within the existing single-screen panel. Lock audio device and model controls during recording. Keep the source-language correction buttons available; show the active decoder language after the service confirms the ordered change. Rejected recognition is explained in the diagnostic row and never inserted as a subtitle.
+Show the microphone's actual track name after permission, a compact native input meter with Chinese signal labels, and the server-confirmed recognition language. The meter indicates sound energy, not proof of recognized speech. Keep all twelve status rows within the existing single-screen panel. Keep audio device and model settings editable during recording; saving applies them through the controlled pause/resume flow. Keep the source-language correction buttons available; show the active decoder language after the service confirms the ordered change. Rejected recognition is explained in the diagnostic row and never inserted as a subtitle.
 
 ## Persistent bilingual speech
 
-Use one paragraph per consecutive speaker turn, with a compact speaker/time line above equal-width source and translation columns. Keep the columns side by side in the main window and floating window. A bounded recognition chunk can be revised without replacing completed chunks. Keep the previous translation visible while a correction is pending. Retain every paragraph until the user clears the transcript; export uses the same grouping. The transcript alone scrolls, and following pauses when the user scrolls into history. A small blue “回到最新” action resumes following. Automatic voice identification is explicitly marked as experimental and is only selectable when its local model has loaded; otherwise show manual boundaries in plain Chinese.
+Use one paragraph per consecutive speaker turn, with a compact speaker/time line above equal-width source and translation columns. Keep the columns side by side in the main window and floating window. A bounded recognition chunk can be revised without replacing completed chunks. Keep the previous translation visible while a correction is pending. Retain every paragraph until the user clears the transcript; export uses the same grouping. The transcript alone scrolls, and following pauses when the user scrolls into history. A small lavender “回到最新” action resumes following. Automatic voice identification is explicitly marked as experimental and is only selectable when its local model has loaded; otherwise show manual boundaries in plain Chinese.
 
 Keep the optional speech-engine choice inside local settings. Use the Chinese description “语音转文字引擎”; display the SenseVoice model's local availability and state that saving applies settings automatically. Keep Whisper available for Japanese comparisons. Model selection never downloads weights implicitly.
 
 ## Conversation-first ready state
 
 Show the introduction and a bounded progress indicator only while local models
-are preparing. Once ready, hide the introduction, brand strip, and footer. Keep
+are preparing. Once ready, hide the introduction and footer; retain only the compact NMT identity/status bar. Keep
 one compact language-pair toolbar, recording controls, transcript, settings, and
 the icon-based status rail. Move audio device, speaker detection, and explicit
 interface language choices into settings; automatic interface language follows
@@ -52,7 +79,7 @@ the conversation layout and local-only routing. Model-directory controls cover
 built-in caches; Ollama and llama.app retain ownership of their model files.
 
 
-Model-folder controls keep the existing compact Apple settings style. Default to
+Model-folder controls use the compact NMT settings surface. Default to
 Ollama's detected storage folder and offer one secondary “Use Ollama folder”
 action next to the folder picker. Rescan an edited path before saving, retain
 manual edits during health polling, and show missing disks separately from
@@ -94,3 +121,10 @@ replacing the engines. Resume the microphone only after the saved revision is
 ready; the Stop action cancels that pending resume. Show save success separately
 from model loading failure, with the exact actionable error in the settings
 receipt. Do not ask the user to restart. Updating model lists remains read-only.
+
+## Rename compatibility
+
+Display NMT in the workspace, native window, Finder bundle and new archive names.
+Keep the existing bundle identifier, internal executable and Application Support
+directory to retain microphone permissions, saved paths and single-instance
+behavior across upgrades. Existing released archives keep their historical names.

@@ -1,10 +1,14 @@
-# LocalMeetingInterpreter
+# NMT · Neo Meeting Translater
+
+> 当前源码：NMT 0.2.18，采用 LM Studio 风格的深色工作区。新构建产物命名为 `NMT.app`、`NMT-portable.zip` 和 `NMT.dmg`。本机已构建并验证 0.2.18；GitHub 已发布的 0.2.17 安装包仍为旧界面。名称变更保留原配置、模型目录和麦克风授权。
 
 在 Apple Silicon Mac 上本地运行的多人会议字幕翻译工具，面向中文、日语和英语会议。应用优先提供实时文字字幕，音频和模型留在本机，不调用云端转写或翻译 API。
 
-当前版本：**0.2.17**
+当前源码版本：**0.2.18** · 已发布安装包：**0.2.17**
 适用设备：Apple M3 / 16 GB 统一内存（也可在其他 macOS Apple Silicon 设备上运行）
 交付形式：macOS 原生 App、免安装 ZIP、DMG
+
+![NMT 双语工作区（明确标注的界面测试字幕，非实时识别）](docs/images/nmt-workspace.png)
 
 ## 主要功能
 
@@ -232,13 +236,15 @@ pip install -e '.[apple,audio,installer,speaker]'
 
 构建结果：
 
-- `dist/LocalMeetingInterpreter.app`
-- `dist/LocalMeetingInterpreter-portable.zip`
-- `dist/LocalMeetingInterpreter.dmg`
+- `dist/NMT.app`
+- `dist/NMT-portable.zip`
+- `dist/NMT.dmg`
 
-可通过 `MEETING_INTERPRETER_ICON_VARIANT=a|b|c` 选择三种内置图标方案后重新构建。
+默认使用 NMT 图标，也可通过 `MEETING_INTERPRETER_ICON_VARIANT=a|b|c` 选择三种内置图标方案后重新构建。
 
 ## 文档与评估
+
+- [0.2.18 NMT 视觉更新](docs/release-0.2.18.md)
 
 - [0.2.17 设置即时生效说明](docs/release-0.2.17.md)
 - [0.2.16 Apple SpeechAnalyzer 接入说明](docs/release-0.2.16.md)
