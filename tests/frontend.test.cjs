@@ -3,7 +3,10 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
-function loadApp() {
+function loadApp({darkSystem = false, storedAppearance = null, preferences = {show_tips:false}} = {}) {
+  const storage = new Map(storedAppearance ? [['appearance',storedAppearance]] : []);
+  const media = {matches:darkSystem, addEventListener(type,fn){this.onchange=fn;}};
+  const nativeMessages = [];
   const elements = new Map();
   const requests = [];
   function element(id) {
@@ -11,30 +14,31 @@ function loadApp() {
       id, textContent: '', value: '', hidden: true, disabled: false, checked: false,
       options: [{textContent: '中文'}], selectedIndex: 0, dataset: {},
       classList: {toggle(){}, add(){}, remove(){}},
-      addEventListener(){}, focus(){}, contains(){return false;},
+      addEventListener(type,fn){(this.listeners ||= {})[type]=fn;}, focus(){}, contains(){return false;},
+      setAttribute(key,value){(this.attributes ||= {})[key]=value;if(key==='data-theme')this.dataset.theme=value;},
       querySelector(){return null;}, querySelectorAll(){return [];},
     });
     return elements.get(id);
   }
   const document = {
     querySelector: (s) => element(s), querySelectorAll: () => [],
-    addEventListener(){}, body: element('body'), activeElement: null,
+    addEventListener(){}, body: element('body'), documentElement:element('html'), activeElement: null,
   };
   const context = vm.createContext({
-    document, window: {}, navigator: {}, console,
+    document, window: {matchMedia:()=>media,webkit:{messageHandlers:{native:{postMessage:message=>nativeMessages.push(message)}}}}, navigator: {}, console,
     location: {host:'127.0.0.1:8000', protocol:'http:'},
     WebSocket: {OPEN:1, CONNECTING:0}, Date,
     btoa: value=>Buffer.from(value,'binary').toString('base64'),
     setInterval: () => 1, clearInterval(){}, setTimeout: () => 1, clearTimeout(){},
-    localStorage: {getItem(){return null;},setItem(){}},
+    localStorage: {getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value)},
     fetch: async (url, options) => {
       requests.push({url, options});
-      const payload = url === '/preferences' ? {show_tips:false} : url === '/health' ? {mode:'mock',models:{ready:true}} : {};
+      const payload = url === '/preferences' ? await preferences : url === '/health' ? {mode:'mock',models:{ready:true}} : {};
       return {ok:true, json:async()=>payload};
     },
   });
   vm.runInContext(fs.readFileSync('web/app.js','utf8'), context);
-  return {elements, context, requests, run:(code)=>vm.runInContext(code,context)};
+  return {elements, context, requests, media, storage, nativeMessages, run:(code)=>vm.runInContext(code,context)};
 }
 
 test('SGLang translation selection discovers models on its own local port', async () => {
@@ -728,4 +732,95 @@ test('automatic resume waits for the previous audio socket to finish closing', (
   const app=loadApp();
   app.run("resumeAfterSettings=true;runtimeMode='LOCAL';modelsReady=true;socket={readyState:2};startSession=async function(){window.resumed=true};maybeResumeAfterSettings()");
   assert.equal(app.context.window.resumed,undefined);
+});
+
+
+test('appearance follows live system changes by default and restores saved manual mode', async () => {
+  const app=loadApp({darkSystem:true});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(app.elements.get('html').dataset.theme,'dark');
+  app.media.matches=false;app.media.onchange();
+  assert.equal(app.elements.get('html').dataset.theme,'light');
+  assert.equal(app.elements.get('#appearanceMode').value,'system');
+  const saved=loadApp({darkSystem:false,preferences:{show_tips:false,appearance:'dark'}});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(saved.elements.get('html').dataset.theme,'dark');
+  assert.equal(saved.storage.get('appearance'),'dark');
+  assert.equal(saved.nativeMessages.at(-1).mode,'dark');
+});
+
+test('appearance toggle pins the opposite style and system selection restores automatic changes', async () => {
+  const app=loadApp({darkSystem:true});
+  await new Promise(resolve=>setImmediate(resolve));
+  app.elements.get('#appearanceToggleBtn').listeners.click();
+  await app.run('appearanceSaveQueue');
+  assert.equal(app.elements.get('html').dataset.theme,'light');
+  assert.equal(app.elements.get('#appearanceMode').value,'light');
+  assert.equal(app.storage.get('appearance'),'light');
+  app.media.matches=true;app.media.onchange();
+  assert.equal(app.elements.get('html').dataset.theme,'light');
+  const select=app.elements.get('#appearanceMode');select.value='system';
+  select.listeners.change();await app.run('appearanceSaveQueue');
+  assert.equal(app.elements.get('html').dataset.theme,'dark');
+  assert.equal(app.nativeMessages.at(-1).mode,'system');
+  app.media.matches=false;app.media.onchange();
+  assert.equal(app.elements.get('html').dataset.theme,'light');
+});
+
+test('late preferences cannot overwrite a manual appearance choice', async () => {
+  let finish;
+  const app=loadApp({storedAppearance:'dark',preferences:new Promise(resolve=>finish=resolve)});
+  assert.equal(app.elements.get('html').dataset.theme,'dark');
+  const save=app.run("setAppearance('light')");
+  finish({show_tips:false,appearance:'dark'});
+  await save;await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(app.elements.get('html').dataset.theme,'light');
+  assert.equal(app.elements.get('#appearanceMode').value,'light');
+});
+
+test('rapid appearance saves are serialized and a failed save remains visible for retry', async () => {
+  const app=loadApp();await new Promise(resolve=>setImmediate(resolve));
+  const saved=[];let finish;
+  app.context.fetch=async (url,options)=>{
+    saved.push(JSON.parse(options.body).appearance);
+    if(saved.length===1)await new Promise(resolve=>finish=resolve);
+    return {ok:true};
+  };
+  const first=app.run("setAppearance('dark')");
+  const last=app.run("setAppearance('light')");
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.deepEqual(saved,['dark']);
+  finish();await first;await last;
+  assert.deepEqual(saved,['dark','light']);
+  app.context.fetch=async()=>({ok:false});
+  await app.run("setAppearance('dark')");
+  assert.equal(app.elements.get('#appearanceSaveStatus').hidden,false);
+  assert.match(app.elements.get('#appearanceSaveStatus').textContent,/保存失败/);
+  app.context.fetch=async()=>({ok:true});
+  await app.run("setAppearance('dark')");
+  assert.equal(app.elements.get('#appearanceSaveStatus').hidden,true);
+});
+
+test('appearance updates preserve transcript nodes, history position and active recording', async () => {
+  const app=loadApp();await new Promise(resolve=>setImmediate(resolve));
+  app.run("upsertCaption({segment_id:'kept',speaker_id:'A',source_language:'zh',target_language:'ja',original_text:'保留发言',translated_text:'発言を保持',is_final:true});audioContext={active:true};socket={readyState:1}");
+  const captions=app.elements.get('#captions');captions.scrollTop=177;
+  const before=app.run('JSON.stringify(captionRows)');
+  app.context.renderCaptions=()=>{throw Error('appearance must not render captions');};
+  await app.run("setAppearance('dark')");
+  assert.equal(app.run('JSON.stringify(captionRows)'),before);
+  assert.equal(captions.scrollTop,177);
+  assert.equal(app.run('audioContext.active && socket.readyState===1'),true);
+  assert.ok(!app.requests.some(r=>r.url==='/settings' && r.options?.method==='POST'));
+});
+
+test('appearance toggle has localized accessible labels', async () => {
+  const app=loadApp();await new Promise(resolve=>setImmediate(resolve));
+  await app.run("setAppearance('dark')");
+  for(const [language,label] of [['zh','切换为亮色'],['ja','ライトに切り替え'],['en','Switch to light']]){
+    app.run(`interfaceLanguage.value='${language}';applyAppearance()`);
+    const button=app.elements.get('#appearanceToggleBtn');
+    assert.equal(button.attributes['aria-label'],label);
+    assert.equal(button.title,label);
+  }
 });

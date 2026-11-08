@@ -55,3 +55,25 @@ def test_native_export_saves_chinese_text_to_selected_file(monkeypatch, tmp_path
         'type': 'export_transcript', 'filename': 'meeting.txt', 'text': '会议原文\n会議の翻訳',
     }))
     assert destination.read_text(encoding='utf-8') == '会议原文\n会議の翻訳'
+
+
+def test_native_appearance_bridge_switches_light_dark_and_system(monkeypatch):
+    from Foundation import NSDictionary
+    import meeting_interpreter.desktop as desktop
+    calls = []
+    class Application:
+        @staticmethod
+        def sharedApplication():
+            return Application()
+        def setAppearance_(self, appearance):
+            calls.append(appearance)
+    class Appearance:
+        @staticmethod
+        def appearanceNamed_(name):
+            return name
+    monkeypatch.setattr(desktop, 'NSApplication', Application)
+    monkeypatch.setattr(desktop, 'NSAppearance', Appearance)
+    delegate = desktop._NativeAppDelegate.alloc().initWithURL_('http://127.0.0.1:8000')
+    for mode in ['light', 'dark', 'system', 'invalid']:
+        delegate.handleNativeMessage_(NSDictionary.dictionaryWithDictionary_({'type':'appearance','mode':mode}))
+    assert calls == [desktop.NSAppearanceNameAqua, desktop.NSAppearanceNameDarkAqua, None]

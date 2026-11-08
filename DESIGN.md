@@ -128,3 +128,23 @@ Display NMT in the workspace, native window, Finder bundle and new archive names
 Keep the existing bundle identifier, internal executable and Application Support
 directory to retain microphone permissions, saved paths and single-instance
 behavior across upgrades. Existing released archives keep their historical names.
+
+
+## Light, dark and system appearance · 0.2.19
+
+Keep the same transcript geometry, lavender identity, icons and spacing in both
+styles. Supplementary local reference: `apple`, same upstream revision, for quiet
+white/pearl surfaces; preserve NMT's own accent instead of adopting Apple blue.
+Light canvas `#f4f4f7`, rail `#ecebf1`, surface `#ffffff`, ink `#24232b`, muted
+`#64616f`, dividers `#dcdbe3`, accent `#7053c1`. Semantic status, speaker and
+translation colors have separate contrast-appropriate light/dark tokens.
+
+The sidebar sun/moon action switches to the opposite effective appearance and
+pins that manual choice. Settings offers Light, Dark and Follow system (default).
+Changes apply immediately and persist independently of model settings, tips and
+interface language. Native window chrome follows the same choice; system mode
+inherits live macOS appearance changes. The floating window uses a matching
+translucent surface and readable foreground in both modes. Appearance updates
+must not re-render transcript nodes, move the user's history position, restart
+recording or reload models. Resolve the saved mode before the first stylesheet
+paint where local storage is available. Keep all labels localized in zh/ja/en.

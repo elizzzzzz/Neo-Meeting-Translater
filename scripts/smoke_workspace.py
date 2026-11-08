@@ -29,11 +29,15 @@ try:
   raise RuntimeError('UI test server exited: '+server_log.read())
  with sync_playwright() as p:
   browser=p.chromium.launch(headless=True)
-  page=browser.new_page(viewport={'width':1440,'height':900})
+  page=browser.new_page(viewport={'width':1440,'height':900},color_scheme='dark')
   errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
   health_fixture={'mode':'local','models':{'ready':False,'progress':42,'message':'测试：准备中'}}
   page.route('**/health',lambda route:route.fulfill(json=health_fixture))
-  page.route('**/preferences',lambda route:route.fulfill(json={'show_tips':True}))
+  preferences={'show_tips':True}
+  def preferences_route(route):
+   if route.request.method=='POST':preferences.update(route.request.post_data_json)
+   route.fulfill(json=preferences)
+  page.route('**/preferences',preferences_route)
   page.route('**/system/check',lambda route:route.fulfill(json={'installed':False,'reachable':False,'recommended_model':'translategemma:4b','recommended_model_present':False,'brew_available':False}))
   saved_settings=[]
   def settings_route(route):
@@ -71,11 +75,20 @@ try:
   health_fixture.update(models={'ready':True,'progress':100,'message':'测试：已就绪'})
   page.evaluate('health=>updateHealth(health)',health_fixture)
   assert not page.locator('#startupIntro').is_visible()
+  assert page.locator('html').get_attribute('data-theme')=='dark'
+  page.emulate_media(color_scheme='light')
+  page.wait_for_function('document.documentElement.dataset.theme==="light"')
+  page.locator('#appearanceToggleBtn').click()
+  page.wait_for_function('document.documentElement.dataset.theme==="dark"')
+  page.evaluate('appearanceSaveQueue')
+  assert preferences['appearance']=='dark'
+  page.emulate_media(color_scheme='light')
+  assert page.locator('html').get_attribute('data-theme')=='dark'
   for w,h in [(1440,900),(1280,720),(1024,768)]:
    page.set_viewport_size({'width':w,'height':h})
    page.screenshot(path=str(out/f'workspace-{w}.png'))
    assert page.evaluate('document.body.scrollWidth <= innerWidth && document.body.scrollHeight <= innerHeight')
-   for selector in ['#startBtn', '#stopBtn', '#demoBtn', '#diagnosticStatus', '#audioStatus', '#clearBtn', '#floatingBtn', '#settingsBtn']:
+   for selector in ['#startBtn', '#stopBtn', '#demoBtn', '#diagnosticStatus', '#audioStatus', '#clearBtn', '#floatingBtn', '#settingsBtn', '#appearanceToggleBtn']:
     box=page.locator(selector).bounding_box()
     assert box and 0 <= box['x'] and box['x']+box['width'] <= w+1 and 0 <= box['y'] and box['y']+box['height'] <= h+1, (w,h,selector,box)
 
@@ -90,6 +103,11 @@ try:
     assert not page.locator('#sourceLanguage').is_visible()
     assert not page.locator('#targetLanguage').is_visible()
     page.screenshot(path=str(out/f'workspace-{w}-{language}.png'))
+   page.locator('#appearanceToggleBtn').click()
+   assert page.locator('html').get_attribute('data-theme')=='light'
+   assert page.evaluate('document.body.scrollWidth <= innerWidth && document.body.scrollHeight <= innerHeight')
+   page.screenshot(path=str(out/f'workspace-{w}-light.png'),animations='disabled')
+   page.locator('#appearanceToggleBtn').click()
    print('layout',w,h,page.evaluate('({width:innerWidth,height:innerHeight,scrollW:document.body.scrollWidth,scrollH:document.body.scrollHeight,captions:document.querySelector("#captions").clientHeight})'))
   page.evaluate("setInterfaceLanguage('zh')")
   page.set_viewport_size({'width':1440,'height':900})
@@ -184,6 +202,14 @@ try:
   page.mouse.wheel(0,-700)
   page.wait_for_function('document.querySelector("#latestBtn").hidden===false')
   page.screenshot(path=str(out/'continuous-paragraph.png'))
+  # Appearance must leave the scrolled history and live capture untouched.
+  old_scroll=page.locator('#captions').evaluate('e=>e.scrollTop')
+  old_rows=page.locator('#captions').inner_text()
+  page.locator('#appearanceToggleBtn').click()
+  assert page.locator('html').get_attribute('data-theme')=='light'
+  assert page.locator('#captions').inner_text()==old_rows
+  assert abs(page.locator('#captions').evaluate('e=>e.scrollTop')-old_scroll)<2
+  page.locator('#appearanceToggleBtn').click()
   page.locator('#latestBtn').click()
   assert page.locator('#captions').evaluate('e=>e.scrollHeight-e.scrollTop-e.clientHeight<3')
   page.locator('#clearBtn').click()
@@ -211,12 +237,22 @@ try:
     audioStatus.textContent='未采集音频';
     diagnosticStatus.textContent='仅用于布局验证';
   }''')
+  page.evaluate("setAppearance('dark')")
   page.screenshot(path=str(out/'nmt-conversation.png'))
+  page.screenshot(path=str(out/'nmt-dark.png'))
+  page.locator('#appearanceToggleBtn').click()
+  assert page.locator('html').get_attribute('data-theme')=='light'
+  assert page.locator('body').evaluate('e=>getComputedStyle(e).backgroundColor')=='rgb(244, 244, 247)'
+  page.wait_for_function('getComputedStyle(document.querySelector("#startBtn")).backgroundColor==="rgb(112, 83, 193)"')
+  page.screenshot(path=str(out/'nmt-light.png'),animations='disabled')
   page.locator('#demoBtn').click()
   page.set_viewport_size({'width':900,'height':360})
   assert page.locator('#floatingBtn').get_attribute('aria-pressed') == 'true'
   assert page.locator('#floatingBtn').get_attribute('title') == '退出浮窗'
+  page.screenshot(path=str(out/'nmt-floating-light.png'))
+  page.evaluate("setAppearance('dark')")
   page.screenshot(path=str(out/'nmt-floating.png'))
+  page.screenshot(path=str(out/'nmt-floating-dark.png'))
   page.locator('#floatingBtn').click()
   assert page.locator('#floatingBtn').get_attribute('title') == '字幕浮窗'
   page.set_viewport_size({'width':1440,'height':900})
@@ -226,6 +262,16 @@ try:
   page.locator('#ollamaInstallStatus').get_by_text('未安装',exact=True).wait_for()
   page.locator('.service-management summary').click()
   assert page.locator('#interfaceLanguage').is_visible()
+  assert page.locator('#appearanceMode').is_visible()
+  for mode in ['light','dark','system']:
+   page.locator('#appearanceMode').select_option(mode)
+   expected=mode if mode!='system' else 'light'
+   assert page.locator('html').get_attribute('data-theme')==expected
+   page.locator('#appearanceMode').scroll_into_view_if_needed()
+   page.screenshot(path=str(out/f'appearance-settings-{mode}.png'),animations='disabled')
+  page.emulate_media(color_scheme='dark')
+  page.wait_for_function('document.documentElement.dataset.theme==="dark"')
+  assert page.locator('#appearanceMode').input_value()=='system'
   page.locator('#interfaceLanguage').select_option('ja')
   assert page.locator('#settingsTitle').inner_text()=='モデルとサービスの設定'
   page.locator('#interfaceLanguage').select_option('zh')
@@ -297,6 +343,14 @@ try:
   page.keyboard.press('Escape')
   page.set_viewport_size({'width':390,'height':844})
   page.screenshot(path=str(out/'narrow.png'))
+  # A fresh document reads the backend preference, independent of localStorage.
+  page.evaluate("setAppearance('light')")
+  page.evaluate('appearanceSaveQueue')
+  page.evaluate('localStorage.removeItem("appearance")')
+  page.reload(wait_until='networkidle')
+  page.wait_for_function('document.documentElement.dataset.theme==="light"')
+  assert page.evaluate('appearanceMode')=='light'
+  print('appearance: light/dark/system, toggle, floating, history and reload passed')
   print('page_errors',errors)
   assert not errors
   browser.close()

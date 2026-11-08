@@ -373,3 +373,27 @@ def test_settings_save_applies_current_model_without_restart(monkeypatch, tmp_pa
         assert not health['settings']['restart_required']
         assert health['settings']['requested_revision'] == 1
         assert '重启' not in health['models']['message']
+
+
+def test_appearance_persists_across_other_preferences_and_app_clients(monkeypatch, tmp_path):
+    from fastapi.testclient import TestClient
+    from meeting_interpreter.app import create_app
+    monkeypatch.setattr(system, 'preferences_path', lambda: tmp_path / 'preferences.json')
+    monkeypatch.setenv('MEETING_INTERPRETER_MODE', 'mock')
+    with TestClient(create_app()) as client:
+        for mode in ['light', 'dark', 'system']:
+            assert client.post('/preferences', json={'appearance': mode}).json()['appearance'] == mode
+        client.post('/preferences', json={'show_tips': False, 'interface_language': 'ja'})
+    with TestClient(create_app()) as client:
+        assert client.get('/preferences').json() == {'appearance': 'system', 'show_tips': False, 'interface_language': 'ja'}
+        for invalid in ['sepia', '', 4, [], {}]:
+            assert client.post('/preferences', json={'appearance': invalid}).status_code == 400
+        assert client.get('/preferences').json()['appearance'] == 'system'
+
+
+def test_old_or_invalid_appearance_preferences_allow_system_default(monkeypatch, tmp_path):
+    path = tmp_path / 'preferences.json'
+    monkeypatch.setattr(system, 'preferences_path', lambda: path)
+    assert system.read_preferences().get('appearance', 'system') == 'system'
+    path.write_text('{"appearance":"invalid","show_tips":false}')
+    assert system.read_preferences() == {'show_tips': False}

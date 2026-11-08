@@ -15,6 +15,7 @@ from AppKit import (
     NSApplication,
     NSAppearance,
     NSAppearanceNameDarkAqua,
+    NSAppearanceNameAqua,
     NSApplicationActivateIgnoringOtherApps,
     NSApplicationActivationPolicyRegular,
     NSBackingStoreBuffered,
@@ -118,10 +119,19 @@ class _NativeAppDelegate(NSObject):
         message_type = body.get("type")
         if message_type == "floating":
             self.setFloating_(bool(body.get("enabled")))
+        elif message_type == "appearance":
+            self.applyAppearance_(body.get("mode"))
         elif message_type == "choose_model_directory":
             self.chooseModelDirectory()
         elif message_type == "export_transcript":
             self.exportTranscript_(body)
+
+    def applyAppearance_(self, mode):
+        if mode not in ('system', 'light', 'dark'):
+            return
+        name = {'light': NSAppearanceNameAqua, 'dark': NSAppearanceNameDarkAqua}.get(mode)
+        # A nil application appearance inherits live changes from macOS.
+        NSApplication.sharedApplication().setAppearance_(NSAppearance.appearanceNamed_(name) if name else None)
 
     def exportTranscript_(self, body):
         panel = NSSavePanel.savePanel()
@@ -184,7 +194,8 @@ class _NativeAppDelegate(NSObject):
 
     def applicationDidFinishLaunching_(self, _notification):
         app = NSApplication.sharedApplication()
-        app.setAppearance_(NSAppearance.appearanceNamed_(NSAppearanceNameDarkAqua))
+        from meeting_interpreter.system import read_preferences
+        self.applyAppearance_(read_preferences().get('appearance', 'system'))
         app.setActivationPolicy_(NSApplicationActivationPolicyRegular)
 
         screen = NSScreen.mainScreen()
@@ -249,7 +260,7 @@ def main() -> None:
             break
         except Exception:
             time.sleep(0.1)
-    app_url = f"http://{host}:{port}/?v=0.2.18"
+    app_url = f"http://{host}:{port}/?v=0.2.19"
     if not ready:
         print(f"Local Meeting Interpreter server did not become ready: {health_url}")
     _open_native_window(app_url)

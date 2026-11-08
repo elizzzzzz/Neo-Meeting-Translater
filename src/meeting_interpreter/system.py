@@ -52,22 +52,28 @@ def read_preferences() -> dict[str, object]:
     result = {"show_tips": show_tips if type(show_tips) is bool else True}
     if isinstance(saved, dict) and saved.get('interface_language') in ('auto', 'zh', 'ja', 'en'):
         result['interface_language'] = saved['interface_language']
+    if isinstance(saved, dict) and saved.get('appearance') in ('system', 'light', 'dark'):
+        result['appearance'] = saved['appearance']
     return result
 
 
-def save_preferences(show_tips: bool | None = None, interface_language: str | None = None) -> dict[str, object]:
-    if show_tips is None and interface_language is None:
-        raise ValueError('请提供提示或界面语言设置。')
+def save_preferences(show_tips: bool | None = None, interface_language: str | None = None, appearance: str | None = None) -> dict[str, object]:
+    if show_tips is None and interface_language is None and appearance is None:
+        raise ValueError('请提供提示、界面语言或外观设置。')
     if show_tips is not None and type(show_tips) is not bool:
         raise ValueError("提示设置必须为是或否。")
     if interface_language is not None and interface_language not in ('auto', 'zh', 'ja', 'en'):
         raise ValueError('界面语言必须为自动、中文、日语或英语。')
+    if appearance is not None and appearance not in ('system', 'light', 'dark'):
+        raise ValueError('外观必须为跟随系统、亮色或暗色。')
     with _PREFERENCES_LOCK:
         preferences = read_preferences()
         if show_tips is not None:
             preferences['show_tips'] = show_tips
         if interface_language is not None:
             preferences['interface_language'] = interface_language
+        if appearance is not None:
+            preferences['appearance'] = appearance
         _atomic_write(preferences_path(), json.dumps(preferences) + "\n")
     return preferences
 

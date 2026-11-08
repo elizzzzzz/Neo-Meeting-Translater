@@ -9,6 +9,13 @@ const exportBtn = document.querySelector('#exportBtn');
 const clearBtn = document.querySelector('#clearBtn');
 const floatingBtn = document.querySelector('#floatingBtn');
 const demoBtn = document.querySelector('#demoBtn');
+const appearanceSelect = document.querySelector('#appearanceMode');
+const appearanceToggleBtn = document.querySelector('#appearanceToggleBtn');
+const appearanceSaveStatus = document.querySelector('#appearanceSaveStatus');
+const systemAppearance = window.matchMedia?.('(prefers-color-scheme: dark)');
+let appearanceMode = 'system';
+let appearanceChoiceMade = false;
+let appearanceSaveQueue = Promise.resolve();
 const interfaceLanguage = document.querySelector('#interfaceLanguage');
 const startupIntro = document.querySelector('#startupIntro');
 const startupProgress = document.querySelector('#startupProgress');
@@ -169,6 +176,48 @@ Object.entries({
 UI_TEXT.zh['settings.directoryHint'] = UI_TEXT.zh['settings.directoryHint'].replace('Ollama / llama.app', 'Ollama / llama.app / SGLang');
 UI_TEXT.en['settings.directoryHint'] = UI_TEXT.en['settings.directoryHint'].replace('Ollama / llama.app', 'Ollama / llama.app / SGLang');
 
+Object.entries({
+  zh: {'appearance.label':'外观','appearance.system':'跟随系统','appearance.light':'亮色','appearance.dark':'暗色','appearance.toLight':'切换为亮色','appearance.toDark':'切换为暗色','appearance.hint':'立即生效并自动保存。侧栏按钮可快速切换亮 / 暗；选择“跟随系统”恢复自动切换。','appearance.saveFailed':'外观保存失败，请重新选择以重试。'},
+  ja: {'appearance.label':'外観','appearance.system':'システムに従う','appearance.light':'ライト','appearance.dark':'ダーク','appearance.toLight':'ライトに切り替え','appearance.toDark':'ダークに切り替え','appearance.hint':'変更はすぐに反映され、自動保存されます。サイドバーで明暗を切り替え、システム連動はここで選択できます。','appearance.saveFailed':'外観を保存できませんでした。選択し直して再試行してください。'},
+  en: {'appearance.label':'Appearance','appearance.system':'Follow system','appearance.light':'Light','appearance.dark':'Dark','appearance.toLight':'Switch to light','appearance.toDark':'Switch to dark','appearance.hint':'Applies immediately and saves automatically. Use the sidebar for a quick light/dark switch, or choose Follow system here.','appearance.saveFailed':'Could not save appearance. Select it again to retry.'}
+}).forEach(([language, strings]) => Object.assign(UI_TEXT[language], strings));
+
+function effectiveAppearance() {
+  return appearanceMode === 'system' ? (systemAppearance?.matches ? 'dark' : 'light') : appearanceMode;
+}
+function applyAppearance() {
+  const theme = effectiveAppearance();
+  document.documentElement?.setAttribute?.('data-theme', theme);
+  document.querySelector('meta[name="theme-color"]')?.setAttribute?.('content', theme === 'dark' ? '#18191d' : '#f4f4f7');
+  if (appearanceSelect) appearanceSelect.value = appearanceMode;
+  if (appearanceToggleBtn) {
+    const label = uiText(theme === 'dark' ? 'appearance.toLight' : 'appearance.toDark');
+    appearanceToggleBtn.textContent = label;
+    appearanceToggleBtn.title = label;
+    appearanceToggleBtn.setAttribute?.('aria-label', label);
+  }
+  window.webkit?.messageHandlers?.native?.postMessage({type:'appearance', mode:appearanceMode});
+}
+function setAppearance(value) {
+  appearanceMode = ['system', 'light', 'dark'].includes(value) ? value : 'system';
+  appearanceChoiceMade = true;
+  try { localStorage.setItem('appearance', appearanceMode); } catch {}
+  if (appearanceSaveStatus) appearanceSaveStatus.hidden = true;
+  applyAppearance();
+  const selected = appearanceMode;
+  // Serialize rapid clicks so an older save cannot overwrite the last choice.
+  appearanceSaveQueue = appearanceSaveQueue.catch(() => {}).then(async () => {
+    const response = await fetch('/preferences', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({appearance:selected})});
+    if (!response.ok) throw new Error('appearance save failed');
+  }).catch(() => {
+    if (selected !== appearanceMode || !appearanceSaveStatus) return;
+    appearanceSaveStatus.textContent = uiText('appearance.saveFailed');
+    appearanceSaveStatus.hidden = false;
+    setDiagnostic(uiText('appearance.saveFailed'));
+  });
+  return appearanceSaveQueue;
+}
+
 function detectInterfaceLanguage() {
   const locale = String(navigator.language || 'zh-CN');
   if (/^ja(?:-|$)/i.test(locale)) return 'ja';
@@ -213,6 +262,8 @@ function applyInterfaceLanguage() {
   if (asrEngine.value === 'apple' && lastAppleInventory) renderAppleAssetState(lastAppleInventory);
   updateCaptionHeaders(); updateSummary(); renderCaptions();
   if (lastHealth) updateHealth(lastHealth);
+  if (appearanceSaveStatus && !appearanceSaveStatus.hidden) appearanceSaveStatus.textContent = uiText('appearance.saveFailed');
+  applyAppearance();
 }
 function setInterfaceLanguage(value) {
   const next = UI_TEXT[value] || value === 'auto' ? value : 'auto';
@@ -367,6 +418,11 @@ async function loadPreferences() {
     if (!interfaceChoiceMade && ['auto', 'zh', 'ja', 'en'].includes(settings.interface_language)) {
       interfaceLanguage.value = settings.interface_language;
       applyInterfaceLanguage();
+    }
+    if (!appearanceChoiceMade) {
+      appearanceMode = ['system', 'light', 'dark'].includes(settings.appearance) ? settings.appearance : 'system';
+      try { localStorage.setItem('appearance', appearanceMode); } catch {}
+      applyAppearance();
     }
     rememberTips.checked = settings.show_tips === false;
     toggleModal(tipsModal, settings.show_tips !== false);
@@ -1142,6 +1198,9 @@ latestBtn.addEventListener('click', returnToLatest);
 changeSpeakerBtn.addEventListener('click', requestSpeakerChange);
 exportBtn.addEventListener('click', exportTranscript);
 floatingBtn?.addEventListener('click', () => setFloatingMode(!floatingMode));
+appearanceSelect?.addEventListener('change', () => setAppearance(appearanceSelect.value));
+appearanceToggleBtn?.addEventListener('click', () => setAppearance(effectiveAppearance() === 'dark' ? 'light' : 'dark'));
+systemAppearance?.addEventListener?.('change', () => { if (appearanceMode === 'system') applyAppearance(); });
 interfaceLanguage?.addEventListener('change', () => setInterfaceLanguage(interfaceLanguage.value));
 captionDisplayMode?.addEventListener('change', () => { renderCaptions(); });
 tipsBtn?.addEventListener('click', () => toggleModal(tipsModal, true));
@@ -1181,6 +1240,7 @@ document.addEventListener('keydown', event => {
   else if (!tipsModal.hidden) closeTips();
   else if (floatingMode) setFloatingMode(false);
 });
+try { const saved = localStorage.getItem('appearance'); if (['system','light','dark'].includes(saved)) appearanceMode = saved; } catch {}
 try { if (interfaceLanguage) interfaceLanguage.value = localStorage.getItem('interfaceLanguage') || 'auto'; } catch { if (interfaceLanguage) interfaceLanguage.value = 'auto'; }
 applyInterfaceLanguage();
 modeStatus.textContent = uiText('runtime.idle'); modeBadge.textContent = uiText('mode.local'); startBtn.disabled = true;

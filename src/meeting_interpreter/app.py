@@ -72,7 +72,7 @@ def create_app() -> FastAPI:
     connections = {}
     cleanup_tasks = set()
     runtime["options"] = read_model_options()
-    app = FastAPI(title="NMT · Neo Meeting Translater", version="0.2.18")
+    app = FastAPI(title="NMT · Neo Meeting Translater", version="0.2.19")
     app.mount("/web", StaticFiles(directory=WEB_DIR), name="web")
 
     @app.get("/health")
@@ -198,7 +198,7 @@ def create_app() -> FastAPI:
     @app.post("/preferences")
     async def update_preferences(payload: dict[str, object]) -> dict[str, object]:
         try:
-            return await asyncio.to_thread(save_preferences, payload.get("show_tips"), payload.get('interface_language'))
+            return await asyncio.to_thread(save_preferences, payload.get("show_tips"), payload.get('interface_language'), payload.get('appearance'))
         except (OSError, ValueError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
