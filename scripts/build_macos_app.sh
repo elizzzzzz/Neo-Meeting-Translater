@@ -28,6 +28,9 @@ bash scripts/build_apple_speech.sh "$STAGING_DIR/native"
   --paths "$PROJECT_ROOT/src" \
   --icon "$PROJECT_ROOT/$ICON_PATH" \
   --add-data "$PROJECT_ROOT/web:web" \
+  --add-data "$PROJECT_ROOT/LICENSE:legal" \
+  --add-data "$PROJECT_ROOT/NOTICE:legal" \
+  --add-data "$PROJECT_ROOT/THIRD_PARTY_NOTICES.md:legal" \
   --add-binary "$STAGING_DIR/native/AppleSpeechBridge:native" \
   --exclude-module "torch" \
   --exclude-module "transformers" \

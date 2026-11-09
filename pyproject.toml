@@ -5,13 +5,22 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "local-meeting-interpreter"
 version = "0.2.20"
-description = "Local multilingual meeting transcription and translation for Chinese, Japanese and English."
+description = "NMT: local meeting transcription and bilingual subtitles for macOS."
+readme = "README.md"
+license = {file = "LICENSE"}
+authors = [{name = "elizzzzzz and contributors"}]
 requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.115,<1",
   "uvicorn[standard]>=0.30,<1",
   "pydantic>=2.8,<3",
 ]
+
+[project.urls]
+Homepage = "https://github.com/elizzzzzz/Neo-Meeting-Translater"
+Repository = "https://github.com/elizzzzzz/Neo-Meeting-Translater"
+Issues = "https://github.com/elizzzzzz/Neo-Meeting-Translater/issues"
+Releases = "https://github.com/elizzzzzz/Neo-Meeting-Translater/releases"
 
 [project.optional-dependencies]
 dev = [
@@ -46,6 +55,9 @@ speaker = [
 [project.scripts]
 meeting-interpreter = "meeting_interpreter.cli:main"
 meeting-interpreter-desktop = "meeting_interpreter.desktop:main"
+
+[tool.setuptools]
+license-files = ["LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
