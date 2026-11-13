@@ -1,8 +1,719 @@
 {
-  "updated_at": "2026-11-13T00:00:00+08:00",
+  "schema": 2,
+  "updated_at": "2026-11-13T18:29:00+08:00",
   "device": "Apple M5 MacBook Air",
   "memory": "32 GiB unified memory",
-  "phase": "queued",
-  "current_model": null,
-  "queue": []
+  "phase": "testing",
+  "current_model": "qwen3:14b-q4_K_M",
+  "current_backend": "ollama",
+  "pid": 20358,
+  "download_paused": true,
+  "buffer_models": 2,
+  "queue": [
+    {
+      "model": "qwen2.5:14b-instruct-q4_K_M",
+      "parameters_b": 14,
+      "quant": "q4_K_M",
+      "format": "gguf",
+      "bytes": 8988123581,
+      "registry_checked": true,
+      "platforms": [
+        "ollama",
+        "llamacpp"
+      ],
+      "mlx_status": "source_resolution_pending",
+      "id": "qwen2.5--14b-instruct-q4_K_M",
+      "phase": "download_failed",
+      "download": {
+        "attempt": 3,
+        "completed_bytes": 2825411698,
+        "total_bytes": 8988110688,
+        "percent": 31.43499002267739,
+        "speed_bps": 0,
+        "eta_seconds": null,
+        "layers": [
+          {
+            "digest": "sha256:2049f5674b1e92b4464e5729975c9689fcfbf0b0e4443ccf10b5339f370f9a54",
+            "total": 8988110688,
+            "completed": 2825411698
+          }
+        ],
+        "current_layer": "sha256:2049f5674b1e92b4464e5729975c9689fcfbf0b0e4443ccf10b5339f370f9a54",
+        "status": "pulling 2049f5674b1e",
+        "last_progress_age_seconds": 345
+      },
+      "test": {},
+      "backends": {},
+      "review_status": "not_reviewable",
+      "cleanup_status": "not_needed",
+      "error": "max retries exceeded: Get \"https://dd20bb891979d25aebc8bec07b2b3bbc.r2.cloudflarestorage.com/ollama/docker/registry/v2/blobs/sha256/20/2049f5674b1e92b4464e5729975c9689fcfbf0b0e4443ccf10b5339f370f9a54/data[query redacted]\": lookup dd20bb891979d25aebc8bec07b2b3bbc.r2.cloudflarestorage.com: no such host"
+    },
+    {
+      "model": "qwen3:14b-q4_K_M",
+      "parameters_b": 14,
+      "quant": "q4_K_M",
+      "format": "gguf",
+      "bytes": 9276198077,
+      "registry_checked": true,
+      "platforms": [
+        "ollama",
+        "llamacpp"
+      ],
+      "mlx_status": "source_resolution_pending",
+      "id": "qwen3--14b-q4_K_M",
+      "phase": "testing",
+      "download": {
+        "attempt": 1,
+        "completed_bytes": 9276143302,
+        "total_bytes": 9276198565,
+        "percent": 100,
+        "speed_bps": 0,
+        "eta_seconds": 0,
+        "layers": [
+          {
+            "digest": "sha256:a8cc1361f3145dc01f6d77c6c82c9116b9ffe3c97b34716fe20418455876c40e",
+            "total": 9276184896,
+            "completed": 9276142814
+          },
+          {
+            "digest": "sha256:ae370d884f108d16e7cc8fd5259ebc5773a0afa6e078b11f4ed7e39a27e0dfc4",
+            "total": 1723,
+            "completed": 0
+          },
+          {
+            "digest": "sha256:d18a5cc71b84bc4af394a31116bd3932b42241de70c77d2b76d69a314ec8aa12",
+            "total": 11338,
+            "completed": 0
+          },
+          {
+            "digest": "sha256:cff3f395ef3756ab63e58b0ad1b32bb6f802905cae1472e6a12034e4246fbbdb",
+            "total": 120,
+            "completed": 0
+          },
+          {
+            "digest": "sha256:78b3b822087d5199783c8203553a5a92ce5eb7b683a5a81003f8efea9b399d74",
+            "total": 488,
+            "completed": 488
+          }
+        ],
+        "current_layer": "sha256:78b3b822087d5199783c8203553a5a92ce5eb7b683a5a81003f8efea9b399d74",
+        "status": "verified",
+        "last_progress_age_seconds": 4
+      },
+      "test": {
+        "completed_cases": 83,
+        "total_cases": 144,
+        "successes": 83,
+        "mean_decode_tps": 6.602312660273126,
+        "peak_rss_gib": 9.343917846679688,
+        "min_available_gib": 7.3596649169921875,
+        "max_swap_gib": 0.04510498046875,
+        "median_latency_seconds": 9.328527291998398
+      },
+      "backends": {},
+      "review_status": "not_reviewable",
+      "cleanup_status": "not_needed",
+      "weights_blob": "/private/tmp/neo-meeting-translater-highmem-v2/models/blobs/sha256-a8cc1361f3145dc01f6d77c6c82c9116b9ffe3c97b34716fe20418455876c40e",
+      "manifest_digest": "bdbd181c33f2ed1b31c972991882db3cf4d192569092138a7d29e973cd9debe8",
+      "native_capabilities": [
+        "completion",
+        "tools",
+        "thinking"
+      ]
+    },
+    {
+      "model": "gemma3:12b-it-q4_K_M",
+      "parameters_b": 12,
+      "quant": "q4_K_M",
+      "format": "gguf",
+      "bytes": 8164039587,
+      "registry_checked": true,
+      "platforms": [
+        "ollama",
+        "llamacpp"
+      ],
+      "mlx_status": "source_resolution_pending",
+      "id": "gemma3--12b-it-q4_K_M",
+      "phase": "downloaded",
+      "download": {
+        "attempt": 1,
+        "completed_bytes": 8163598380,
+        "total_bytes": 8164039732,
+        "percent": 100,
+        "speed_bps": 0,
+        "eta_seconds": 0,
+        "layers": [
+          {
+            "digest": "sha256:13576eb6dd8d9d04b4da04d015ff343968628d3c2984195569d9d3585651d4f1",
+            "total": 7309830496,
+            "completed": 7309398011
+          },
+          {
+            "digest": "sha256:4abe4caf8e680a2d508f929edbacb5b6985b988f9d89d05b196a809f62d8fa67",
+            "total": 854200224,
+            "completed": 854200224
+          },
+          {
+            "digest": "sha256:e0a42594d802e5d31cdc786deb4823edb8adff66094d49de8fffe976d753e348",
+            "total": 358,
+            "completed": 0
+          },
+          {
+            "digest": "sha256:dd084c7d92a3c1c14cc09ae77153b903fd2024b64a100a0cc8ec9316063d2dbc",
+            "total": 8432,
+            "completed": 0
+          },
+          {
+            "digest": "sha256:3116c52250752e00dd06b16382e952bd33c34fd79fc4fe3a5d2c77cf7de1b14b",
+            "total": 77,
+            "completed": 0
+          },
+          {
+            "digest": "sha256:fe25b92561cfd1b4fcc523d5f151f86c64254733bd4b8847b8252d15a0366262",
+            "total": 145,
+            "completed": 145
+          }
+        ],
+        "current_layer": "sha256:fe25b92561cfd1b4fcc523d5f151f86c64254733bd4b8847b8252d15a0366262",
+        "status": "verified",
+        "last_progress_age_seconds": 3
+      },
+      "test": {},
+      "backends": {},
+      "review_status": "not_reviewable",
+      "cleanup_status": "not_needed",
+      "weights_blob": "/private/tmp/neo-meeting-translater-highmem-v2/models/blobs/sha256-13576eb6dd8d9d04b4da04d015ff343968628d3c2984195569d9d3585651d4f1",
+      "manifest_digest": "b92b218582c521ba287f38f1d6057dcd3c6cbff036f13cac97b5d861f5e58ec3",
+      "native_capabilities": [
+        "completion",
+        "vision"
+      ]
+    },
+    {
+      "model": "qwen3.5:9b-q4_K_M",
+      "parameters_b": 9,
+      "quant": "q4_K_M",
+      "format": "gguf",
+      "bytes": 6550825373,
+      "registry_checked": true,
+      "platforms": [
+        "ollama",
+        "llamacpp"
+      ],
+      "mlx_status": "source_resolution_pending",
+      "id": "qwen3.5--9b-q4_K_M",
+      "phase": "queued",
+      "download": {},
+      "test": {},
+      "backends": {},
+      "review_status": "not_reviewable",
+      "cleanup_status": "not_needed"
+    },
+    {
+      "model": "gemma3:27b-it-q4_K_M",
+      "parameters_b": 27,
+      "quant": "q4_K_M",
+      "format": "gguf",
+      "bytes": 17413409507,
+      "registry_checked": true,
+      "platforms": [
+        "ollama",
+        "llamacpp"
+      ],
+      "mlx_status": "source_resolution_pending",
+      "id": "gemma3--27b-it-q4_K_M",
+      "phase": "queued",
+      "download": {},
+      "test": {},
+      "backends": {},
+      "review_status": "not_reviewable",
+      "cleanup_status": "not_needed"
+    },
+    {
+      "model": "qwen3.5:27b-q4_K_M",
+      "parameters_b": 27,
+      "quant": "q4_K_M",
+      "format": "gguf",
+      "bytes": 17478556413,
+      "registry_checked": true,
+      "platforms": [
+        "ollama",
+        "llamacpp"
+      ],
+      "mlx_status": "source_resolution_pending",
+      "id": "qwen3.5--27b-q4_K_M",
+      "phase": "queued",
+      "download": {},
+      "test": {},
+      "backends": {},
+      "review_status": "not_reviewable",
+      "cleanup_status": "not_needed"
+    },
+    {
+      "model": "qwen3.6:27b-q4_K_M",
+      "parameters_b": 27,
+      "quant": "q4_K_M",
+      "format": "gguf",
+      "bytes": 17420432281,
+      "registry_checked": true,
+      "platforms": [
+        "ollama",
+        "llamacpp"
+      ],
+      "mlx_status": "source_resolution_pending",
+      "id": "qwen3.6--27b-q4_K_M",
+      "phase": "queued",
+      "download": {},
+      "test": {},
+      "backends": {},
+      "review_status": "not_reviewable",
+      "cleanup_status": "not_needed"
+    },
+    {
+      "model": "qwen3:30b-a3b-q4_K_M",
+      "parameters_b": 30.5,
+      "quant": "q4_K_M",
+      "format": "gguf",
+      "bytes": 18622562685,
+      "registry_checked": true,
+      "platforms": [
+        "ollama",
+        "llamacpp"
+      ],
+      "mlx_status": "source_resolution_pending",
+      "id": "qwen3--30b-a3b-q4_K_M",
+      "phase": "queued",
+      "download": {},
+      "test": {},
+      "backends": {},
+      "review_status": "not_reviewable",
+      "cleanup_status": "not_needed"
+    },
+    {
+      "model": "qwen2.5:32b-instruct-q4_K_M",
+      "parameters_b": 32,
+      "quant": "q4_K_M",
+      "format": "gguf",
+      "bytes": 19851349181,
+      "registry_checked": true,
+      "platforms": [
+        "ollama",
+        "llamacpp"
+      ],
+      "mlx_status": "source_resolution_pending",
+      "id": "qwen2.5--32b-instruct-q4_K_M",
+      "phase": "queued",
+      "download": {},
+      "test": {},
+      "backends": {},
+      "review_status": "not_reviewable",
+      "cleanup_status": "not_needed"
+    },
+    {
+      "model": "qwen3:32b-q4_K_M",
+      "parameters_b": 32,
+      "quant": "q4_K_M",
+      "format": "gguf",
+      "bytes": 20201253341,
+      "registry_checked": true,
+      "platforms": [
+        "ollama",
+        "llamacpp"
+      ],
+      "mlx_status": "source_resolution_pending",
+      "id": "qwen3--32b-q4_K_M",
+      "phase": "queued",
+      "download": {},
+      "test": {},
+      "backends": {},
+      "review_status": "not_reviewable",
+      "cleanup_status": "not_needed"
+    },
+    {
+      "model": "deepseek-r1:32b-qwen-distill-q4_K_M",
+      "parameters_b": 32,
+      "quant": "q4_K_M",
+      "format": "gguf",
+      "bytes": 19851337321,
+      "registry_checked": true,
+      "platforms": [
+        "ollama",
+        "llamacpp"
+      ],
+      "mlx_status": "source_resolution_pending",
+      "id": "deepseek-r1--32b-qwen-distill-q4_K_M",
+      "phase": "queued",
+      "download": {},
+      "test": {},
+      "backends": {},
+      "review_status": "not_reviewable",
+      "cleanup_status": "not_needed"
+    },
+    {
+      "model": "deepseek-r1:70b-llama-distill-q4_K_M",
+      "parameters_b": 70,
+      "quant": "q4_K_M",
+      "format": "gguf",
+      "bytes": 42520397385,
+      "registry_checked": true,
+      "platforms": [
+        "ollama",
+        "llamacpp"
+      ],
+      "mlx_status": "source_resolution_pending",
+      "id": "deepseek-r1--70b-llama-distill-q4_K_M",
+      "phase": "queued",
+      "download": {},
+      "test": {},
+      "backends": {},
+      "review_status": "not_reviewable",
+      "cleanup_status": "not_needed"
+    },
+    {
+      "model": "llama3.3:70b-instruct-q4_K_M",
+      "parameters_b": 70,
+      "quant": "q4_K_M",
+      "format": "gguf",
+      "bytes": 42520413354,
+      "registry_checked": true,
+      "platforms": [
+        "ollama",
+        "llamacpp"
+      ],
+      "mlx_status": "source_resolution_pending",
+      "id": "llama3.3--70b-instruct-q4_K_M",
+      "phase": "queued",
+      "download": {},
+      "test": {},
+      "backends": {},
+      "review_status": "not_reviewable",
+      "cleanup_status": "not_needed"
+    },
+    {
+      "model": "qwen2.5:14b-instruct-q8_0",
+      "parameters_b": 14,
+      "quant": "q8_0",
+      "format": "gguf",
+      "bytes": 15701610941,
+      "registry_checked": true,
+      "platforms": [
+        "ollama",
+        "llamacpp"
+      ],
+      "mlx_status": "source_resolution_pending",
+      "id": "qwen2.5--14b-instruct-q8_0",
+      "phase": "queued",
+      "download": {},
+      "test": {},
+      "backends": {},
+      "review_status": "not_reviewable",
+      "cleanup_status": "not_needed"
+    },
+    {
+      "model": "qwen3:14b-q8_0",
+      "parameters_b": 14,
+      "quant": "q8_0",
+      "format": "gguf",
+      "bytes": 15895154877,
+      "registry_checked": true,
+      "platforms": [
+        "ollama",
+        "llamacpp"
+      ],
+      "mlx_status": "source_resolution_pending",
+      "id": "qwen3--14b-q8_0",
+      "phase": "queued",
+      "download": {},
+      "test": {},
+      "backends": {},
+      "review_status": "not_reviewable",
+      "cleanup_status": "not_needed"
+    },
+    {
+      "model": "gemma3:12b-it-q8_0",
+      "parameters_b": 12,
+      "quant": "q8_0",
+      "format": "gguf",
+      "bytes": 13373415235,
+      "registry_checked": true,
+      "platforms": [
+        "ollama",
+        "llamacpp"
+      ],
+      "mlx_status": "source_resolution_pending",
+      "id": "gemma3--12b-it-q8_0",
+      "phase": "queued",
+      "download": {},
+      "test": {},
+      "backends": {},
+      "review_status": "not_reviewable",
+      "cleanup_status": "not_needed"
+    },
+    {
+      "model": "qwen3.5:9b-q8_0",
+      "parameters_b": 9,
+      "quant": "q8_0",
+      "format": "gguf",
+      "bytes": null,
+      "registry_checked": false,
+      "platforms": [
+        "ollama",
+        "llamacpp"
+      ],
+      "mlx_status": "source_resolution_pending",
+      "id": "qwen3.5--9b-q8_0",
+      "phase": "queued",
+      "download": {},
+      "test": {},
+      "backends": {},
+      "review_status": "not_reviewable",
+      "cleanup_status": "not_needed"
+    },
+    {
+      "model": "gemma3:27b-it-q8_0",
+      "parameters_b": 27,
+      "quant": "q8_0",
+      "format": "gguf",
+      "bytes": 29574610947,
+      "registry_checked": true,
+      "platforms": [
+        "ollama",
+        "llamacpp"
+      ],
+      "mlx_status": "source_resolution_pending",
+      "id": "gemma3--27b-it-q8_0",
+      "phase": "queued",
+      "download": {},
+      "test": {},
+      "backends": {},
+      "review_status": "not_reviewable",
+      "cleanup_status": "not_needed"
+    },
+    {
+      "model": "qwen3.5:27b-q8_0",
+      "parameters_b": 27,
+      "quant": "q8_0",
+      "format": "gguf",
+      "bytes": null,
+      "registry_checked": false,
+      "platforms": [
+        "ollama",
+        "llamacpp"
+      ],
+      "mlx_status": "source_resolution_pending",
+      "id": "qwen3.5--27b-q8_0",
+      "phase": "queued",
+      "download": {},
+      "test": {},
+      "backends": {},
+      "review_status": "not_reviewable",
+      "cleanup_status": "not_needed"
+    },
+    {
+      "model": "qwen3.6:27b-q8_0",
+      "parameters_b": 27,
+      "quant": "q8_0",
+      "format": "gguf",
+      "bytes": null,
+      "registry_checked": false,
+      "platforms": [
+        "ollama",
+        "llamacpp"
+      ],
+      "mlx_status": "source_resolution_pending",
+      "id": "qwen3.6--27b-q8_0",
+      "phase": "queued",
+      "download": {},
+      "test": {},
+      "backends": {},
+      "review_status": "not_reviewable",
+      "cleanup_status": "not_needed"
+    },
+    {
+      "model": "qwen3:30b-a3b-q8_0",
+      "parameters_b": 30.5,
+      "quant": "q8_0",
+      "format": "gguf",
+      "bytes": 32531130749,
+      "registry_checked": true,
+      "platforms": [
+        "ollama",
+        "llamacpp"
+      ],
+      "mlx_status": "source_resolution_pending",
+      "id": "qwen3--30b-a3b-q8_0",
+      "phase": "queued",
+      "download": {},
+      "test": {},
+      "backends": {},
+      "review_status": "not_reviewable",
+      "cleanup_status": "not_needed"
+    },
+    {
+      "model": "qwen2.5:32b-instruct-q8_0",
+      "parameters_b": 32,
+      "quant": "q8_0",
+      "format": "gguf",
+      "bytes": 34820897981,
+      "registry_checked": true,
+      "platforms": [
+        "ollama",
+        "llamacpp"
+      ],
+      "mlx_status": "source_resolution_pending",
+      "id": "qwen2.5--32b-instruct-q8_0",
+      "phase": "queued",
+      "download": {},
+      "test": {},
+      "backends": {},
+      "review_status": "not_reviewable",
+      "cleanup_status": "not_needed"
+    },
+    {
+      "model": "qwen3:32b-q8_0",
+      "parameters_b": 32,
+      "quant": "q8_0",
+      "format": "gguf",
+      "bytes": 35132304861,
+      "registry_checked": true,
+      "platforms": [
+        "ollama",
+        "llamacpp"
+      ],
+      "mlx_status": "source_resolution_pending",
+      "id": "qwen3--32b-q8_0",
+      "phase": "queued",
+      "download": {},
+      "test": {},
+      "backends": {},
+      "review_status": "not_reviewable",
+      "cleanup_status": "not_needed"
+    },
+    {
+      "model": "deepseek-r1:32b-qwen-distill-q8_0",
+      "parameters_b": 32,
+      "quant": "q8_0",
+      "format": "gguf",
+      "bytes": 34820886121,
+      "registry_checked": true,
+      "platforms": [
+        "ollama",
+        "llamacpp"
+      ],
+      "mlx_status": "source_resolution_pending",
+      "id": "deepseek-r1--32b-qwen-distill-q8_0",
+      "phase": "queued",
+      "download": {},
+      "test": {},
+      "backends": {},
+      "review_status": "not_reviewable",
+      "cleanup_status": "not_needed"
+    },
+    {
+      "model": "deepseek-r1:70b-llama-distill-q8_0",
+      "parameters_b": 70,
+      "quant": "q8_0",
+      "format": "gguf",
+      "bytes": 74975053385,
+      "registry_checked": true,
+      "platforms": [
+        "ollama",
+        "llamacpp"
+      ],
+      "mlx_status": "source_resolution_pending",
+      "id": "deepseek-r1--70b-llama-distill-q8_0",
+      "phase": "queued",
+      "download": {},
+      "test": {},
+      "backends": {},
+      "review_status": "not_reviewable",
+      "cleanup_status": "not_needed"
+    },
+    {
+      "model": "llama3.3:70b-instruct-q8_0",
+      "parameters_b": 70,
+      "quant": "q8_0",
+      "format": "gguf",
+      "bytes": 74975069354,
+      "registry_checked": true,
+      "platforms": [
+        "ollama",
+        "llamacpp"
+      ],
+      "mlx_status": "source_resolution_pending",
+      "id": "llama3.3--70b-instruct-q8_0",
+      "phase": "queued",
+      "download": {},
+      "test": {},
+      "backends": {},
+      "review_status": "not_reviewable",
+      "cleanup_status": "not_needed"
+    }
+  ],
+  "events": [
+    {
+      "at": "2026-11-13T12:11:53+08:00",
+      "message": "独立驱动启动；顺序预取两项，推理期间零下载"
+    },
+    {
+      "at": "2026-11-13T12:11:53+08:00",
+      "message": "下载 qwen2.5:14b-instruct-q4_K_M · 尝试 1/3"
+    },
+    {
+      "at": "2026-11-13T12:58:05+08:00",
+      "message": "下载重试 qwen2.5:14b-instruct-q4_K_M：max retries exceeded: Get \"https://dd20bb891979d25aebc8bec07b2b3bbc.r2.cloudflarestorage.com/ollama/docker/registry/v2/blobs/sha256/20/2049f5674b1e92b4464e5729975c9689fcfbf0b0e4443ccf10b5339f370f9a54/data[query redacted]\": lookup dd20bb891979d25aebc8bec07b2b3bbc.r2.cloudflarestorage.com: no such host"
+    },
+    {
+      "at": "2026-11-13T13:30:42+08:00",
+      "message": "下载 qwen2.5:14b-instruct-q4_K_M · 尝试 2/3"
+    },
+    {
+      "at": "2026-11-13T13:30:42+08:00",
+      "message": "下载重试 qwen2.5:14b-instruct-q4_K_M：pull model manifest: Get \"https://registry.ollama.ai/v2/library/qwen2.5/manifests/14b-instruct-q4_K_M\": dial tcp: lookup registry.ollama.ai: no such host"
+    },
+    {
+      "at": "2026-11-13T14:02:42+08:00",
+      "message": "下载 qwen2.5:14b-instruct-q4_K_M · 尝试 3/3"
+    },
+    {
+      "at": "2026-11-13T14:54:12+08:00",
+      "message": "下载重试 qwen2.5:14b-instruct-q4_K_M：max retries exceeded: Get \"https://dd20bb891979d25aebc8bec07b2b3bbc.r2.cloudflarestorage.com/ollama/docker/registry/v2/blobs/sha256/20/2049f5674b1e92b4464e5729975c9689fcfbf0b0e4443ccf10b5339f370f9a54/data[query redacted]\": lookup dd20bb891979d25aebc8bec07b2b3bbc.r2.cloudflarestorage.com: no such host"
+    },
+    {
+      "at": "2026-11-13T14:54:12+08:00",
+      "message": "下载 qwen3:14b-q4_K_M · 尝试 1/3"
+    },
+    {
+      "at": "2026-11-13T15:11:15+08:00",
+      "message": "校验完成 qwen3:14b-q4_K_M"
+    },
+    {
+      "at": "2026-11-13T15:11:15+08:00",
+      "message": "下载 gemma3:12b-it-q4_K_M · 尝试 1/3"
+    },
+    {
+      "at": "2026-11-13T15:28:42+08:00",
+      "message": "校验完成 gemma3:12b-it-q4_K_M"
+    },
+    {
+      "at": "2026-11-13T15:28:42+08:00",
+      "message": "预热 qwen3:14b-q4_K_M / ollama；下载已停止"
+    },
+    {
+      "at": "2026-11-13T15:28:50+08:00",
+      "message": "开始144题 qwen3:14b-q4_K_M / ollama"
+    }
+  ],
+  "notes": [
+    "仅文字翻译；质量分须另行逐题盲评",
+    "RSS为进程树采样，非独占显存",
+    "本轮平台模板与旧轮次不同，跨硬件只作参考"
+  ],
+  "activity": "inference",
+  "ollama_version": "0.40.16",
+  "free_disk_bytes": 1546425647104,
+  "system": {
+    "available_gib": 10.548416137695312,
+    "swap_gib": 0.03729248046875
+  }
 }

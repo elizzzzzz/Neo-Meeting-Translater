@@ -1,0 +1,232 @@
+{
+  "timestamp": 1794489374.293005,
+  "annotation_count": 3521,
+  "annotations_sha256": "f56c1bac700d229839011aabff79b930ddcd6d0bfc8c35a31d28770af27c0fdd",
+  "current_packet_sha256": "6636088c15618ecdc5a289dd4d7b1cedcb632d954e2de91ca8751dd0b8a12a7a",
+  "configurations": 44,
+  "cases": 6336,
+  "corpus_source_reference_facts_and_grade_aggregates_verified": true,
+  "scope": "Published complete configurations and current output fingerprints; historical packet-ID provenance sweep is separate",
+  "checked": [
+    {
+      "configuration": "qwen3-4b-2507/Q4_K_M/llamacpp",
+      "outputs_sha256": "bebc1a3695976f1374f361a16e0f369a0d0e7d3cc1be4b163e12cb44ca5602df",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen3-4b-2507/Q4_K_M/ollama",
+      "outputs_sha256": "c77453799a1d7c9671aec151b17ac3d3d5c5c92c16074f3ea414b3249877df11",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen3-4b-2507/4bit/sglang",
+      "outputs_sha256": "47b72f5a7a073f77d244dfb79784516206910de7ae5f715fad7e73c7cce11fdd",
+      "cases": 144
+    },
+    {
+      "configuration": "hy-mt2-7b/Q4_K_M/llamacpp",
+      "outputs_sha256": "b5ebfebd7b23c329b33fb92986013ac3629d5624c35e5c5617051405688d910f",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen35-4b/Q4_K_M/llamacpp",
+      "outputs_sha256": "b9043e4af8f73589ab49c6c4a4c4263e8c1cb43a9e08dc07eaa2e65ac6f751c1",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen3vl-8b/Q4_K_M/llamacpp",
+      "outputs_sha256": "b09d0b0abcdebf1a974d7db17ff507f604655079c061647478c269b1c392e3c0",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen3-4b/4bit/sglang",
+      "outputs_sha256": "bea3ec1ea8b971c2f42b2d8e1a8351a8eba2e07513edd624593f35625d18bcbd",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen3-4b/Q4_K_M/llamacpp",
+      "outputs_sha256": "e8394a8db3ef929964f20bab235f5a5d56678cf89f337f685969d6ca999838a5",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen3-4b-2507/8bit/sglang",
+      "outputs_sha256": "f55deddce94eeeb73b7a5e18ae9e0734acbbc98f66aea590da05403b196e4543",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen3vl-8b/Q4_K_M/ollama",
+      "outputs_sha256": "ed12e608dc702a0539e5baee951fd1768e652e34deca994db0b60bb7d1283c92",
+      "cases": 144
+    },
+    {
+      "configuration": "gemma3-4b/Q4_K_M/llamacpp",
+      "outputs_sha256": "f8743c951fc31e403d300d479ecbc48a8412a782aa0c3ea30157244d7d0469b8",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen3-4b-2507/Q8_0/llamacpp",
+      "outputs_sha256": "d31db22bb765089105cccbfd85874ac549b8f21817c171a927e412ad76943789",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen3-8b/4bit/sglang",
+      "outputs_sha256": "6d760cd24eb9dc3b0ab6914ef487073f5e1c28973828c81ecf75a2e04319f64c",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen3-4b/Q4_K_M/ollama",
+      "outputs_sha256": "b378388185c28fc63398a151d06fa55a5ccd5bb3fb7f1150e3eaf3410272f3b1",
+      "cases": 144
+    },
+    {
+      "configuration": "hy-mt2-7b/Q4_K_M/ollama",
+      "outputs_sha256": "6e533cc6da794647004aff481af387192fe99245c8cd74ea2c83e83b9e24b44f",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen35-4b/Q4_K_M/ollama",
+      "outputs_sha256": "7bbe6a2c027377e5d2902e064966a7c24052cc77b1885e435d14015dd6c3956b",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen35-4b/Q8_0/llamacpp",
+      "outputs_sha256": "b12d53568616e1411105116bc8f06d1ef64636fa6a997ea36ba5181c85fcc1a7",
+      "cases": 144
+    },
+    {
+      "configuration": "hy-mt2-7b/Q8_0/ollama",
+      "outputs_sha256": "0520a547505f882f63aa2b941f4785881950d2da1489392913bc7c3759c12ad7",
+      "cases": 144
+    },
+    {
+      "configuration": "hy-mt2-7b/Q8_0/llamacpp",
+      "outputs_sha256": "24382baee9c996135ef9a42abdc4bf6d39fd61f93ce65e1eae5d16e3ea64c835",
+      "cases": 144
+    },
+    {
+      "configuration": "gemma3-4b/Q4_K_M/ollama",
+      "outputs_sha256": "8d16b883b31294310c02bdb0a2cc6d2a61ae7624f02d8c3276a436a3221aeb5c",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen3vl-8b/8bit/sglang",
+      "outputs_sha256": "9c3e75fcdf80b234eda22dec4f32b7efefe51fe6af322650a6481d46e9f98b30",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen3-4b-2507/Q8_0/ollama",
+      "outputs_sha256": "537dbe7ca48d6d49a4ce38fd7f20ef55522a3f00cc2d97d810541dddd1726993",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen3-8b/Q4_K_M/llamacpp",
+      "outputs_sha256": "a3dc468a64fa02f3fadc9f8ef10cd170bfc152442c484ddbe100aa4f8094fb4c",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen3-4b/Q8_0/llamacpp",
+      "outputs_sha256": "3f9a903225085586944bd198c253eab6c495d99319c8d7f7947e4ceb69340d1d",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen3-4b/8bit/sglang",
+      "outputs_sha256": "bf04c95be67ad7984dc994e87de3b1168ce8ac046e12f325ef90eb144b4860cc",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen3-8b/Q4_K_M/ollama",
+      "outputs_sha256": "692fedd8bbb782ed0a56f6281781551976f093b4cce19fd4b8a26b910cbb5b71",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen3-4b/Q8_0/ollama",
+      "outputs_sha256": "a9e4f2927fccf69b6c007f552f22d8a1983e77b77a79bbdb78ed827c3e24d8a0",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen35-4b/Q8_0/ollama",
+      "outputs_sha256": "e2ef5785a7fd37f272a2fefcd5a615b928ba4d21072c2d54bc6d5ff5befb16ce",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen3-8b/8bit/sglang",
+      "outputs_sha256": "5609e0512a1a8eefbda5096a959120a2885949746537ed6f9fcae08fe0908170",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen3-8b/Q8_0/llamacpp",
+      "outputs_sha256": "b91fd4ad6c8d26aac1bc3822fa3e26daf3615e9ee8e89ead91994569cb4e59ba",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen3-8b/Q8_0/ollama",
+      "outputs_sha256": "0c70bf00afb1b8e4e5f3275575a271f8ea8048503db64f62aea75644ee9ecc4d",
+      "cases": 144
+    },
+    {
+      "configuration": "translategemma-4b/Q8_0/llamacpp",
+      "outputs_sha256": "1dd5ffb07eea1644099be8429438a3461313ac13886366224dc41ebca0449825",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen25-7b/Q8_0/llamacpp",
+      "outputs_sha256": "99e7b2fdb4d1358bead3022ea016b51018bcc3aa2d1e351909d4fef1db9a3559",
+      "cases": 144
+    },
+    {
+      "configuration": "translategemma-4b/Q8_0/ollama",
+      "outputs_sha256": "c3268b2d2290c276802cb6b1a5ee4334b110a9cf7fb2596b980f4a40001895f0",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen25-7b/Q4_K_M/llamacpp",
+      "outputs_sha256": "e7e8e99289385b0589b5608647cf2a45f9c2d29a9e4a705bfc0a7f1fc2eea970",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen25-7b/Q4_K_M/ollama",
+      "outputs_sha256": "331f33e7881c49557424d48f74ec8d387997d0f021b345840971c3923f4a5fc2",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen25vl-7b/Q4_K_M/llamacpp",
+      "outputs_sha256": "b30dac9db50adf098b9bd28e8524c4b15a1d47c773d53c97514fa09ebfab4c79",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen25-7b/4bit/sglang",
+      "outputs_sha256": "f0276a2ffcfbc761b73aba24eb13d3da84788a421d2894aa96fb79cb0674e93a",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen25vl-7b/Q4_K_M/ollama",
+      "outputs_sha256": "612d58984f88d93e0b14e56234fe38c067109dbe28d0e2fe3723b777460e98c0",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen25-7b/Q8_0/ollama",
+      "outputs_sha256": "a2b552ba3c08bc56504e8579d7a7d2108c7153bc48cc8807b21870689dd921cb",
+      "cases": 144
+    },
+    {
+      "configuration": "translategemma-4b/Q4_K_M/llamacpp",
+      "outputs_sha256": "071a8bb43c6b96fe359eff7925bc26bd9ca92c9d5bdb15ef0fe58600181447bf",
+      "cases": 144
+    },
+    {
+      "configuration": "qwen25-7b/8bit/sglang",
+      "outputs_sha256": "f897ee16eea60cf998145b542d4e9e30fdad863ba42fec0822c0af9277711a32",
+      "cases": 144
+    },
+    {
+      "configuration": "translategemma-4b/Q4_K_M/ollama",
+      "outputs_sha256": "13f1766012c4a87e7bcc9edca9a12580b72b66ebaf219470ce7196d2ec0c9a5a",
+      "cases": 144
+    },
+    {
+      "configuration": "hy-mt2-7b/4bit/sglang",
+      "outputs_sha256": "f29b353e5a6cb0427f3a3bb883dd8b3cd33a40b5d52f1e56d69bc4457913c326",
+      "cases": 144
+    }
+  ]
+}

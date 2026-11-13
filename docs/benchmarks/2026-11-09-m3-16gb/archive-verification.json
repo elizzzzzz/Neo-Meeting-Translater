@@ -1,0 +1,227 @@
+{
+  "checked_on": "2026-11-13",
+  "configuration_count": 44,
+  "case_count": 6336,
+  "checks": [
+    {
+      "configuration": "qwen3-4b-2507/Q4_K_M/llamacpp",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen3-4b-2507/Q4_K_M/ollama",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen3-4b-2507/4bit/sglang",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "hy-mt2-7b/Q4_K_M/llamacpp",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen35-4b/Q4_K_M/llamacpp",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen3vl-8b/Q4_K_M/llamacpp",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen3-4b/4bit/sglang",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen3-4b/Q4_K_M/llamacpp",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen3-4b-2507/8bit/sglang",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen3vl-8b/Q4_K_M/ollama",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "gemma3-4b/Q4_K_M/llamacpp",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen3-4b-2507/Q8_0/llamacpp",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen3-8b/4bit/sglang",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen3-4b/Q4_K_M/ollama",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "hy-mt2-7b/Q4_K_M/ollama",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen35-4b/Q4_K_M/ollama",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen35-4b/Q8_0/llamacpp",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "hy-mt2-7b/Q8_0/ollama",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "hy-mt2-7b/Q8_0/llamacpp",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "gemma3-4b/Q4_K_M/ollama",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen3vl-8b/8bit/sglang",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen3-4b-2507/Q8_0/ollama",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen3-8b/Q4_K_M/llamacpp",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen3-4b/Q8_0/llamacpp",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen3-4b/8bit/sglang",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen3-8b/Q4_K_M/ollama",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen3-4b/Q8_0/ollama",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen35-4b/Q8_0/ollama",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen3-8b/8bit/sglang",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen3-8b/Q8_0/llamacpp",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen3-8b/Q8_0/ollama",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "translategemma-4b/Q8_0/llamacpp",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen25-7b/Q8_0/llamacpp",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "translategemma-4b/Q8_0/ollama",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen25-7b/Q4_K_M/llamacpp",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen25-7b/Q4_K_M/ollama",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen25vl-7b/Q4_K_M/llamacpp",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen25-7b/4bit/sglang",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen25vl-7b/Q4_K_M/ollama",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen25-7b/Q8_0/ollama",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "translategemma-4b/Q4_K_M/llamacpp",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "qwen25-7b/8bit/sglang",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "translategemma-4b/Q4_K_M/ollama",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    },
+    {
+      "configuration": "hy-mt2-7b/4bit/sglang",
+      "cases": 144,
+      "quality_and_facts_match_published_ranking": true
+    }
+  ]
+}

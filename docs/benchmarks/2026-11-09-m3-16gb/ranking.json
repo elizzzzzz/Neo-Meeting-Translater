@@ -1,0 +1,2122 @@
+{
+  "status": "provisional",
+  "rankings": [
+    {
+      "configuration": "qwen3-4b-2507/Q4_K_M/llamacpp",
+      "quality": 92.29166666666667,
+      "fact_accuracy": 92.88194444444444,
+      "critical_error_cases": 28,
+      "effective_rate": 63.12797301411118,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 84.95833333333333,
+          "fact_accuracy": 86.45833333333333,
+          "critical_error_cases": 8
+        },
+        "en-zh": {
+          "quality": 96.5,
+          "fact_accuracy": 96.35416666666667,
+          "critical_error_cases": 2
+        },
+        "ja-en": {
+          "quality": 93.79166666666667,
+          "fact_accuracy": 93.22916666666667,
+          "critical_error_cases": 4
+        },
+        "ja-zh": {
+          "quality": 93.95833333333333,
+          "fact_accuracy": 93.22916666666667,
+          "critical_error_cases": 5
+        },
+        "zh-en": {
+          "quality": 96.16666666666667,
+          "fact_accuracy": 95.83333333333333,
+          "critical_error_cases": 2
+        },
+        "zh-ja": {
+          "quality": 88.375,
+          "fact_accuracy": 92.1875,
+          "critical_error_cases": 7
+        }
+      },
+      "formal_quality": 93.30555555555556,
+      "informal_quality": 91.27777777777777,
+      "mean_decode_tps": 31.556436915537304,
+      "median_latency_seconds": 1.5911837080057012,
+      "speed_score": 91.38745605194302,
+      "overall_score": 92.58666227186097
+    },
+    {
+      "configuration": "qwen3-4b-2507/Q4_K_M/ollama",
+      "quality": 92.29166666666667,
+      "fact_accuracy": 92.88194444444444,
+      "critical_error_cases": 28,
+      "effective_rate": 56.06745635654116,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 84.95833333333333,
+          "fact_accuracy": 86.45833333333333,
+          "critical_error_cases": 8
+        },
+        "en-zh": {
+          "quality": 96.5,
+          "fact_accuracy": 96.35416666666667,
+          "critical_error_cases": 2
+        },
+        "ja-en": {
+          "quality": 93.79166666666667,
+          "fact_accuracy": 93.22916666666667,
+          "critical_error_cases": 4
+        },
+        "ja-zh": {
+          "quality": 93.95833333333333,
+          "fact_accuracy": 93.22916666666667,
+          "critical_error_cases": 5
+        },
+        "zh-en": {
+          "quality": 96.16666666666667,
+          "fact_accuracy": 95.83333333333333,
+          "critical_error_cases": 2
+        },
+        "zh-ja": {
+          "quality": 88.375,
+          "fact_accuracy": 92.1875,
+          "critical_error_cases": 7
+        }
+      },
+      "formal_quality": 93.30555555555556,
+      "informal_quality": 91.27777777777777,
+      "mean_decode_tps": 29.51334728895584,
+      "median_latency_seconds": 1.7900464794947766,
+      "speed_score": 81.16627160802845,
+      "overall_score": 91.56454382746952
+    },
+    {
+      "configuration": "qwen3-4b-2507/4bit/sglang",
+      "quality": 92.39583333333333,
+      "fact_accuracy": 93.40277777777777,
+      "critical_error_cases": 29,
+      "effective_rate": 47.523942303164326,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 88.66666666666667,
+          "fact_accuracy": 90.625,
+          "critical_error_cases": 4
+        },
+        "en-zh": {
+          "quality": 97.29166666666667,
+          "fact_accuracy": 97.91666666666667,
+          "critical_error_cases": 2
+        },
+        "ja-en": {
+          "quality": 93.95833333333333,
+          "fact_accuracy": 93.75,
+          "critical_error_cases": 5
+        },
+        "ja-zh": {
+          "quality": 92.75,
+          "fact_accuracy": 92.70833333333333,
+          "critical_error_cases": 6
+        },
+        "zh-en": {
+          "quality": 94.20833333333333,
+          "fact_accuracy": 94.27083333333333,
+          "critical_error_cases": 5
+        },
+        "zh-ja": {
+          "quality": 87.5,
+          "fact_accuracy": 91.14583333333333,
+          "critical_error_cases": 7
+        }
+      },
+      "formal_quality": 93.93055555555556,
+      "informal_quality": 90.86111111111111,
+      "mean_decode_tps": 30.696434034712603,
+      "median_latency_seconds": 1.6114151244837558,
+      "speed_score": 68.79822020698623,
+      "overall_score": 90.41628035403195
+    },
+    {
+      "configuration": "hy-mt2-7b/Q4_K_M/llamacpp",
+      "quality": 95.2638888888889,
+      "fact_accuracy": 95.39930555555556,
+      "critical_error_cases": 17,
+      "effective_rate": 27.898401889497908,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 94.79166666666667,
+          "fact_accuracy": 94.27083333333333,
+          "critical_error_cases": 2
+        },
+        "en-zh": {
+          "quality": 95.08333333333333,
+          "fact_accuracy": 94.27083333333333,
+          "critical_error_cases": 2
+        },
+        "ja-en": {
+          "quality": 96.125,
+          "fact_accuracy": 95.3125,
+          "critical_error_cases": 2
+        },
+        "ja-zh": {
+          "quality": 95.08333333333333,
+          "fact_accuracy": 95.3125,
+          "critical_error_cases": 5
+        },
+        "zh-en": {
+          "quality": 96.75,
+          "fact_accuracy": 97.39583333333333,
+          "critical_error_cases": 3
+        },
+        "zh-ja": {
+          "quality": 93.75,
+          "fact_accuracy": 95.83333333333333,
+          "critical_error_cases": 3
+        }
+      },
+      "formal_quality": 96.04166666666667,
+      "informal_quality": 94.48611111111111,
+      "mean_decode_tps": 16.790591851843892,
+      "median_latency_seconds": 3.3154909999866504,
+      "speed_score": 40.387230174902385,
+      "overall_score": 90.0130285730458
+    },
+    {
+      "configuration": "qwen35-4b/Q4_K_M/llamacpp",
+      "quality": 93.4375,
+      "fact_accuracy": 94.09722222222223,
+      "critical_error_cases": 23,
+      "effective_rate": 36.183388840050284,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 90.79166666666667,
+          "fact_accuracy": 92.1875,
+          "critical_error_cases": 5
+        },
+        "en-zh": {
+          "quality": 97.45833333333333,
+          "fact_accuracy": 96.875,
+          "critical_error_cases": 0
+        },
+        "ja-en": {
+          "quality": 92.41666666666667,
+          "fact_accuracy": 92.70833333333333,
+          "critical_error_cases": 6
+        },
+        "ja-zh": {
+          "quality": 93.625,
+          "fact_accuracy": 93.22916666666667,
+          "critical_error_cases": 6
+        },
+        "zh-en": {
+          "quality": 96.58333333333333,
+          "fact_accuracy": 96.875,
+          "critical_error_cases": 1
+        },
+        "zh-ja": {
+          "quality": 89.75,
+          "fact_accuracy": 92.70833333333333,
+          "critical_error_cases": 5
+        }
+      },
+      "formal_quality": 94.91666666666667,
+      "informal_quality": 91.95833333333333,
+      "mean_decode_tps": 21.350115890283657,
+      "median_latency_seconds": 2.298516041992116,
+      "speed_score": 52.38102380843596,
+      "overall_score": 89.6599773808436
+    },
+    {
+      "configuration": "qwen3vl-8b/Q4_K_M/llamacpp",
+      "quality": 93.31944444444444,
+      "fact_accuracy": 94.27083333333333,
+      "critical_error_cases": 27,
+      "effective_rate": 32.53410500664156,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 88.91666666666667,
+          "fact_accuracy": 90.10416666666667,
+          "critical_error_cases": 8
+        },
+        "en-zh": {
+          "quality": 97.16666666666667,
+          "fact_accuracy": 97.39583333333333,
+          "critical_error_cases": 2
+        },
+        "ja-en": {
+          "quality": 92.83333333333333,
+          "fact_accuracy": 92.70833333333333,
+          "critical_error_cases": 6
+        },
+        "ja-zh": {
+          "quality": 96.70833333333333,
+          "fact_accuracy": 96.875,
+          "critical_error_cases": 3
+        },
+        "zh-en": {
+          "quality": 94.79166666666667,
+          "fact_accuracy": 95.83333333333333,
+          "critical_error_cases": 2
+        },
+        "zh-ja": {
+          "quality": 89.5,
+          "fact_accuracy": 92.70833333333333,
+          "critical_error_cases": 6
+        }
+      },
+      "formal_quality": 95.66666666666667,
+      "informal_quality": 90.97222222222223,
+      "mean_decode_tps": 16.572245912868617,
+      "median_latency_seconds": 3.156605687501724,
+      "speed_score": 47.09812385104057,
+      "overall_score": 89.03134016288183
+    },
+    {
+      "configuration": "qwen3-4b/4bit/sglang",
+      "quality": 86.80555555555556,
+      "fact_accuracy": 88.88888888888889,
+      "critical_error_cases": 32,
+      "effective_rate": 69.077284499779,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 80.70833333333333,
+          "fact_accuracy": 83.85416666666667,
+          "critical_error_cases": 7
+        },
+        "en-zh": {
+          "quality": 94.29166666666667,
+          "fact_accuracy": 95.3125,
+          "critical_error_cases": 3
+        },
+        "ja-en": {
+          "quality": 89.0,
+          "fact_accuracy": 89.58333333333333,
+          "critical_error_cases": 3
+        },
+        "ja-zh": {
+          "quality": 89.04166666666667,
+          "fact_accuracy": 88.02083333333333,
+          "critical_error_cases": 7
+        },
+        "zh-en": {
+          "quality": 91.45833333333333,
+          "fact_accuracy": 93.22916666666667,
+          "critical_error_cases": 2
+        },
+        "zh-ja": {
+          "quality": 76.33333333333333,
+          "fact_accuracy": 83.33333333333333,
+          "critical_error_cases": 10
+        }
+      },
+      "formal_quality": 87.79166666666667,
+      "informal_quality": 85.81944444444444,
+      "mean_decode_tps": 35.379351546220555,
+      "median_latency_seconds": 1.4901730204874184,
+      "speed_score": 100.0,
+      "overall_score": 88.78472222222223
+    },
+    {
+      "configuration": "qwen3-4b/Q4_K_M/llamacpp",
+      "quality": 90.18055555555556,
+      "fact_accuracy": 90.79861111111111,
+      "critical_error_cases": 43,
+      "effective_rate": 48.82148090730001,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 82.41666666666667,
+          "fact_accuracy": 82.8125,
+          "critical_error_cases": 10
+        },
+        "en-zh": {
+          "quality": 95.70833333333333,
+          "fact_accuracy": 95.83333333333333,
+          "critical_error_cases": 3
+        },
+        "ja-en": {
+          "quality": 92.41666666666667,
+          "fact_accuracy": 91.14583333333333,
+          "critical_error_cases": 8
+        },
+        "ja-zh": {
+          "quality": 94.70833333333333,
+          "fact_accuracy": 94.27083333333333,
+          "critical_error_cases": 5
+        },
+        "zh-en": {
+          "quality": 94.16666666666667,
+          "fact_accuracy": 95.83333333333333,
+          "critical_error_cases": 3
+        },
+        "zh-ja": {
+          "quality": 81.66666666666667,
+          "fact_accuracy": 84.89583333333333,
+          "critical_error_cases": 14
+        }
+      },
+      "formal_quality": 92.15277777777777,
+      "informal_quality": 88.20833333333333,
+      "mean_decode_tps": 25.249970732321252,
+      "median_latency_seconds": 2.0448425834911177,
+      "speed_score": 70.6766070218875,
+      "overall_score": 88.72113292441097
+    },
+    {
+      "configuration": "qwen3-4b-2507/8bit/sglang",
+      "quality": 93.3263888888889,
+      "fact_accuracy": 94.09722222222223,
+      "critical_error_cases": 30,
+      "effective_rate": 30.222553567549596,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 88.625,
+          "fact_accuracy": 90.625,
+          "critical_error_cases": 5
+        },
+        "en-zh": {
+          "quality": 96.29166666666667,
+          "fact_accuracy": 95.83333333333333,
+          "critical_error_cases": 3
+        },
+        "ja-en": {
+          "quality": 94.79166666666667,
+          "fact_accuracy": 94.27083333333333,
+          "critical_error_cases": 5
+        },
+        "ja-zh": {
+          "quality": 95.16666666666667,
+          "fact_accuracy": 94.79166666666667,
+          "critical_error_cases": 6
+        },
+        "zh-en": {
+          "quality": 95.20833333333333,
+          "fact_accuracy": 95.3125,
+          "critical_error_cases": 4
+        },
+        "zh-ja": {
+          "quality": 89.875,
+          "fact_accuracy": 93.75,
+          "critical_error_cases": 7
+        }
+      },
+      "formal_quality": 94.61111111111111,
+      "informal_quality": 92.04166666666667,
+      "mean_decode_tps": 16.023636125597296,
+      "median_latency_seconds": 3.3418415204941994,
+      "speed_score": 43.75179740547891,
+      "overall_score": 88.70261029610346
+    },
+    {
+      "configuration": "qwen3vl-8b/Q4_K_M/ollama",
+      "quality": 93.31944444444444,
+      "fact_accuracy": 94.27083333333333,
+      "critical_error_cases": 27,
+      "effective_rate": 27.758656283910316,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 88.91666666666667,
+          "fact_accuracy": 90.10416666666667,
+          "critical_error_cases": 8
+        },
+        "en-zh": {
+          "quality": 97.16666666666667,
+          "fact_accuracy": 97.39583333333333,
+          "critical_error_cases": 2
+        },
+        "ja-en": {
+          "quality": 92.83333333333333,
+          "fact_accuracy": 92.70833333333333,
+          "critical_error_cases": 6
+        },
+        "ja-zh": {
+          "quality": 96.70833333333333,
+          "fact_accuracy": 96.875,
+          "critical_error_cases": 3
+        },
+        "zh-en": {
+          "quality": 94.79166666666667,
+          "fact_accuracy": 95.83333333333333,
+          "critical_error_cases": 2
+        },
+        "zh-ja": {
+          "quality": 89.5,
+          "fact_accuracy": 92.70833333333333,
+          "critical_error_cases": 6
+        }
+      },
+      "formal_quality": 95.66666666666667,
+      "informal_quality": 90.97222222222223,
+      "mean_decode_tps": 15.317206718642597,
+      "median_latency_seconds": 3.624202625011094,
+      "speed_score": 40.184926904587755,
+      "overall_score": 88.34002046823655
+    },
+    {
+      "configuration": "gemma3-4b/Q4_K_M/llamacpp",
+      "quality": 89.27083333333333,
+      "fact_accuracy": 89.93055555555556,
+      "critical_error_cases": 41,
+      "effective_rate": 46.61999165834362,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 87.45833333333333,
+          "fact_accuracy": 86.45833333333333,
+          "critical_error_cases": 9
+        },
+        "en-zh": {
+          "quality": 94.125,
+          "fact_accuracy": 93.75,
+          "critical_error_cases": 3
+        },
+        "ja-en": {
+          "quality": 89.625,
+          "fact_accuracy": 89.58333333333333,
+          "critical_error_cases": 8
+        },
+        "ja-zh": {
+          "quality": 86.20833333333333,
+          "fact_accuracy": 88.54166666666667,
+          "critical_error_cases": 10
+        },
+        "zh-en": {
+          "quality": 90.41666666666667,
+          "fact_accuracy": 91.66666666666667,
+          "critical_error_cases": 5
+        },
+        "zh-ja": {
+          "quality": 87.79166666666667,
+          "fact_accuracy": 89.58333333333333,
+          "critical_error_cases": 6
+        }
+      },
+      "formal_quality": 92.66666666666667,
+      "informal_quality": 85.875,
+      "mean_decode_tps": 26.54525314943888,
+      "median_latency_seconds": 2.162743208507891,
+      "speed_score": 67.4896125346282,
+      "overall_score": 87.62916958679615
+    },
+    {
+      "configuration": "qwen3-4b-2507/Q8_0/llamacpp",
+      "quality": 92.34722222222223,
+      "fact_accuracy": 93.14236111111111,
+      "critical_error_cases": 30,
+      "effective_rate": 28.20161989860671,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 86.45833333333333,
+          "fact_accuracy": 88.54166666666667,
+          "critical_error_cases": 7
+        },
+        "en-zh": {
+          "quality": 96.04166666666667,
+          "fact_accuracy": 95.3125,
+          "critical_error_cases": 3
+        },
+        "ja-en": {
+          "quality": 94.16666666666667,
+          "fact_accuracy": 93.75,
+          "critical_error_cases": 5
+        },
+        "ja-zh": {
+          "quality": 95.29166666666667,
+          "fact_accuracy": 95.3125,
+          "critical_error_cases": 3
+        },
+        "zh-en": {
+          "quality": 95.125,
+          "fact_accuracy": 95.3125,
+          "critical_error_cases": 4
+        },
+        "zh-ja": {
+          "quality": 87.0,
+          "fact_accuracy": 90.625,
+          "critical_error_cases": 8
+        }
+      },
+      "formal_quality": 94.125,
+      "informal_quality": 90.56944444444444,
+      "mean_decode_tps": 14.37855177045054,
+      "median_latency_seconds": 3.6145288959814934,
+      "speed_score": 40.82618490698913,
+      "overall_score": 87.57775737958781
+    },
+    {
+      "configuration": "qwen3-8b/4bit/sglang",
+      "quality": 92.64583333333333,
+      "fact_accuracy": 93.40277777777777,
+      "critical_error_cases": 33,
+      "effective_rate": 26.378095933582056,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 87.875,
+          "fact_accuracy": 89.58333333333333,
+          "critical_error_cases": 8
+        },
+        "en-zh": {
+          "quality": 95.70833333333333,
+          "fact_accuracy": 96.35416666666667,
+          "critical_error_cases": 3
+        },
+        "ja-en": {
+          "quality": 93.875,
+          "fact_accuracy": 92.70833333333333,
+          "critical_error_cases": 6
+        },
+        "ja-zh": {
+          "quality": 95.375,
+          "fact_accuracy": 94.79166666666667,
+          "critical_error_cases": 3
+        },
+        "zh-en": {
+          "quality": 95.125,
+          "fact_accuracy": 95.83333333333333,
+          "critical_error_cases": 4
+        },
+        "zh-ja": {
+          "quality": 87.91666666666667,
+          "fact_accuracy": 91.14583333333333,
+          "critical_error_cases": 9
+        }
+      },
+      "formal_quality": 93.65277777777777,
+      "informal_quality": 91.63888888888889,
+      "mean_decode_tps": 15.251087250159186,
+      "median_latency_seconds": 3.882163729009335,
+      "speed_score": 38.18635333539559,
+      "overall_score": 87.5675936668729
+    },
+    {
+      "configuration": "qwen3-4b/Q4_K_M/ollama",
+      "quality": 90.18055555555556,
+      "fact_accuracy": 90.79861111111111,
+      "critical_error_cases": 43,
+      "effective_rate": 39.25508591698242,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 82.41666666666667,
+          "fact_accuracy": 82.8125,
+          "critical_error_cases": 10
+        },
+        "en-zh": {
+          "quality": 95.70833333333333,
+          "fact_accuracy": 95.83333333333333,
+          "critical_error_cases": 3
+        },
+        "ja-en": {
+          "quality": 92.41666666666667,
+          "fact_accuracy": 91.14583333333333,
+          "critical_error_cases": 8
+        },
+        "ja-zh": {
+          "quality": 94.70833333333333,
+          "fact_accuracy": 94.27083333333333,
+          "critical_error_cases": 5
+        },
+        "zh-en": {
+          "quality": 94.16666666666667,
+          "fact_accuracy": 95.83333333333333,
+          "critical_error_cases": 3
+        },
+        "zh-ja": {
+          "quality": 81.66666666666667,
+          "fact_accuracy": 84.89583333333333,
+          "critical_error_cases": 14
+        }
+      },
+      "formal_quality": 92.15277777777777,
+      "informal_quality": 88.20833333333333,
+      "mean_decode_tps": 20.576741465555028,
+      "median_latency_seconds": 2.6446599169867113,
+      "speed_score": 56.82777804780095,
+      "overall_score": 87.33625002700231
+    },
+    {
+      "configuration": "hy-mt2-7b/Q4_K_M/ollama",
+      "quality": 95.2638888888889,
+      "fact_accuracy": 95.39930555555556,
+      "critical_error_cases": 17,
+      "effective_rate": 8.614413342042601,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 94.79166666666667,
+          "fact_accuracy": 94.27083333333333,
+          "critical_error_cases": 2
+        },
+        "en-zh": {
+          "quality": 95.08333333333333,
+          "fact_accuracy": 94.27083333333333,
+          "critical_error_cases": 2
+        },
+        "ja-en": {
+          "quality": 96.125,
+          "fact_accuracy": 95.3125,
+          "critical_error_cases": 2
+        },
+        "ja-zh": {
+          "quality": 95.08333333333333,
+          "fact_accuracy": 95.3125,
+          "critical_error_cases": 5
+        },
+        "zh-en": {
+          "quality": 96.75,
+          "fact_accuracy": 97.39583333333333,
+          "critical_error_cases": 3
+        },
+        "zh-ja": {
+          "quality": 93.75,
+          "fact_accuracy": 95.83333333333333,
+          "critical_error_cases": 3
+        }
+      },
+      "formal_quality": 96.04166666666667,
+      "informal_quality": 94.48611111111111,
+      "mean_decode_tps": 5.571573254369283,
+      "median_latency_seconds": 11.737534749991028,
+      "speed_score": 12.470689032470814,
+      "overall_score": 87.22137445880264
+    },
+    {
+      "configuration": "qwen35-4b/Q4_K_M/ollama",
+      "quality": 93.4375,
+      "fact_accuracy": 94.09722222222223,
+      "critical_error_cases": 23,
+      "effective_rate": 18.102725610117222,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 90.79166666666667,
+          "fact_accuracy": 92.1875,
+          "critical_error_cases": 5
+        },
+        "en-zh": {
+          "quality": 97.45833333333333,
+          "fact_accuracy": 96.875,
+          "critical_error_cases": 0
+        },
+        "ja-en": {
+          "quality": 92.41666666666667,
+          "fact_accuracy": 92.70833333333333,
+          "critical_error_cases": 6
+        },
+        "ja-zh": {
+          "quality": 93.625,
+          "fact_accuracy": 93.22916666666667,
+          "critical_error_cases": 6
+        },
+        "zh-en": {
+          "quality": 96.58333333333333,
+          "fact_accuracy": 96.875,
+          "critical_error_cases": 1
+        },
+        "zh-ja": {
+          "quality": 89.75,
+          "fact_accuracy": 92.70833333333333,
+          "critical_error_cases": 5
+        }
+      },
+      "formal_quality": 94.91666666666667,
+      "informal_quality": 91.95833333333333,
+      "mean_decode_tps": 10.055003914873666,
+      "median_latency_seconds": 5.306476229001419,
+      "speed_score": 26.206481249527318,
+      "overall_score": 87.04252312495274
+    },
+    {
+      "configuration": "qwen35-4b/Q8_0/llamacpp",
+      "quality": 93.0763888888889,
+      "fact_accuracy": 93.57638888888889,
+      "critical_error_cases": 24,
+      "effective_rate": 20.132765433052935,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 91.04166666666667,
+          "fact_accuracy": 92.1875,
+          "critical_error_cases": 6
+        },
+        "en-zh": {
+          "quality": 96.75,
+          "fact_accuracy": 96.35416666666667,
+          "critical_error_cases": 0
+        },
+        "ja-en": {
+          "quality": 91.79166666666667,
+          "fact_accuracy": 91.66666666666667,
+          "critical_error_cases": 6
+        },
+        "ja-zh": {
+          "quality": 93.33333333333333,
+          "fact_accuracy": 93.22916666666667,
+          "critical_error_cases": 5
+        },
+        "zh-en": {
+          "quality": 97.33333333333333,
+          "fact_accuracy": 97.39583333333333,
+          "critical_error_cases": 1
+        },
+        "zh-ja": {
+          "quality": 88.20833333333333,
+          "fact_accuracy": 90.625,
+          "critical_error_cases": 6
+        }
+      },
+      "formal_quality": 94.66666666666667,
+      "informal_quality": 91.48611111111111,
+      "mean_decode_tps": 12.039334398764737,
+      "median_latency_seconds": 4.674190791498404,
+      "speed_score": 29.145276307318284,
+      "overall_score": 87.02945818628739
+    },
+    {
+      "configuration": "hy-mt2-7b/Q8_0/ollama",
+      "quality": 94.79166666666667,
+      "fact_accuracy": 95.13888888888889,
+      "critical_error_cases": 19,
+      "effective_rate": 9.880001365377325,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 94.08333333333333,
+          "fact_accuracy": 93.75,
+          "critical_error_cases": 3
+        },
+        "en-zh": {
+          "quality": 95.33333333333333,
+          "fact_accuracy": 94.27083333333333,
+          "critical_error_cases": 2
+        },
+        "ja-en": {
+          "quality": 95.25,
+          "fact_accuracy": 94.79166666666667,
+          "critical_error_cases": 3
+        },
+        "ja-zh": {
+          "quality": 95.04166666666667,
+          "fact_accuracy": 95.3125,
+          "critical_error_cases": 3
+        },
+        "zh-en": {
+          "quality": 96.45833333333333,
+          "fact_accuracy": 96.875,
+          "critical_error_cases": 3
+        },
+        "zh-ja": {
+          "quality": 92.58333333333333,
+          "fact_accuracy": 95.83333333333333,
+          "critical_error_cases": 5
+        }
+      },
+      "formal_quality": 95.34722222222223,
+      "informal_quality": 94.23611111111111,
+      "mean_decode_tps": 5.898166472010992,
+      "median_latency_seconds": 9.248371083507664,
+      "speed_score": 14.30282246461054,
+      "overall_score": 87.00319891312772
+    },
+    {
+      "configuration": "hy-mt2-7b/Q8_0/llamacpp",
+      "quality": 94.79166666666667,
+      "fact_accuracy": 95.13888888888889,
+      "critical_error_cases": 19,
+      "effective_rate": 8.770328053276758,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 94.08333333333333,
+          "fact_accuracy": 93.75,
+          "critical_error_cases": 3
+        },
+        "en-zh": {
+          "quality": 95.33333333333333,
+          "fact_accuracy": 94.27083333333333,
+          "critical_error_cases": 2
+        },
+        "ja-en": {
+          "quality": 95.25,
+          "fact_accuracy": 94.79166666666667,
+          "critical_error_cases": 3
+        },
+        "ja-zh": {
+          "quality": 95.04166666666667,
+          "fact_accuracy": 95.3125,
+          "critical_error_cases": 3
+        },
+        "zh-en": {
+          "quality": 96.45833333333333,
+          "fact_accuracy": 96.875,
+          "critical_error_cases": 3
+        },
+        "zh-ja": {
+          "quality": 92.58333333333333,
+          "fact_accuracy": 95.83333333333333,
+          "critical_error_cases": 5
+        }
+      },
+      "formal_quality": 95.34722222222223,
+      "informal_quality": 94.23611111111111,
+      "mean_decode_tps": 6.8137492850257715,
+      "median_latency_seconds": 10.09189127049467,
+      "speed_score": 12.696399571562223,
+      "overall_score": 86.8425566238229
+    },
+    {
+      "configuration": "gemma3-4b/Q4_K_M/ollama",
+      "quality": 89.27083333333333,
+      "fact_accuracy": 89.93055555555556,
+      "critical_error_cases": 41,
+      "effective_rate": 40.74121189066126,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 87.45833333333333,
+          "fact_accuracy": 86.45833333333333,
+          "critical_error_cases": 9
+        },
+        "en-zh": {
+          "quality": 94.125,
+          "fact_accuracy": 93.75,
+          "critical_error_cases": 3
+        },
+        "ja-en": {
+          "quality": 89.625,
+          "fact_accuracy": 89.58333333333333,
+          "critical_error_cases": 8
+        },
+        "ja-zh": {
+          "quality": 86.20833333333333,
+          "fact_accuracy": 88.54166666666667,
+          "critical_error_cases": 10
+        },
+        "zh-en": {
+          "quality": 90.41666666666667,
+          "fact_accuracy": 91.66666666666667,
+          "critical_error_cases": 5
+        },
+        "zh-ja": {
+          "quality": 87.79166666666667,
+          "fact_accuracy": 89.58333333333333,
+          "critical_error_cases": 6
+        }
+      },
+      "formal_quality": 92.66666666666667,
+      "informal_quality": 85.875,
+      "mean_decode_tps": 24.722489274912416,
+      "median_latency_seconds": 2.5436651454947423,
+      "speed_score": 58.97917410287257,
+      "overall_score": 86.77812574362059
+    },
+    {
+      "configuration": "qwen3vl-8b/8bit/sglang",
+      "quality": 92.63194444444444,
+      "fact_accuracy": 94.35763888888889,
+      "critical_error_cases": 24,
+      "effective_rate": 20.5101381208442,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 86.375,
+          "fact_accuracy": 88.02083333333333,
+          "critical_error_cases": 7
+        },
+        "en-zh": {
+          "quality": 96.91666666666667,
+          "fact_accuracy": 96.875,
+          "critical_error_cases": 3
+        },
+        "ja-en": {
+          "quality": 93.29166666666667,
+          "fact_accuracy": 93.22916666666667,
+          "critical_error_cases": 6
+        },
+        "ja-zh": {
+          "quality": 95.83333333333333,
+          "fact_accuracy": 96.35416666666667,
+          "critical_error_cases": 3
+        },
+        "zh-en": {
+          "quality": 95.875,
+          "fact_accuracy": 97.91666666666667,
+          "critical_error_cases": 0
+        },
+        "zh-ja": {
+          "quality": 87.5,
+          "fact_accuracy": 93.75,
+          "critical_error_cases": 5
+        }
+      },
+      "formal_quality": 94.13888888888889,
+      "informal_quality": 91.125,
+      "mean_decode_tps": 10.113180950258021,
+      "median_latency_seconds": 5.12275189551292,
+      "speed_score": 29.691581348872823,
+      "overall_score": 86.70631091266506
+    },
+    {
+      "configuration": "qwen3-4b-2507/Q8_0/ollama",
+      "quality": 92.34722222222223,
+      "fact_accuracy": 93.14236111111111,
+      "critical_error_cases": 30,
+      "effective_rate": 21.280289725926718,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 86.45833333333333,
+          "fact_accuracy": 88.54166666666667,
+          "critical_error_cases": 7
+        },
+        "en-zh": {
+          "quality": 96.04166666666667,
+          "fact_accuracy": 95.3125,
+          "critical_error_cases": 3
+        },
+        "ja-en": {
+          "quality": 94.16666666666667,
+          "fact_accuracy": 93.75,
+          "critical_error_cases": 5
+        },
+        "ja-zh": {
+          "quality": 95.29166666666667,
+          "fact_accuracy": 95.3125,
+          "critical_error_cases": 3
+        },
+        "zh-en": {
+          "quality": 95.125,
+          "fact_accuracy": 95.3125,
+          "critical_error_cases": 4
+        },
+        "zh-ja": {
+          "quality": 87.0,
+          "fact_accuracy": 90.625,
+          "critical_error_cases": 8
+        }
+      },
+      "formal_quality": 94.125,
+      "informal_quality": 90.56944444444444,
+      "mean_decode_tps": 10.663460933648679,
+      "median_latency_seconds": 4.750765562494053,
+      "speed_score": 30.80649432013327,
+      "overall_score": 86.57578832090222
+    },
+    {
+      "configuration": "qwen3-8b/Q4_K_M/llamacpp",
+      "quality": 91.7986111111111,
+      "fact_accuracy": 92.36111111111111,
+      "critical_error_cases": 46,
+      "effective_rate": 23.326671162379725,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 87.08333333333333,
+          "fact_accuracy": 88.02083333333333,
+          "critical_error_cases": 10
+        },
+        "en-zh": {
+          "quality": 95.33333333333333,
+          "fact_accuracy": 94.79166666666667,
+          "critical_error_cases": 6
+        },
+        "ja-en": {
+          "quality": 92.125,
+          "fact_accuracy": 91.14583333333333,
+          "critical_error_cases": 10
+        },
+        "ja-zh": {
+          "quality": 94.66666666666667,
+          "fact_accuracy": 93.75,
+          "critical_error_cases": 5
+        },
+        "zh-en": {
+          "quality": 96.33333333333333,
+          "fact_accuracy": 97.39583333333333,
+          "critical_error_cases": 3
+        },
+        "zh-ja": {
+          "quality": 85.25,
+          "fact_accuracy": 89.0625,
+          "critical_error_cases": 12
+        }
+      },
+      "formal_quality": 93.54166666666667,
+      "informal_quality": 90.05555555555556,
+      "mean_decode_tps": 12.364335354810562,
+      "median_latency_seconds": 4.426592375006294,
+      "speed_score": 33.768946378392094,
+      "overall_score": 86.40571408228365
+    },
+    {
+      "configuration": "qwen3-4b/Q8_0/llamacpp",
+      "quality": 89.7361111111111,
+      "fact_accuracy": 89.75694444444444,
+      "critical_error_cases": 49,
+      "effective_rate": 34.4318308931335,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 83.875,
+          "fact_accuracy": 85.41666666666667,
+          "critical_error_cases": 8
+        },
+        "en-zh": {
+          "quality": 96.45833333333333,
+          "fact_accuracy": 96.35416666666667,
+          "critical_error_cases": 3
+        },
+        "ja-en": {
+          "quality": 90.875,
+          "fact_accuracy": 89.0625,
+          "critical_error_cases": 10
+        },
+        "ja-zh": {
+          "quality": 94.70833333333333,
+          "fact_accuracy": 93.22916666666667,
+          "critical_error_cases": 7
+        },
+        "zh-en": {
+          "quality": 93.91666666666667,
+          "fact_accuracy": 94.79166666666667,
+          "critical_error_cases": 3
+        },
+        "zh-ja": {
+          "quality": 78.58333333333333,
+          "fact_accuracy": 79.6875,
+          "critical_error_cases": 18
+        }
+      },
+      "formal_quality": 91.72222222222223,
+      "informal_quality": 87.75,
+      "mean_decode_tps": 17.174669676999937,
+      "median_latency_seconds": 2.8498327295092167,
+      "speed_score": 49.84537412330339,
+      "overall_score": 86.26023185677478
+    },
+    {
+      "configuration": "qwen3-4b/8bit/sglang",
+      "quality": 89.69444444444444,
+      "fact_accuracy": 89.75694444444444,
+      "critical_error_cases": 48,
+      "effective_rate": 33.631522273632726,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 83.79166666666667,
+          "fact_accuracy": 85.41666666666667,
+          "critical_error_cases": 8
+        },
+        "en-zh": {
+          "quality": 95.54166666666667,
+          "fact_accuracy": 95.3125,
+          "critical_error_cases": 3
+        },
+        "ja-en": {
+          "quality": 91.75,
+          "fact_accuracy": 90.10416666666667,
+          "critical_error_cases": 9
+        },
+        "ja-zh": {
+          "quality": 94.0,
+          "fact_accuracy": 92.70833333333333,
+          "critical_error_cases": 8
+        },
+        "zh-en": {
+          "quality": 93.83333333333333,
+          "fact_accuracy": 94.79166666666667,
+          "critical_error_cases": 3
+        },
+        "zh-ja": {
+          "quality": 79.25,
+          "fact_accuracy": 80.20833333333333,
+          "critical_error_cases": 17
+        }
+      },
+      "formal_quality": 92.15277777777777,
+      "informal_quality": 87.23611111111111,
+      "mean_decode_tps": 17.509834759845084,
+      "median_latency_seconds": 2.9471738124993863,
+      "speed_score": 48.686804232642245,
+      "overall_score": 86.108958201042
+    },
+    {
+      "configuration": "qwen3-8b/Q4_K_M/ollama",
+      "quality": 91.7986111111111,
+      "fact_accuracy": 92.36111111111111,
+      "critical_error_cases": 46,
+      "effective_rate": 20.086469948589304,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 87.08333333333333,
+          "fact_accuracy": 88.02083333333333,
+          "critical_error_cases": 10
+        },
+        "en-zh": {
+          "quality": 95.33333333333333,
+          "fact_accuracy": 94.79166666666667,
+          "critical_error_cases": 6
+        },
+        "ja-en": {
+          "quality": 92.125,
+          "fact_accuracy": 91.14583333333333,
+          "critical_error_cases": 10
+        },
+        "ja-zh": {
+          "quality": 94.66666666666667,
+          "fact_accuracy": 93.75,
+          "critical_error_cases": 5
+        },
+        "zh-en": {
+          "quality": 96.33333333333333,
+          "fact_accuracy": 97.39583333333333,
+          "critical_error_cases": 3
+        },
+        "zh-ja": {
+          "quality": 85.25,
+          "fact_accuracy": 89.0625,
+          "critical_error_cases": 12
+        }
+      },
+      "formal_quality": 93.54166666666667,
+      "informal_quality": 90.05555555555556,
+      "mean_decode_tps": 10.723656813458232,
+      "median_latency_seconds": 5.09604112499801,
+      "speed_score": 29.078256468888217,
+      "overall_score": 85.93664509133326
+    },
+    {
+      "configuration": "qwen3-4b/Q8_0/ollama",
+      "quality": 89.7361111111111,
+      "fact_accuracy": 89.75694444444444,
+      "critical_error_cases": 49,
+      "effective_rate": 31.537987011609953,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 83.875,
+          "fact_accuracy": 85.41666666666667,
+          "critical_error_cases": 8
+        },
+        "en-zh": {
+          "quality": 96.45833333333333,
+          "fact_accuracy": 96.35416666666667,
+          "critical_error_cases": 3
+        },
+        "ja-en": {
+          "quality": 90.875,
+          "fact_accuracy": 89.0625,
+          "critical_error_cases": 10
+        },
+        "ja-zh": {
+          "quality": 94.70833333333333,
+          "fact_accuracy": 93.22916666666667,
+          "critical_error_cases": 7
+        },
+        "zh-en": {
+          "quality": 93.91666666666667,
+          "fact_accuracy": 94.79166666666667,
+          "critical_error_cases": 3
+        },
+        "zh-ja": {
+          "quality": 78.58333333333333,
+          "fact_accuracy": 79.6875,
+          "critical_error_cases": 18
+        }
+      },
+      "formal_quality": 91.72222222222223,
+      "informal_quality": 87.75,
+      "mean_decode_tps": 16.268611680402195,
+      "median_latency_seconds": 3.2868143749947194,
+      "speed_score": 45.656089755107345,
+      "overall_score": 85.84130341995518
+    },
+    {
+      "configuration": "qwen35-4b/Q8_0/ollama",
+      "quality": 93.0763888888889,
+      "fact_accuracy": 93.57638888888889,
+      "critical_error_cases": 24,
+      "effective_rate": 11.87914618378963,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 91.04166666666667,
+          "fact_accuracy": 92.1875,
+          "critical_error_cases": 6
+        },
+        "en-zh": {
+          "quality": 96.75,
+          "fact_accuracy": 96.35416666666667,
+          "critical_error_cases": 0
+        },
+        "ja-en": {
+          "quality": 91.79166666666667,
+          "fact_accuracy": 91.66666666666667,
+          "critical_error_cases": 6
+        },
+        "ja-zh": {
+          "quality": 93.33333333333333,
+          "fact_accuracy": 93.22916666666667,
+          "critical_error_cases": 5
+        },
+        "zh-en": {
+          "quality": 97.33333333333333,
+          "fact_accuracy": 97.39583333333333,
+          "critical_error_cases": 1
+        },
+        "zh-ja": {
+          "quality": 88.20833333333333,
+          "fact_accuracy": 90.625,
+          "critical_error_cases": 6
+        }
+      },
+      "formal_quality": 94.66666666666667,
+      "informal_quality": 91.48611111111111,
+      "mean_decode_tps": 5.825901130075635,
+      "median_latency_seconds": 8.698765770997852,
+      "speed_score": 17.196892248750217,
+      "overall_score": 85.83461978043059
+    },
+    {
+      "configuration": "qwen3-8b/8bit/sglang",
+      "quality": 92.16666666666667,
+      "fact_accuracy": 93.05555555555556,
+      "critical_error_cases": 41,
+      "effective_rate": 16.734563287014456,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 88.41666666666667,
+          "fact_accuracy": 89.58333333333333,
+          "critical_error_cases": 8
+        },
+        "en-zh": {
+          "quality": 95.58333333333333,
+          "fact_accuracy": 96.35416666666667,
+          "critical_error_cases": 4
+        },
+        "ja-en": {
+          "quality": 92.375,
+          "fact_accuracy": 91.66666666666667,
+          "critical_error_cases": 10
+        },
+        "ja-zh": {
+          "quality": 95.66666666666667,
+          "fact_accuracy": 94.79166666666667,
+          "critical_error_cases": 4
+        },
+        "zh-en": {
+          "quality": 95.20833333333333,
+          "fact_accuracy": 96.875,
+          "critical_error_cases": 3
+        },
+        "zh-ja": {
+          "quality": 85.75,
+          "fact_accuracy": 89.0625,
+          "critical_error_cases": 12
+        }
+      },
+      "formal_quality": 93.73611111111111,
+      "informal_quality": 90.59722222222223,
+      "mean_decode_tps": 8.489834669904944,
+      "median_latency_seconds": 5.959376354483538,
+      "speed_score": 24.225855732745252,
+      "overall_score": 85.7642522399412
+    },
+    {
+      "configuration": "qwen3-8b/Q8_0/llamacpp",
+      "quality": 92.02777777777777,
+      "fact_accuracy": 92.70833333333333,
+      "critical_error_cases": 43,
+      "effective_rate": 15.275584503241703,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 88.375,
+          "fact_accuracy": 89.58333333333333,
+          "critical_error_cases": 9
+        },
+        "en-zh": {
+          "quality": 95.375,
+          "fact_accuracy": 95.83333333333333,
+          "critical_error_cases": 4
+        },
+        "ja-en": {
+          "quality": 92.0,
+          "fact_accuracy": 91.14583333333333,
+          "critical_error_cases": 10
+        },
+        "ja-zh": {
+          "quality": 96.16666666666667,
+          "fact_accuracy": 94.79166666666667,
+          "critical_error_cases": 4
+        },
+        "zh-en": {
+          "quality": 95.375,
+          "fact_accuracy": 96.875,
+          "critical_error_cases": 3
+        },
+        "zh-ja": {
+          "quality": 84.875,
+          "fact_accuracy": 88.02083333333333,
+          "critical_error_cases": 13
+        }
+      },
+      "formal_quality": 93.91666666666667,
+      "informal_quality": 90.13888888888889,
+      "mean_decode_tps": 7.672612804552088,
+      "median_latency_seconds": 6.644586436988902,
+      "speed_score": 22.11375941289437,
+      "overall_score": 85.43498705240053
+    },
+    {
+      "configuration": "qwen3-8b/Q8_0/ollama",
+      "quality": 92.02777777777777,
+      "fact_accuracy": 92.70833333333333,
+      "critical_error_cases": 43,
+      "effective_rate": 14.31765837679813,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 88.375,
+          "fact_accuracy": 89.58333333333333,
+          "critical_error_cases": 9
+        },
+        "en-zh": {
+          "quality": 95.375,
+          "fact_accuracy": 95.83333333333333,
+          "critical_error_cases": 4
+        },
+        "ja-en": {
+          "quality": 92.0,
+          "fact_accuracy": 91.14583333333333,
+          "critical_error_cases": 10
+        },
+        "ja-zh": {
+          "quality": 96.16666666666667,
+          "fact_accuracy": 94.79166666666667,
+          "critical_error_cases": 4
+        },
+        "zh-en": {
+          "quality": 95.375,
+          "fact_accuracy": 96.875,
+          "critical_error_cases": 3
+        },
+        "zh-ja": {
+          "quality": 84.875,
+          "fact_accuracy": 88.02083333333333,
+          "critical_error_cases": 13
+        }
+      },
+      "formal_quality": 93.91666666666667,
+      "informal_quality": 90.13888888888889,
+      "mean_decode_tps": 7.370314058389713,
+      "median_latency_seconds": 7.072577438011649,
+      "speed_score": 20.727013924300888,
+      "overall_score": 85.29631250354119
+    },
+    {
+      "configuration": "translategemma-4b/Q8_0/llamacpp",
+      "quality": 85.85416666666667,
+      "fact_accuracy": 85.59027777777777,
+      "critical_error_cases": 57,
+      "effective_rate": 40.258367375686674,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 84.125,
+          "fact_accuracy": 84.375,
+          "critical_error_cases": 10
+        },
+        "en-zh": {
+          "quality": 88.95833333333333,
+          "fact_accuracy": 88.54166666666667,
+          "critical_error_cases": 7
+        },
+        "ja-en": {
+          "quality": 86.83333333333333,
+          "fact_accuracy": 85.41666666666667,
+          "critical_error_cases": 10
+        },
+        "ja-zh": {
+          "quality": 82.25,
+          "fact_accuracy": 83.33333333333333,
+          "critical_error_cases": 13
+        },
+        "zh-en": {
+          "quality": 92.08333333333333,
+          "fact_accuracy": 90.10416666666667,
+          "critical_error_cases": 4
+        },
+        "zh-ja": {
+          "quality": 80.875,
+          "fact_accuracy": 81.77083333333333,
+          "critical_error_cases": 13
+        }
+      },
+      "formal_quality": 90.05555555555556,
+      "informal_quality": 81.65277777777777,
+      "mean_decode_tps": 20.645798586603618,
+      "median_latency_seconds": 2.560053520996007,
+      "speed_score": 58.2801823598255,
+      "overall_score": 83.80405990264923
+    },
+    {
+      "configuration": "qwen25-7b/Q8_0/llamacpp",
+      "quality": 88.55555555555556,
+      "fact_accuracy": 90.36458333333333,
+      "critical_error_cases": 46,
+      "effective_rate": 22.198528116559732,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 84.25,
+          "fact_accuracy": 86.97916666666667,
+          "critical_error_cases": 11
+        },
+        "en-zh": {
+          "quality": 93.70833333333333,
+          "fact_accuracy": 93.75,
+          "critical_error_cases": 5
+        },
+        "ja-en": {
+          "quality": 93.25,
+          "fact_accuracy": 94.79166666666667,
+          "critical_error_cases": 5
+        },
+        "ja-zh": {
+          "quality": 92.91666666666667,
+          "fact_accuracy": 93.22916666666667,
+          "critical_error_cases": 6
+        },
+        "zh-en": {
+          "quality": 93.625,
+          "fact_accuracy": 96.875,
+          "critical_error_cases": 3
+        },
+        "zh-ja": {
+          "quality": 73.58333333333333,
+          "fact_accuracy": 76.5625,
+          "critical_error_cases": 16
+        }
+      },
+      "formal_quality": 89.79166666666667,
+      "informal_quality": 87.31944444444444,
+      "mean_decode_tps": 10.666079733573694,
+      "median_latency_seconds": 4.581430187492515,
+      "speed_score": 32.13578570337511,
+      "overall_score": 83.48580079255974
+    },
+    {
+      "configuration": "translategemma-4b/Q8_0/ollama",
+      "quality": 85.85416666666667,
+      "fact_accuracy": 85.59027777777777,
+      "critical_error_cases": 57,
+      "effective_rate": 37.520890364144805,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 84.125,
+          "fact_accuracy": 84.375,
+          "critical_error_cases": 10
+        },
+        "en-zh": {
+          "quality": 88.95833333333333,
+          "fact_accuracy": 88.54166666666667,
+          "critical_error_cases": 7
+        },
+        "ja-en": {
+          "quality": 86.83333333333333,
+          "fact_accuracy": 85.41666666666667,
+          "critical_error_cases": 10
+        },
+        "ja-zh": {
+          "quality": 82.25,
+          "fact_accuracy": 83.33333333333333,
+          "critical_error_cases": 13
+        },
+        "zh-en": {
+          "quality": 92.08333333333333,
+          "fact_accuracy": 90.10416666666667,
+          "critical_error_cases": 4
+        },
+        "zh-ja": {
+          "quality": 80.875,
+          "fact_accuracy": 81.77083333333333,
+          "critical_error_cases": 13
+        }
+      },
+      "formal_quality": 90.05555555555556,
+      "informal_quality": 81.65277777777777,
+      "mean_decode_tps": 20.917834371040787,
+      "median_latency_seconds": 2.727051000489155,
+      "speed_score": 54.31726310009313,
+      "overall_score": 83.40776797667598
+    },
+    {
+      "configuration": "qwen25-7b/Q4_K_M/llamacpp",
+      "quality": 86.89583333333333,
+      "fact_accuracy": 90.01736111111111,
+      "critical_error_cases": 53,
+      "effective_rate": 30.887013607089898,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 80.66666666666667,
+          "fact_accuracy": 85.9375,
+          "critical_error_cases": 10
+        },
+        "en-zh": {
+          "quality": 93.45833333333333,
+          "fact_accuracy": 94.79166666666667,
+          "critical_error_cases": 5
+        },
+        "ja-en": {
+          "quality": 89.70833333333333,
+          "fact_accuracy": 91.14583333333333,
+          "critical_error_cases": 8
+        },
+        "ja-zh": {
+          "quality": 92.125,
+          "fact_accuracy": 93.75,
+          "critical_error_cases": 8
+        },
+        "zh-en": {
+          "quality": 93.375,
+          "fact_accuracy": 96.35416666666667,
+          "critical_error_cases": 4
+        },
+        "zh-ja": {
+          "quality": 72.04166666666667,
+          "fact_accuracy": 78.125,
+          "critical_error_cases": 18
+        }
+      },
+      "formal_quality": 89.63888888888889,
+      "informal_quality": 84.15277777777777,
+      "mean_decode_tps": 15.498479186341813,
+      "median_latency_seconds": 3.358944521009107,
+      "speed_score": 44.71370557015558,
+      "overall_score": 83.33282889034889
+    },
+    {
+      "configuration": "qwen25-7b/Q4_K_M/ollama",
+      "quality": 86.89583333333333,
+      "fact_accuracy": 90.01736111111111,
+      "critical_error_cases": 53,
+      "effective_rate": 30.3642247847192,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 80.66666666666667,
+          "fact_accuracy": 85.9375,
+          "critical_error_cases": 10
+        },
+        "en-zh": {
+          "quality": 93.45833333333333,
+          "fact_accuracy": 94.79166666666667,
+          "critical_error_cases": 5
+        },
+        "ja-en": {
+          "quality": 89.70833333333333,
+          "fact_accuracy": 91.14583333333333,
+          "critical_error_cases": 8
+        },
+        "ja-zh": {
+          "quality": 92.125,
+          "fact_accuracy": 93.75,
+          "critical_error_cases": 8
+        },
+        "zh-en": {
+          "quality": 93.375,
+          "fact_accuracy": 96.35416666666667,
+          "critical_error_cases": 4
+        },
+        "zh-ja": {
+          "quality": 72.04166666666667,
+          "fact_accuracy": 78.125,
+          "critical_error_cases": 18
+        }
+      },
+      "formal_quality": 89.63888888888889,
+      "informal_quality": 84.15277777777777,
+      "mean_decode_tps": 15.711826053100328,
+      "median_latency_seconds": 3.329713000013726,
+      "speed_score": 43.95688829490156,
+      "overall_score": 83.25714716282349
+    },
+    {
+      "configuration": "qwen25vl-7b/Q4_K_M/llamacpp",
+      "quality": 85.9375,
+      "fact_accuracy": 87.67361111111111,
+      "critical_error_cases": 43,
+      "effective_rate": 34.91974769077012,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 75.70833333333333,
+          "fact_accuracy": 77.60416666666667,
+          "critical_error_cases": 13
+        },
+        "en-zh": {
+          "quality": 92.79166666666667,
+          "fact_accuracy": 93.22916666666667,
+          "critical_error_cases": 4
+        },
+        "ja-en": {
+          "quality": 88.875,
+          "fact_accuracy": 87.5,
+          "critical_error_cases": 7
+        },
+        "ja-zh": {
+          "quality": 88.66666666666667,
+          "fact_accuracy": 89.0625,
+          "critical_error_cases": 5
+        },
+        "zh-en": {
+          "quality": 95.91666666666667,
+          "fact_accuracy": 97.91666666666667,
+          "critical_error_cases": 1
+        },
+        "zh-ja": {
+          "quality": 73.66666666666667,
+          "fact_accuracy": 80.72916666666667,
+          "critical_error_cases": 13
+        }
+      },
+      "formal_quality": 88.30555555555556,
+      "informal_quality": 83.56944444444444,
+      "mean_decode_tps": 17.646518498583863,
+      "median_latency_seconds": 2.897912937507499,
+      "speed_score": 50.55170877610547,
+      "overall_score": 83.10204587761055
+    },
+    {
+      "configuration": "qwen25-7b/4bit/sglang",
+      "quality": 85.65972222222223,
+      "fact_accuracy": 88.10763888888889,
+      "critical_error_cases": 62,
+      "effective_rate": 34.97944343146509,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 77.375,
+          "fact_accuracy": 81.77083333333333,
+          "critical_error_cases": 15
+        },
+        "en-zh": {
+          "quality": 91.66666666666667,
+          "fact_accuracy": 93.22916666666667,
+          "critical_error_cases": 7
+        },
+        "ja-en": {
+          "quality": 87.58333333333333,
+          "fact_accuracy": 88.02083333333333,
+          "critical_error_cases": 10
+        },
+        "ja-zh": {
+          "quality": 92.25,
+          "fact_accuracy": 93.75,
+          "critical_error_cases": 6
+        },
+        "zh-en": {
+          "quality": 92.625,
+          "fact_accuracy": 95.3125,
+          "critical_error_cases": 6
+        },
+        "zh-ja": {
+          "quality": 72.45833333333333,
+          "fact_accuracy": 76.5625,
+          "critical_error_cases": 18
+        }
+      },
+      "formal_quality": 87.69444444444444,
+      "informal_quality": 83.625,
+      "mean_decode_tps": 19.445220447012044,
+      "median_latency_seconds": 2.816450562502723,
+      "speed_score": 50.63812754767018,
+      "overall_score": 82.8745766436559
+    },
+    {
+      "configuration": "qwen25vl-7b/Q4_K_M/ollama",
+      "quality": 85.9375,
+      "fact_accuracy": 87.67361111111111,
+      "critical_error_cases": 43,
+      "effective_rate": 32.44286619618499,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 75.70833333333333,
+          "fact_accuracy": 77.60416666666667,
+          "critical_error_cases": 13
+        },
+        "en-zh": {
+          "quality": 92.79166666666667,
+          "fact_accuracy": 93.22916666666667,
+          "critical_error_cases": 4
+        },
+        "ja-en": {
+          "quality": 88.875,
+          "fact_accuracy": 87.5,
+          "critical_error_cases": 7
+        },
+        "ja-zh": {
+          "quality": 88.66666666666667,
+          "fact_accuracy": 89.0625,
+          "critical_error_cases": 5
+        },
+        "zh-en": {
+          "quality": 95.91666666666667,
+          "fact_accuracy": 97.91666666666667,
+          "critical_error_cases": 1
+        },
+        "zh-ja": {
+          "quality": 73.66666666666667,
+          "fact_accuracy": 80.72916666666667,
+          "critical_error_cases": 13
+        }
+      },
+      "formal_quality": 88.30555555555556,
+      "informal_quality": 83.56944444444444,
+      "mean_decode_tps": 17.24502033907316,
+      "median_latency_seconds": 3.1284882705076598,
+      "speed_score": 46.966041631657916,
+      "overall_score": 82.74347916316579
+    },
+    {
+      "configuration": "qwen25-7b/Q8_0/ollama",
+      "quality": 88.55555555555556,
+      "fact_accuracy": 90.36458333333333,
+      "critical_error_cases": 46,
+      "effective_rate": 15.785779324292818,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 84.25,
+          "fact_accuracy": 86.97916666666667,
+          "critical_error_cases": 11
+        },
+        "en-zh": {
+          "quality": 93.70833333333333,
+          "fact_accuracy": 93.75,
+          "critical_error_cases": 5
+        },
+        "ja-en": {
+          "quality": 93.25,
+          "fact_accuracy": 94.79166666666667,
+          "critical_error_cases": 5
+        },
+        "ja-zh": {
+          "quality": 92.91666666666667,
+          "fact_accuracy": 93.22916666666667,
+          "critical_error_cases": 6
+        },
+        "zh-en": {
+          "quality": 93.625,
+          "fact_accuracy": 96.875,
+          "critical_error_cases": 3
+        },
+        "zh-ja": {
+          "quality": 73.58333333333333,
+          "fact_accuracy": 76.5625,
+          "critical_error_cases": 16
+        }
+      },
+      "formal_quality": 89.79166666666667,
+      "informal_quality": 87.31944444444444,
+      "mean_decode_tps": 8.909832753393552,
+      "median_latency_seconds": 4.766106999988551,
+      "speed_score": 22.852344933077564,
+      "overall_score": 82.55745671552998
+    },
+    {
+      "configuration": "translategemma-4b/Q4_K_M/llamacpp",
+      "quality": 87.2361111111111,
+      "fact_accuracy": 88.10763888888889,
+      "critical_error_cases": 35,
+      "effective_rate": 19.892652391287534,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 85.875,
+          "fact_accuracy": 85.9375,
+          "critical_error_cases": 6
+        },
+        "en-zh": {
+          "quality": 90.29166666666667,
+          "fact_accuracy": 92.1875,
+          "critical_error_cases": 5
+        },
+        "ja-en": {
+          "quality": 85.875,
+          "fact_accuracy": 85.41666666666667,
+          "critical_error_cases": 6
+        },
+        "ja-zh": {
+          "quality": 84.83333333333333,
+          "fact_accuracy": 86.45833333333333,
+          "critical_error_cases": 8
+        },
+        "zh-en": {
+          "quality": 92.83333333333333,
+          "fact_accuracy": 92.70833333333333,
+          "critical_error_cases": 3
+        },
+        "zh-ja": {
+          "quality": 83.70833333333333,
+          "fact_accuracy": 85.9375,
+          "critical_error_cases": 7
+        }
+      },
+      "formal_quality": 91.13888888888889,
+      "informal_quality": 83.33333333333333,
+      "mean_decode_tps": 13.094612888093632,
+      "median_latency_seconds": 4.312181270506699,
+      "speed_score": 28.79767572703466,
+      "overall_score": 82.03046201714791
+    },
+    {
+      "configuration": "qwen25-7b/8bit/sglang",
+      "quality": 87.74305555555556,
+      "fact_accuracy": 89.40972222222223,
+      "critical_error_cases": 47,
+      "effective_rate": 16.15947514090053,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 81.45833333333333,
+          "fact_accuracy": 83.33333333333333,
+          "critical_error_cases": 14
+        },
+        "en-zh": {
+          "quality": 93.125,
+          "fact_accuracy": 93.22916666666667,
+          "critical_error_cases": 4
+        },
+        "ja-en": {
+          "quality": 95.125,
+          "fact_accuracy": 95.83333333333333,
+          "critical_error_cases": 4
+        },
+        "ja-zh": {
+          "quality": 92.625,
+          "fact_accuracy": 93.75,
+          "critical_error_cases": 6
+        },
+        "zh-en": {
+          "quality": 93.83333333333333,
+          "fact_accuracy": 96.875,
+          "critical_error_cases": 2
+        },
+        "zh-ja": {
+          "quality": 70.29166666666667,
+          "fact_accuracy": 73.4375,
+          "critical_error_cases": 17
+        }
+      },
+      "formal_quality": 89.69444444444444,
+      "informal_quality": 85.79166666666667,
+      "mean_decode_tps": 8.19901914915783,
+      "median_latency_seconds": 6.2630533755000215,
+      "speed_score": 23.3933271377398,
+      "overall_score": 81.92092993599621
+    },
+    {
+      "configuration": "translategemma-4b/Q4_K_M/ollama",
+      "quality": 87.2361111111111,
+      "fact_accuracy": 88.10763888888889,
+      "critical_error_cases": 35,
+      "effective_rate": 15.400045842379322,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 85.875,
+          "fact_accuracy": 85.9375,
+          "critical_error_cases": 6
+        },
+        "en-zh": {
+          "quality": 90.29166666666667,
+          "fact_accuracy": 92.1875,
+          "critical_error_cases": 5
+        },
+        "ja-en": {
+          "quality": 85.875,
+          "fact_accuracy": 85.41666666666667,
+          "critical_error_cases": 6
+        },
+        "ja-zh": {
+          "quality": 84.83333333333333,
+          "fact_accuracy": 86.45833333333333,
+          "critical_error_cases": 8
+        },
+        "zh-en": {
+          "quality": 92.83333333333333,
+          "fact_accuracy": 92.70833333333333,
+          "critical_error_cases": 3
+        },
+        "zh-ja": {
+          "quality": 83.70833333333333,
+          "fact_accuracy": 85.9375,
+          "critical_error_cases": 7
+        }
+      },
+      "formal_quality": 91.13888888888889,
+      "informal_quality": 83.33333333333333,
+      "mean_decode_tps": 9.498432775176973,
+      "median_latency_seconds": 5.954667541504023,
+      "speed_score": 22.293936355342097,
+      "overall_score": 81.38008807997865
+    },
+    {
+      "configuration": "hy-mt2-7b/4bit/sglang",
+      "quality": 0.0,
+      "fact_accuracy": 0.0,
+      "critical_error_cases": 133,
+      "effective_rate": 25.91684043028279,
+      "stability": 100.0,
+      "directions": {
+        "en-ja": {
+          "quality": 0.0,
+          "fact_accuracy": 0.0,
+          "critical_error_cases": 24
+        },
+        "en-zh": {
+          "quality": 0.0,
+          "fact_accuracy": 0.0,
+          "critical_error_cases": 23
+        },
+        "ja-en": {
+          "quality": 0.0,
+          "fact_accuracy": 0.0,
+          "critical_error_cases": 20
+        },
+        "ja-zh": {
+          "quality": 0.0,
+          "fact_accuracy": 0.0,
+          "critical_error_cases": 22
+        },
+        "zh-en": {
+          "quality": 0.0,
+          "fact_accuracy": 0.0,
+          "critical_error_cases": 20
+        },
+        "zh-ja": {
+          "quality": 0.0,
+          "fact_accuracy": 0.0,
+          "critical_error_cases": 24
+        }
+      },
+      "formal_quality": 0.0,
+      "informal_quality": 0.0,
+      "mean_decode_tps": 10.812547332105678,
+      "median_latency_seconds": 1.8491841874929378,
+      "speed_score": 37.51861500920133,
+      "overall_score": 8.751861500920134
+    }
+  ],
+  "pending_review": [
+    {
+      "configuration": "granite33-8b/4bit/sglang",
+      "unreviewed": 132,
+      "graded": 12
+    },
+    {
+      "configuration": "granite33-8b/Q4_K_M/llamacpp",
+      "unreviewed": 132,
+      "graded": 12
+    },
+    {
+      "configuration": "granite33-8b/Q4_K_M/ollama",
+      "unreviewed": 132,
+      "graded": 12
+    },
+    {
+      "configuration": "granite33-8b/Q8_0/llamacpp",
+      "unreviewed": 132,
+      "graded": 12
+    },
+    {
+      "configuration": "granite33-8b/Q8_0/ollama",
+      "unreviewed": 132,
+      "graded": 12
+    },
+    {
+      "configuration": "mistral-v03-7b/8bit/sglang",
+      "unreviewed": 132,
+      "graded": 12
+    },
+    {
+      "configuration": "mistral-v03-7b/Q8_0/llamacpp",
+      "unreviewed": 132,
+      "graded": 12
+    },
+    {
+      "configuration": "phi4-mini/Q4_K_M/llamacpp",
+      "unreviewed": 132,
+      "graded": 12
+    },
+    {
+      "configuration": "phi4-mini/Q4_K_M/ollama",
+      "unreviewed": 132,
+      "graded": 12
+    },
+    {
+      "configuration": "phi4-mini/Q8_0/llamacpp",
+      "unreviewed": 132,
+      "graded": 12
+    },
+    {
+      "configuration": "phi4-mini/Q8_0/ollama",
+      "unreviewed": 132,
+      "graded": 12
+    },
+    {
+      "configuration": "qwen3vl-4b/4bit/sglang",
+      "unreviewed": 131,
+      "graded": 13
+    },
+    {
+      "configuration": "qwen3vl-4b/8bit/sglang",
+      "unreviewed": 131,
+      "graded": 13
+    },
+    {
+      "configuration": "qwen3vl-4b/Q8_0/llamacpp",
+      "unreviewed": 131,
+      "graded": 13
+    },
+    {
+      "configuration": "qwen3vl-4b/Q8_0/ollama",
+      "unreviewed": 131,
+      "graded": 13
+    },
+    {
+      "configuration": "qwen3vl-8b/4bit/sglang",
+      "unreviewed": 120,
+      "graded": 24
+    },
+    {
+      "configuration": "qwen3vl-8b/Q8_0/llamacpp",
+      "unreviewed": 40,
+      "graded": 104
+    },
+    {
+      "configuration": "qwen3vl-8b/Q8_0/ollama",
+      "unreviewed": 40,
+      "graded": 104
+    }
+  ],
+  "note": "Only completed/reviewed configurations are ranked; consult full matrix for unexecuted or unsupported entries."
+}

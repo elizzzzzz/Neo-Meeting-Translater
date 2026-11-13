@@ -1,0 +1,15 @@
+{
+  "scenes.json": "afb3d6c4969bee71388989f08700df544430f24c6d731c8fab8bfce54af3e4b4",
+  "archive-verification.json": "07b88a00360e9a329bc348cab05bcf0f17fd56af3cd807193981be0a06735eaa",
+  "annotations.jsonl": "f56c1bac700d229839011aabff79b930ddcd6d0bfc8c35a31d28770af27c0fdd",
+  "reviewed-output-audit.json": "da6a12941feb1be65d74c950c69f8063879d55caa5163653a39398703d2b5d27",
+  "cases.jsonl": "425a3da19c8ee12b0904650fc8e7f27b5d78d00096706cf7cf0fe197c8c085f0",
+  "ranking.json": "480c0665c9383440bedcebf5472272dd7a0fc5f4cbf5c99249cb5089ed4beab0",
+  "capabilities.csv": "1e9df2cea7d4b5977324bda3f90bd41321981b0587e33cc600acb2d01a47b5e9",
+  "progress.json": "fb86881010d06caaff74a23033f121360a86cd85b8626fe8975ee4ff16b60427",
+  "configuration-metrics.csv": "50f2126375dba1d6d7477e93cfead5abfd1d4679d34d652cf166c117573fbe4d",
+  "corpus.sha256.json": "04b7553e1e2449aff874740e393f320fbe63114f2233c2e1df81ecd15b99e61e",
+  "environment.json": "d65cb5dbf8058ed360d0a30458b2e61066aaabe5b97d62947c43980e497a8b3e",
+  "case-scores.csv": "7be63a4be3b9fa26899cd65bafc229e531418bb258a80f744b6cd12fbfd3eaa9",
+  "PROTOCOL.md": "ecc8c8784d6cb3ae9476debb9064273cd1cea2b5160c80d45855648c83ac6f84"
+}
