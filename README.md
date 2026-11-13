@@ -6,6 +6,8 @@ Local meeting transcription and bilingual subtitles for macOS.
 
 [Download](https://github.com/elizzzzzz/Neo-Meeting-Translater/releases/latest) · [Release notes](docs/release-0.2.20.md) · [Report an issue](https://github.com/elizzzzzz/Neo-Meeting-Translater/issues) · [Apache-2.0](LICENSE)
 
+**模型评测记录**：[Apple M3 / 16 GiB 中日英会议翻译评测（2026-11-09）](docs/model-benchmark-2026-11-09-m3-16gb.md) · [高配环境测试看板](docs/model-benchmark-highmem-dashboard.md)
+
 NMT turns microphone or routed meeting audio into paired original and translated text, using speech recognition and translation models on your Mac. It supports Chinese, Japanese and English, with a compact desktop workspace and a floating subtitle window for use alongside meetings and videos.
 
 Current release: **0.2.20** · **Apple Silicon (arm64)** · **Text output first**
@@ -33,7 +35,7 @@ Current release: **0.2.20** · **Apple Silicon (arm64)** · **Text output first*
 
 | Component | Requirement |
 | --- | --- |
-| Computer | Apple Silicon Mac; the current development and evaluation device is an M3 with 16 GB unified memory |
+| Computer | Apple Silicon Mac; the archived translation evaluation uses an M3 with 16 GB unified memory; the next high-memory evaluation uses an M5 MacBook Air with 32 GB unified memory |
 | App package | arm64 ZIP or DMG; no Intel build is provided |
 | Speech recognition | Locally available model files, or macOS 26+ with Apple SpeechAnalyzer language resources |
 | Translation | A local Ollama, llama.app or compatible SGLang service with a suitable model |

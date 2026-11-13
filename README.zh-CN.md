@@ -6,6 +6,8 @@
 
 [下载](https://github.com/elizzzzzz/Neo-Meeting-Translater/releases/latest) · [版本说明](docs/release-0.2.20.md) · [反馈问题](https://github.com/elizzzzzz/Neo-Meeting-Translater/issues) · [Apache-2.0](LICENSE)
 
+**模型评测记录**：[Apple M3 / 16 GiB 中日英会议翻译评测（2026-11-09）](docs/model-benchmark-2026-11-09-m3-16gb.md) · [高配环境测试看板](docs/model-benchmark-highmem-dashboard.md)
+
 NMT 将麦克风或经音频回环接入的会议声音转换为原文与译文，使用 Mac 上的语音识别与翻译模型处理。支持中文、日语和英语，提供双栏发言记录和可置顶的半透明字幕浮窗，适用于现场会议、在线会议和视频观看。
 
 当前版本：**0.2.20** · **Apple Silicon（arm64）** · **文字字幕优先**
@@ -33,7 +35,7 @@ NMT 将麦克风或经音频回环接入的会议声音转换为原文与译文�
 
 | 项目 | 要求 |
 | --- | --- |
-| 电脑 | Apple Silicon Mac；当前开发与评估设备为 M3 / 16 GB 统一内存 |
+| 电脑 | Apple Silicon Mac；历史翻译评测使用 M3 / 16 GB 统一内存；下一阶段高配评测使用 M5 MacBook Air / 32 GB 统一内存 |
 | 安装包 | arm64 ZIP 或 DMG，暂未提供 Intel 版本 |
 | 语音识别 | 本机模型文件，或 macOS 26+ 的 Apple SpeechAnalyzer 语言资源 |
 | 翻译 | 已安装模型的本机 Ollama、llama.app 或兼容 SGLang 服务 |
