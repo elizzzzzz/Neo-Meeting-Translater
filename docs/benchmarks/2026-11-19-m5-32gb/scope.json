@@ -1,0 +1,62 @@
+{
+  "active_backend_configurations": 40,
+  "gguf": 30,
+  "sglang": 10,
+  "exclusions": [
+    {
+      "model": "deepseek-r1:70b-llama-distill-q4_K_M",
+      "reason": "Excluded by 32 GiB real-time queue policy; not a completed performance result"
+    },
+    {
+      "model": "llama3.3:70b-instruct-q4_K_M",
+      "reason": "Excluded by 32 GiB real-time queue policy; not a completed performance result"
+    },
+    {
+      "model": "gemma3:27b-it-q8_0",
+      "reason": "Excluded by 32 GiB real-time queue policy; not a completed performance result"
+    },
+    {
+      "model": "qwen3.5:27b-q8_0",
+      "reason": "Excluded by 32 GiB real-time queue policy; not a completed performance result"
+    },
+    {
+      "model": "qwen3.6:27b-q8_0",
+      "reason": "Excluded by 32 GiB real-time queue policy; not a completed performance result"
+    },
+    {
+      "model": "qwen3:30b-a3b-q8_0",
+      "reason": "Excluded by 32 GiB real-time queue policy; not a completed performance result"
+    },
+    {
+      "model": "qwen2.5:32b-instruct-q8_0",
+      "reason": "Excluded by 32 GiB real-time queue policy; not a completed performance result"
+    },
+    {
+      "model": "qwen3:32b-q8_0",
+      "reason": "Excluded by 32 GiB real-time queue policy; not a completed performance result"
+    },
+    {
+      "model": "deepseek-r1:32b-qwen-distill-q8_0",
+      "reason": "Excluded by 32 GiB real-time queue policy; not a completed performance result"
+    },
+    {
+      "model": "deepseek-r1:70b-llama-distill-q8_0",
+      "reason": "Excluded by 32 GiB real-time queue policy; not a completed performance result"
+    },
+    {
+      "model": "llama3.3:70b-instruct-q8_0",
+      "reason": "Excluded by 32 GiB real-time queue policy; not a completed performance result"
+    }
+  ],
+  "sglang_excluded": [
+    {
+      "model": "tencent/Hy-MT2-7B",
+      "reason": "user previously requested deletion"
+    },
+    {
+      "model": "Qwen/Qwen3.6-27B",
+      "reason": "not a practical SGLang-MLX first candidate on 32 GiB; prior llama.cpp metadata incompatibility"
+    }
+  ],
+  "note": "Not an exhaustive census of available models. SGLang tested 4/7/8B baselines only, no >8B MLX results."
+}

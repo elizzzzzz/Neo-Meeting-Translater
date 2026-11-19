@@ -1,0 +1,272 @@
+{
+  "gguf": [
+    {
+      "model": "qwen3:14b-q4_K_M",
+      "id": "qwen3--14b-q4_K_M",
+      "quant": "q4_K_M",
+      "parameters_b": 14,
+      "manifest_digest": "bdbd181c33f2ed1b31c972991882db3cf4d192569092138a7d29e973cd9debe8",
+      "native_capabilities": [
+        "completion",
+        "tools",
+        "thinking"
+      ],
+      "cleanup_status": "verified"
+    },
+    {
+      "model": "gemma3:12b-it-q4_K_M",
+      "id": "gemma3--12b-it-q4_K_M",
+      "quant": "q4_K_M",
+      "parameters_b": 12,
+      "manifest_digest": "b92b218582c521ba287f38f1d6057dcd3c6cbff036f13cac97b5d861f5e58ec3",
+      "native_capabilities": [
+        "completion",
+        "vision"
+      ],
+      "cleanup_status": "verified"
+    },
+    {
+      "model": "qwen3.5:9b-q4_K_M",
+      "id": "qwen3.5--9b-q4_K_M",
+      "quant": "q4_K_M",
+      "parameters_b": 9,
+      "manifest_digest": "56671c2ab9385f9cfcb404638e32cd62d88e3501d44822208363c010179a3c90",
+      "native_capabilities": [
+        "completion",
+        "vision",
+        "tools",
+        "thinking"
+      ],
+      "cleanup_status": "verified"
+    },
+    {
+      "model": "gemma3:27b-it-q4_K_M",
+      "id": "gemma3--27b-it-q4_K_M",
+      "quant": "q4_K_M",
+      "parameters_b": 27,
+      "manifest_digest": "6be2e2ba6843b9255820e2de2cbbe75cfdef0294ac7a531572e654d6e0eefe7d",
+      "native_capabilities": [
+        "completion",
+        "vision"
+      ],
+      "cleanup_status": "verified"
+    },
+    {
+      "model": "qwen3.5:27b-q4_K_M",
+      "id": "qwen3.5--27b-q4_K_M",
+      "quant": "q4_K_M",
+      "parameters_b": 27,
+      "manifest_digest": "64ae5b1d651fb2709d5928ccb8dcfb4bb2cc9c2c8001ac34497e36a6cf905b59",
+      "native_capabilities": [
+        "completion",
+        "vision",
+        "tools",
+        "thinking"
+      ],
+      "cleanup_status": "verified"
+    },
+    {
+      "model": "qwen3.6:27b-q4_K_M",
+      "id": "qwen3.6--27b-q4_K_M",
+      "quant": "q4_K_M",
+      "parameters_b": 27,
+      "manifest_digest": "3a40c32f1450b8380412898385b0e00df5d6d2d801dd192ca1acb7e735cd050e",
+      "native_capabilities": [
+        "completion",
+        "vision",
+        "tools",
+        "thinking"
+      ],
+      "cleanup_status": "verified"
+    },
+    {
+      "model": "qwen3:30b-a3b-q4_K_M",
+      "id": "qwen3--30b-a3b-q4_K_M",
+      "quant": "q4_K_M",
+      "parameters_b": 30.5,
+      "manifest_digest": "0b28110b7a3364296d5cef609095537189fbb81547761de69fd22dd68d2166c2",
+      "native_capabilities": [
+        "completion",
+        "tools",
+        "thinking"
+      ],
+      "cleanup_status": "verified"
+    },
+    {
+      "model": "qwen2.5:32b-instruct-q4_K_M",
+      "id": "qwen2.5--32b-instruct-q4_K_M",
+      "quant": "q4_K_M",
+      "parameters_b": 32,
+      "manifest_digest": "9f13ba1299afea09d9a956fc6a85becc99115a6d596fae201a5487a03bdc4368",
+      "native_capabilities": [
+        "completion",
+        "tools"
+      ],
+      "cleanup_status": "verified"
+    },
+    {
+      "model": "qwen3:32b-q4_K_M",
+      "id": "qwen3--32b-q4_K_M",
+      "quant": "q4_K_M",
+      "parameters_b": 32,
+      "manifest_digest": "030ee887880fc378860c2dd35101da424377520441ae4bfe7be6deff8ade7840",
+      "native_capabilities": [
+        "completion",
+        "tools",
+        "thinking"
+      ],
+      "cleanup_status": "verified"
+    },
+    {
+      "model": "deepseek-r1:32b-qwen-distill-q4_K_M",
+      "id": "deepseek-r1--32b-qwen-distill-q4_K_M",
+      "quant": "q4_K_M",
+      "parameters_b": 32,
+      "manifest_digest": "edba8017331d15236e57480eb45406c0d721db77a4cdcf234df500fc2ad3960c",
+      "native_capabilities": [
+        "tools",
+        "thinking",
+        "completion"
+      ],
+      "cleanup_status": "verified"
+    },
+    {
+      "model": "qwen2.5:14b-instruct-q8_0",
+      "id": "qwen2.5--14b-instruct-q8_0",
+      "quant": "q8_0",
+      "parameters_b": 14,
+      "manifest_digest": "985c5f25dfe9efc35ddc56609db52f45e66482d3c43da39ee89ab2a9b8c8ffbf",
+      "native_capabilities": [
+        "completion",
+        "tools"
+      ],
+      "cleanup_status": "verified"
+    },
+    {
+      "model": "qwen3:14b-q8_0",
+      "id": "qwen3--14b-q8_0",
+      "quant": "q8_0",
+      "parameters_b": 14,
+      "manifest_digest": "304bf7349c71ad37a07eec8be67212b3f05b0f243f4a6f7c98e90dd2f3009f48",
+      "native_capabilities": [
+        "completion",
+        "tools",
+        "thinking"
+      ],
+      "cleanup_status": "verified"
+    },
+    {
+      "model": "gemma3:12b-it-q8_0",
+      "id": "gemma3--12b-it-q8_0",
+      "quant": "q8_0",
+      "parameters_b": 12,
+      "manifest_digest": "88c2e99b4a44ef8a4c855315927ae99f6ea77a06f4ec24ad2d08929f818f5f00",
+      "native_capabilities": [
+        "completion",
+        "vision"
+      ],
+      "cleanup_status": "verified"
+    },
+    {
+      "model": "qwen3.5:9b-q8_0",
+      "id": "qwen3.5--9b-q8_0",
+      "quant": "q8_0",
+      "parameters_b": 9,
+      "manifest_digest": "a8ee95bc3592ebaa624014ca8b429d25e0ef5f45030dc35786da7ff7e9e1b60a",
+      "native_capabilities": [
+        "completion",
+        "vision",
+        "tools",
+        "thinking"
+      ],
+      "cleanup_status": "verified"
+    },
+    {
+      "model": "qwen2.5:14b-instruct-q4_K_M",
+      "id": "qwen2.5--14b-instruct-q4_K_M",
+      "quant": "q4_K_M",
+      "parameters_b": 14,
+      "manifest_digest": "7cdf5a0187d5c58cc5d369b255592f7841d1c4696d45a8c8a9489440385b22f6",
+      "native_capabilities": [
+        "completion",
+        "tools"
+      ],
+      "cleanup_status": "verified"
+    }
+  ],
+  "mlx": [
+    {
+      "model": "Qwen/Qwen3-8B",
+      "repo": "mlx-community/Qwen3-8B-4bit",
+      "quant": "4bit",
+      "role": "text translation baseline",
+      "cleanup": "verified",
+      "cleanup_status": "verified"
+    },
+    {
+      "model": "Qwen/Qwen3-8B",
+      "repo": "mlx-community/Qwen3-8B-8bit",
+      "quant": "8bit",
+      "role": "text quality/precision comparison",
+      "cleanup": "verified"
+    },
+    {
+      "model": "Qwen/Qwen3-VL-8B-Instruct",
+      "repo": "mlx-community/Qwen3-VL-8B-Instruct-4bit",
+      "quant": "4bit",
+      "role": "multimodal text and image candidate",
+      "cleanup": "verified"
+    },
+    {
+      "model": "Qwen/Qwen3-VL-8B-Instruct",
+      "repo": "mlx-community/Qwen3-VL-8B-Instruct-8bit",
+      "quant": "8bit",
+      "role": "multimodal precision comparison",
+      "cleanup": "verified",
+      "cleanup_status": "verified"
+    },
+    {
+      "model": "Qwen/Qwen2.5-VL-7B-Instruct",
+      "repo": "mlx-community/Qwen2.5-VL-7B-Instruct-4bit",
+      "quant": "4bit",
+      "role": "multimodal fallback",
+      "cleanup": "verified"
+    },
+    {
+      "model": "Qwen/Qwen2.5-VL-7B-Instruct",
+      "repo": "mlx-community/Qwen2.5-VL-7B-Instruct-8bit",
+      "quant": "8bit",
+      "role": "multimodal precision comparison",
+      "cleanup": "verified"
+    },
+    {
+      "model": "Qwen/Qwen3.5-4B",
+      "repo": "mlx-community/Qwen3.5-4B-4bit",
+      "quant": "4bit",
+      "role": "compatibility retry after prior SGLang cache failure",
+      "cleanup": "verified"
+    },
+    {
+      "model": "Qwen/Qwen3.5-4B",
+      "repo": "mlx-community/Qwen3.5-4B-8bit",
+      "quant": "8bit",
+      "role": "compatibility retry after prior SGLang cache failure",
+      "cleanup": "verified"
+    },
+    {
+      "model": "google/translategemma-4b-it",
+      "repo": "mlx-community/translategemma-4b-it-4bit",
+      "quant": "4bit",
+      "role": "translation-specialized SGLang retry",
+      "cleanup": "verified"
+    },
+    {
+      "model": "google/translategemma-4b-it",
+      "repo": "mlx-community/translategemma-4b-it-8bit",
+      "quant": "8bit",
+      "role": "translation-specialized precision comparison",
+      "cleanup": "verified"
+    }
+  ],
+  "notes": "Source metadata snapshot only. No image-input functionality verified. Active entries have recorded verified model cleanup."
+}

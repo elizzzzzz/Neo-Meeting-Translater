@@ -1,0 +1,30 @@
+[
+  {
+    "file": "collection-code/queue_runner.py",
+    "original_sha256": "e4450ff91a7781f7739d49102c5e7602c8c94d9e1042984e98e7918f7358f998",
+    "published_sha256": "e4450ff91a7781f7739d49102c5e7602c8c94d9e1042984e98e7918f7358f998",
+    "path_redaction": false,
+    "purpose": "Source evidence; scripts expect original study layout and local runtime configuration."
+  },
+  {
+    "file": "collection-code/sglang_runner.py",
+    "original_sha256": "f9e76ea2888c46ae3cf6d42ce7f6b2c90a0ada2791b31f326c44b2af74dc4234",
+    "published_sha256": "316686b8a50e638f94e0604bbd400df432ee78d60360a6d593416ca4b7bbb10c",
+    "path_redaction": true,
+    "purpose": "Source evidence; scripts expect original study layout and local runtime configuration."
+  },
+  {
+    "file": "collection-code/blind_review.py",
+    "original_sha256": "c505ebcefe51dd1ce0b961d84b19bbb81ba4d91ddc39e1b6244ac26e02b9388f",
+    "published_sha256": "c505ebcefe51dd1ce0b961d84b19bbb81ba4d91ddc39e1b6244ac26e02b9388f",
+    "path_redaction": false,
+    "purpose": "Source evidence; scripts expect original study layout and local runtime configuration."
+  },
+  {
+    "file": "collection-code/benchmark_state.py",
+    "original_sha256": "d338d92e956ed1119aadf878b338fe9e86b6800ac279438ca7b315b47956f882",
+    "published_sha256": "d338d92e956ed1119aadf878b338fe9e86b6800ac279438ca7b315b47956f882",
+    "path_redaction": false,
+    "purpose": "Source evidence; scripts expect original study layout and local runtime configuration."
+  }
+]

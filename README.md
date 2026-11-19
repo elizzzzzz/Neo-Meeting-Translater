@@ -6,7 +6,17 @@ Local meeting transcription and bilingual subtitles for macOS.
 
 [Download](https://github.com/elizzzzzz/Neo-Meeting-Translater/releases/latest) · [Release notes](docs/release-0.2.20.md) · [Report an issue](https://github.com/elizzzzzz/Neo-Meeting-Translater/issues) · [Apache-2.0](LICENSE)
 
-**模型评测记录**：[Apple M3 / 16 GiB 中日英会议翻译评测（2026-11-09）](docs/model-benchmark-2026-11-09-m3-16gb.md) · [高配环境测试看板](docs/model-benchmark-highmem-dashboard.md)
+**Model selection references:** [Apple M3 / 16 GiB (with reviewed quality scores)](docs/model-benchmark-2026-11-09-m3-16gb.md) · [Apple M5 / 32 GiB (performance snapshot, November 19, 2026)](docs/model-benchmark-2026-11-19-m5-32gb.md) · [Historical high-memory test dashboard](docs/model-benchmark-highmem-dashboard.md)
+
+32 GB MacBook candidates, measured on an **M5 MacBook Air / 32 GiB / macOS 26.7.3**. These are text translation performance measurements; quality review is incomplete.
+
+| Trial use | Configuration | Mean decode TPS | Median whole-sentence latency | Peak process-tree RSS |
+| --- | --- | ---: | ---: | ---: |
+| Larger model with low latency | Qwen3 30B-A3B Q4_K_M / Ollama | 53.26 | 1.03 s | 17.67 GiB |
+| More memory headroom | Qwen3.5 9B Q4_K_M / Ollama | 21.81 | 2.32 s | 7.94 GiB |
+| Small SGLang candidate | Qwen3.5 4B MLX 4bit / SGLang | 38.80 | 1.25 s | 5.35 GiB |
+
+Text collection is complete for 39/40 configurations. No complete quality ranking or image-input result is available. RSS is not dedicated VRAM; concurrent ASR has not been validated. SGLang uses local patches and ran with substantial system swap. See the [full 32 GiB table, limitations and evidence](docs/model-benchmark-2026-11-19-m5-32gb.md) (Chinese).
 
 NMT turns microphone or routed meeting audio into paired original and translated text, using speech recognition and translation models on your Mac. It supports Chinese, Japanese and English, with a compact desktop workspace and a floating subtitle window for use alongside meetings and videos.
 
@@ -35,7 +45,7 @@ Current release: **0.2.20** · **Apple Silicon (arm64)** · **Text output first*
 
 | Component | Requirement |
 | --- | --- |
-| Computer | Apple Silicon Mac; the archived translation evaluation uses an M3 with 16 GB unified memory; the next high-memory evaluation uses an M5 MacBook Air with 32 GB unified memory |
+| Computer | Apple Silicon Mac; the archived translation evaluation uses an M3 with 16 GB unified memory; the 32 GB performance reference uses an M5 MacBook Air with 32 GB unified memory |
 | App package | arm64 ZIP or DMG; no Intel build is provided |
 | Speech recognition | Locally available model files, or macOS 26+ with Apple SpeechAnalyzer language resources |
 | Translation | A local Ollama, llama.app or compatible SGLang service with a suitable model |

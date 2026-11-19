@@ -1,0 +1,22 @@
+[
+  {
+    "configuration": "qwen3.6--27b-q4_K_M/llamacpp",
+    "status": "backend_failed",
+    "cases": 0,
+    "latest_retry_commit": "b001d7bb22f45f246b43c482c0a877fef7626bee",
+    "latest_error": "key qwen35.rope.dimension_sections has wrong array length; expected 4, got 3",
+    "earlier_patched_error": "tensor 'blk.0.ssm_dt.bias' not found",
+    "log_sha256": "66ccd4476c603d1deecfd5be0130ea30a4ddcdbd029be7bc3e60765a132f0def",
+    "log_error_excerpts": [
+      "0.00.669.134 E llama_model_load: error loading model: error loading model hyperparameters: key qwen35.rope.dimension_sections has wrong array length; expected 4, got 3",
+      "0.00.733.558 E llama_model_load: error loading model: error loading model hyperparameters: key qwen35.rope.dimension_sections has wrong array length; expected 4, got 3",
+      "0.00.323.385 E llama_model_load: error loading model: check_tensor_dims: tensor 'blk.0.ssm_dt.bias' not found",
+      "0.00.558.607 E llama_model_load: error loading model: check_tensor_dims: tensor 'blk.0.ssm_dt.bias' not found",
+      "0.00.199.378 E llama_model_load: error loading model: check_tensor_dims: tensor 'blk.0.ssm_dt.bias' not found",
+      "0.00.299.311 E llama_model_load: error loading model: check_tensor_dims: tensor 'blk.0.ssm_dt.bias' not found",
+      "0.04.299.816 E llama_model_load: error loading model: error loading model hyperparameters: key qwen35.rope.dimension_sections has wrong array length; expected 4, got 3",
+      "0.04.335.660 E llama_model_load: error loading model: error loading model hyperparameters: key qwen35.rope.dimension_sections has wrong array length; expected 4, got 3"
+    ],
+    "meaning": "Failure of tested GGUF/backend combination, not a translation quality score or evidence of insufficient memory."
+  }
+]

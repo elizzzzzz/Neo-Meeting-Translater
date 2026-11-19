@@ -1,0 +1,36 @@
+{
+  "at": "2026-11-16T20:31:41+08:00",
+  "hardware": {
+    "model": "Mac17,3",
+    "chip": "Apple M5",
+    "unified_memory_bytes": 34359738368,
+    "macos": "26.7.3"
+  },
+  "packages": {
+    "sglang": "0.5.24.dev905+g043cfc4d3",
+    "mlx": "0.32.4",
+    "mlx-lm": "0.32.2",
+    "transformers": "5.19.0",
+    "torch": "2.13.0",
+    "huggingface-hub": "1.33.0",
+    "httpx": "0.28.1",
+    "psutil": "7.2.2"
+  },
+  "unsafe_triton_stub": false,
+  "runtime_patch": "sglang-mlx-auxiliary-state-20261116.patch",
+  "device": "Apple M5 MacBook Air",
+  "snapshot_date": "2026-11-19",
+  "report_timezone": "Asia/Shanghai",
+  "ollama_version": "0.40.16",
+  "llama_cpp_standard_commit": "7d7f0287530bc8981690f361d8c1627dbae1c99a",
+  "llama_cpp_failed_qwen36_retry_commit": "b001d7bb22f45f246b43c482c0a877fef7626bee",
+  "package_inventory_scope": "2026-11-16 SGLang Python environment; not every collector interpreter. Qwen2.5 14B Q4 used a fallback without psutil.",
+  "sglang_runtime": "Real SGLang native MLX/Metal server; locally patched auxiliary state; not replacement mlx-lm inference.",
+  "memory_measurement": "1s process-tree RSS; system-wide swap and available memory. Not exclusive GPU VRAM; no ASR+translation co-run acceptance.",
+  "limitations": [
+    "No controlled repeated thermal runs; background applications varied.",
+    "39 text-output configurations collected, no fully graded 32 GiB configurations.",
+    "All image/audio/video paths untested in this corpus.",
+    "Qwen2.5 14B Q4 memory invalid on both backends."
+  ]
+}

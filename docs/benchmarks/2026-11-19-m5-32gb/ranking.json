@@ -1,0 +1,208 @@
+{
+  "at": "2026-11-19T21:04:14+08:00",
+  "status": "provisional",
+  "rankings": [],
+  "pending_review": [
+    {
+      "configuration": "deepseek-r1--32b-qwen-distill-q4_K_M/llamacpp",
+      "reviewed": 1,
+      "unreviewed": 143
+    },
+    {
+      "configuration": "deepseek-r1--32b-qwen-distill-q4_K_M/ollama",
+      "reviewed": 1,
+      "unreviewed": 143
+    },
+    {
+      "configuration": "gemma3--12b-it-q4_K_M/llamacpp",
+      "reviewed": 39,
+      "unreviewed": 105
+    },
+    {
+      "configuration": "gemma3--12b-it-q4_K_M/ollama",
+      "reviewed": 39,
+      "unreviewed": 105
+    },
+    {
+      "configuration": "gemma3--12b-it-q8_0/llamacpp",
+      "reviewed": 40,
+      "unreviewed": 104
+    },
+    {
+      "configuration": "gemma3--12b-it-q8_0/ollama",
+      "reviewed": 40,
+      "unreviewed": 104
+    },
+    {
+      "configuration": "gemma3--27b-it-q4_K_M/llamacpp",
+      "reviewed": 39,
+      "unreviewed": 105
+    },
+    {
+      "configuration": "gemma3--27b-it-q4_K_M/ollama",
+      "reviewed": 39,
+      "unreviewed": 105
+    },
+    {
+      "configuration": "qwen2.5--14b-instruct-q4_K_M/llamacpp",
+      "reviewed": 7,
+      "unreviewed": 137
+    },
+    {
+      "configuration": "qwen2.5--14b-instruct-q4_K_M/ollama",
+      "reviewed": 7,
+      "unreviewed": 137
+    },
+    {
+      "configuration": "qwen2.5--14b-instruct-q8_0/llamacpp",
+      "reviewed": 39,
+      "unreviewed": 105
+    },
+    {
+      "configuration": "qwen2.5--14b-instruct-q8_0/ollama",
+      "reviewed": 39,
+      "unreviewed": 105
+    },
+    {
+      "configuration": "qwen2.5--32b-instruct-q4_K_M/llamacpp",
+      "reviewed": 39,
+      "unreviewed": 105
+    },
+    {
+      "configuration": "qwen2.5--32b-instruct-q4_K_M/ollama",
+      "reviewed": 39,
+      "unreviewed": 105
+    },
+    {
+      "configuration": "qwen3--14b-q4_K_M/llamacpp",
+      "reviewed": 42,
+      "unreviewed": 102
+    },
+    {
+      "configuration": "qwen3--14b-q4_K_M/ollama",
+      "reviewed": 42,
+      "unreviewed": 102
+    },
+    {
+      "configuration": "qwen3--14b-q8_0/llamacpp",
+      "reviewed": 41,
+      "unreviewed": 103
+    },
+    {
+      "configuration": "qwen3--14b-q8_0/ollama",
+      "reviewed": 41,
+      "unreviewed": 103
+    },
+    {
+      "configuration": "qwen3--30b-a3b-q4_K_M/llamacpp",
+      "reviewed": 39,
+      "unreviewed": 105
+    },
+    {
+      "configuration": "qwen3--30b-a3b-q4_K_M/ollama",
+      "reviewed": 39,
+      "unreviewed": 105
+    },
+    {
+      "configuration": "qwen3--32b-q4_K_M/llamacpp",
+      "reviewed": 40,
+      "unreviewed": 104
+    },
+    {
+      "configuration": "qwen3--32b-q4_K_M/ollama",
+      "reviewed": 40,
+      "unreviewed": 104
+    },
+    {
+      "configuration": "qwen3.5--27b-q4_K_M/llamacpp",
+      "reviewed": 39,
+      "unreviewed": 105
+    },
+    {
+      "configuration": "qwen3.5--27b-q4_K_M/ollama",
+      "reviewed": 39,
+      "unreviewed": 105
+    },
+    {
+      "configuration": "qwen3.5--9b-q4_K_M/llamacpp",
+      "reviewed": 40,
+      "unreviewed": 104
+    },
+    {
+      "configuration": "qwen3.5--9b-q4_K_M/ollama",
+      "reviewed": 40,
+      "unreviewed": 104
+    },
+    {
+      "configuration": "qwen3.5--9b-q8_0/llamacpp",
+      "reviewed": 41,
+      "unreviewed": 103
+    },
+    {
+      "configuration": "qwen3.5--9b-q8_0/ollama",
+      "reviewed": 40,
+      "unreviewed": 104
+    },
+    {
+      "configuration": "qwen3.6--27b-q4_K_M/ollama",
+      "reviewed": 40,
+      "unreviewed": 104
+    },
+    {
+      "configuration": "sglang/mlx-community--Qwen2.5-VL-7B-Instruct-4bit/4bit",
+      "reviewed": 8,
+      "unreviewed": 136
+    },
+    {
+      "configuration": "sglang/mlx-community--Qwen2.5-VL-7B-Instruct-8bit/8bit",
+      "reviewed": 26,
+      "unreviewed": 118
+    },
+    {
+      "configuration": "sglang/mlx-community--Qwen3-8B-4bit/4bit",
+      "reviewed": 111,
+      "unreviewed": 33
+    },
+    {
+      "configuration": "sglang/mlx-community--Qwen3-8B-8bit/8bit",
+      "reviewed": 125,
+      "unreviewed": 19
+    },
+    {
+      "configuration": "sglang/mlx-community--Qwen3-VL-8B-Instruct-4bit/4bit",
+      "reviewed": 31,
+      "unreviewed": 113
+    },
+    {
+      "configuration": "sglang/mlx-community--Qwen3-VL-8B-Instruct-8bit/8bit",
+      "reviewed": 119,
+      "unreviewed": 25
+    },
+    {
+      "configuration": "sglang/mlx-community--Qwen3.5-4B-4bit/4bit",
+      "reviewed": 22,
+      "unreviewed": 122
+    },
+    {
+      "configuration": "sglang/mlx-community--Qwen3.5-4B-8bit/8bit",
+      "reviewed": 97,
+      "unreviewed": 47
+    },
+    {
+      "configuration": "sglang/mlx-community--translategemma-4b-it-4bit/4bit",
+      "reviewed": 0,
+      "unreviewed": 144
+    },
+    {
+      "configuration": "sglang/mlx-community--translategemma-4b-it-8bit/8bit",
+      "reviewed": 23,
+      "unreviewed": 121
+    }
+  ],
+  "weights": {
+    "quality": 0.85,
+    "speed": 0.1,
+    "stability": 0.05
+  },
+  "note": "未采集/未完成盲评的配置不参加质量排名；未测试图像。"
+}

@@ -1,0 +1,24 @@
+diff --git a/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py b/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py
+index 159c10a9c2..544dcebc24 100644
+--- a/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py
++++ b/python/sglang/srt/hardware_backend/mlx/kv_cache/auxiliary_state.py
+@@ -233,6 +233,8 @@ class MlxAuxiliaryStateReqToTokenPool(ReqToTokenPool):
+     """Req-to-token pool with MLX auxiliary-state slot bookkeeping. It never
+     frees auxiliary slots: ``MlxAuxiliaryStateComponent`` owns their release."""
+ 
++    holds_state_slots = True
++
+     def __init__(
+         self,
+         *,
+@@ -339,7 +341,9 @@ class MlxAuxiliaryStateComponent(MambaComponent):
+                 "MlxAuxiliaryStateComponent requires MlxAuxiliaryStatePool, "
+                 f"got {type(pool)}"
+             )
+-        TreeComponent.__init__(self, cache, params, slot)
++        # Inherited matching and eviction paths need the Mamba policy fields,
++        # including checkpoint alignment and the host-only checkpoint flag.
++        super().__init__(cache, params, slot)
+         self.enable_mamba_extra_buffer = False
+         self._mamba_pool_host = None
+ 

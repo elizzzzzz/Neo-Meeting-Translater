@@ -1,0 +1,27 @@
+{
+  "configurations": [
+    {
+      "configuration": "qwen2.5--14b-instruct-q4_K_M/ollama",
+      "raw_reported_peak_rss_gib": 0.0520172119140625,
+      "raw_reported_max_swap_gib": 0,
+      "constant_rss_bytes": 55853056,
+      "memory_samples": 605,
+      "reason": "psutil fallback samples resource.RUSAGE_SELF (collector), ignores target PID, children=[]; swap_memory() hardcodes 0. Exclude RSS/swap/available from selection; inference timing remains valid."
+    },
+    {
+      "configuration": "qwen2.5--14b-instruct-q4_K_M/llamacpp",
+      "raw_reported_peak_rss_gib": 0.0520172119140625,
+      "raw_reported_max_swap_gib": 0,
+      "constant_rss_bytes": 55853056,
+      "memory_samples": 774,
+      "reason": "psutil fallback samples resource.RUSAGE_SELF (collector), ignores target PID, children=[]; swap_memory() hardcodes 0. Exclude RSS/swap/available from selection; inference timing remains valid."
+    }
+  ],
+  "source": "collection-code/queue_runner.py: psutil fallback",
+  "excluded_fields": [
+    "peak_rss_gib",
+    "max_system_swap_gib",
+    "min_system_available_gib"
+  ],
+  "required_action": "Remeasure with target-process psutil sampling; do not reuse fallback values."
+}
