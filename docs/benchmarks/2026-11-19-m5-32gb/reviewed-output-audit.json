@@ -1,0 +1,156 @@
+{
+  "at": "2026-11-19T22:18:22+08:00",
+  "complete_configurations": [
+    {
+      "configuration": "qwen3--30b-a3b-q4_K_M/ollama",
+      "cases": 144,
+      "reviewed": 144,
+      "output_sha256": "2cad94cb12d45094f24d67359f0032bcc2d2d4060b3ca97aca61d27368c905a9",
+      "reviewed_unique_fingerprints": 144,
+      "directions": {
+        "zh_ja": 24,
+        "ja_zh": 24,
+        "zh_en": 24,
+        "en_zh": 24,
+        "ja_en": 24,
+        "en_ja": 24
+      },
+      "atomic_fact_count": 576,
+      "atomic_fact_credit": 555.5,
+      "quality": 94.57638888888889,
+      "fact_accuracy": 96.44097222222223,
+      "critical_error_cases": 8,
+      "overall_score": 95.38993055555555
+    },
+    {
+      "configuration": "sglang/mlx-community--Qwen3.5-4B-4bit/4bit",
+      "cases": 144,
+      "reviewed": 144,
+      "output_sha256": "f5748e7f6bfcd66deaf128f6987c7aff1fd1e51fcbae2292647ea147700bba23",
+      "reviewed_unique_fingerprints": 144,
+      "directions": {
+        "zh_ja": 24,
+        "ja_zh": 24,
+        "zh_en": 24,
+        "en_zh": 24,
+        "ja_en": 24,
+        "en_ja": 24
+      },
+      "atomic_fact_count": 576,
+      "atomic_fact_credit": 541.0,
+      "quality": 93.73611111111111,
+      "fact_accuracy": 93.92361111111111,
+      "critical_error_cases": 17,
+      "overall_score": 92.93709500772351
+    },
+    {
+      "configuration": "qwen3.5--9b-q4_K_M/ollama",
+      "cases": 144,
+      "reviewed": 144,
+      "output_sha256": "e794e4860dd0412db65c419fdb51291f3805918515139436bb0705e126804bd9",
+      "reviewed_unique_fingerprints": 144,
+      "directions": {
+        "zh_ja": 24,
+        "ja_zh": 24,
+        "zh_en": 24,
+        "en_zh": 24,
+        "ja_en": 24,
+        "en_ja": 24
+      },
+      "atomic_fact_count": 576,
+      "atomic_fact_credit": 557.5,
+      "quality": 96.25,
+      "fact_accuracy": 96.78819444444444,
+      "critical_error_cases": 7,
+      "overall_score": 91.36883385029711
+    },
+    {
+      "configuration": "sglang/mlx-community--Qwen3.5-4B-8bit/8bit",
+      "cases": 144,
+      "reviewed": 144,
+      "output_sha256": "5ab836fc6d549e34e9e665774301308e2ae7dfe04a636e3de60657b20c68ed86",
+      "reviewed_unique_fingerprints": 144,
+      "directions": {
+        "zh_ja": 24,
+        "ja_zh": 24,
+        "zh_en": 24,
+        "en_zh": 24,
+        "ja_en": 24,
+        "en_ja": 24
+      },
+      "atomic_fact_count": 576,
+      "atomic_fact_credit": 541.5,
+      "quality": 93.58333333333334,
+      "fact_accuracy": 94.01041666666667,
+      "critical_error_cases": 22,
+      "overall_score": 89.38254124289035
+    },
+    {
+      "configuration": "sglang/mlx-community--Qwen3-8B-4bit/4bit",
+      "cases": 144,
+      "reviewed": 144,
+      "output_sha256": "02544886abb2486aa393dbe7cc6969e96a5a02d9aa54e61de1807d0f96d9c134",
+      "reviewed_unique_fingerprints": 144,
+      "directions": {
+        "zh_ja": 24,
+        "ja_zh": 24,
+        "zh_en": 24,
+        "en_zh": 24,
+        "ja_en": 24,
+        "en_ja": 24
+      },
+      "atomic_fact_count": 576,
+      "atomic_fact_credit": 541.5,
+      "quality": 92.83333333333333,
+      "fact_accuracy": 94.01041666666667,
+      "critical_error_cases": 28,
+      "overall_score": 89.28198352861655
+    },
+    {
+      "configuration": "sglang/mlx-community--Qwen3-VL-8B-Instruct-8bit/8bit",
+      "cases": 144,
+      "reviewed": 144,
+      "output_sha256": "42f03abe8ec1548dfb02a37ff3ff0dac1733abd177990eeeb6e9be9aca296dba",
+      "reviewed_unique_fingerprints": 144,
+      "directions": {
+        "zh_ja": 24,
+        "ja_zh": 24,
+        "zh_en": 24,
+        "en_zh": 24,
+        "ja_en": 24,
+        "en_ja": 24
+      },
+      "atomic_fact_count": 576,
+      "atomic_fact_credit": 546.0,
+      "quality": 93.16666666666666,
+      "fact_accuracy": 94.79166666666667,
+      "critical_error_cases": 24,
+      "overall_score": 87.3799124668982
+    },
+    {
+      "configuration": "sglang/mlx-community--Qwen3-8B-8bit/8bit",
+      "cases": 144,
+      "reviewed": 144,
+      "output_sha256": "8a3f3d333990863aa3f98b472ce401c6ec33d7a1af59632a0d12d15a2ad2910f",
+      "reviewed_unique_fingerprints": 144,
+      "directions": {
+        "zh_ja": 24,
+        "ja_zh": 24,
+        "zh_en": 24,
+        "en_zh": 24,
+        "ja_en": 24,
+        "en_ja": 24
+      },
+      "atomic_fact_count": 576,
+      "atomic_fact_credit": 539.0,
+      "quality": 92.80555555555556,
+      "fact_accuracy": 93.57638888888889,
+      "critical_error_cases": 32,
+      "overall_score": 86.99851736143441
+    }
+  ],
+  "case_score_rows": 1008,
+  "partial_reviews_excluded": 32,
+  "backend_failed_excluded": 1,
+  "review_scope": "7 selected complete configurations, not full 40-configuration quality coverage"
+}

@@ -1,7 +1,274 @@
 {
-  "at": "2026-11-19T21:04:14+08:00",
+  "at": "2026-11-19T22:18:22+08:00",
   "status": "provisional",
-  "rankings": [],
+  "rankings": [
+    {
+      "configuration": "qwen3--30b-a3b-q4_K_M/ollama",
+      "quality": 94.57638888888889,
+      "fact_accuracy": 96.44097222222223,
+      "critical_error_cases": 8,
+      "effective_rate": 101.17230807256361,
+      "stability": 100.0,
+      "directions": {
+        "zh_ja": {
+          "quality": 90.04166666666667,
+          "source_chars_per_second": 38.842522914686214
+        },
+        "ja_zh": {
+          "quality": 95.16666666666667,
+          "source_chars_per_second": 92.06575314292
+        },
+        "zh_en": {
+          "quality": 95.54166666666667,
+          "source_chars_per_second": 49.57262390163703
+        },
+        "en_zh": {
+          "quality": 97.04166666666667,
+          "source_chars_per_second": 211.76748174802822
+        },
+        "ja_en": {
+          "quality": 96.20833333333333,
+          "source_chars_per_second": 76.57816393351436
+        },
+        "en_ja": {
+          "quality": 93.45833333333333,
+          "source_chars_per_second": 138.20730279459582
+        }
+      },
+      "mean_decode_tps": 53.25689886854442,
+      "peak_rss_gib": 17.67401123046875,
+      "speed_score": 100.0,
+      "overall_score": 95.38993055555555
+    },
+    {
+      "configuration": "sglang/mlx-community--Qwen3.5-4B-4bit/4bit",
+      "quality": 93.73611111111111,
+      "fact_accuracy": 93.92361111111111,
+      "critical_error_cases": 17,
+      "effective_rate": 83.58249628989199,
+      "stability": 100.0,
+      "directions": {
+        "zh_ja": {
+          "quality": 89.41666666666667,
+          "source_chars_per_second": 34.765571837119666
+        },
+        "ja_zh": {
+          "quality": 95.66666666666667,
+          "source_chars_per_second": 72.74270205976609
+        },
+        "zh_en": {
+          "quality": 97.08333333333333,
+          "source_chars_per_second": 37.92650664416045
+        },
+        "en_zh": {
+          "quality": 96.79166666666667,
+          "source_chars_per_second": 169.81911984508707
+        },
+        "ja_en": {
+          "quality": 94.45833333333333,
+          "source_chars_per_second": 58.256819643201865
+        },
+        "en_ja": {
+          "quality": 89.0,
+          "source_chars_per_second": 127.98425771001679
+        }
+      },
+      "mean_decode_tps": 38.79938010346295,
+      "peak_rss_gib": 5.3498687744140625,
+      "speed_score": 82.61400563279062,
+      "overall_score": 92.93709500772351
+    },
+    {
+      "configuration": "qwen3.5--9b-q4_K_M/ollama",
+      "quality": 96.25,
+      "fact_accuracy": 96.78819444444444,
+      "critical_error_cases": 7,
+      "effective_rate": 46.09748119837096,
+      "stability": 100.0,
+      "directions": {
+        "zh_ja": {
+          "quality": 95.125,
+          "source_chars_per_second": 18.60380602158407
+        },
+        "ja_zh": {
+          "quality": 96.125,
+          "source_chars_per_second": 39.82913611900748
+        },
+        "zh_en": {
+          "quality": 97.66666666666667,
+          "source_chars_per_second": 20.82891495982309
+        },
+        "en_zh": {
+          "quality": 97.33333333333333,
+          "source_chars_per_second": 94.5653414991597
+        },
+        "ja_en": {
+          "quality": 96.16666666666667,
+          "source_chars_per_second": 32.03162522948972
+        },
+        "en_ja": {
+          "quality": 95.08333333333333,
+          "source_chars_per_second": 70.72606336116168
+        }
+      },
+      "mean_decode_tps": 21.808487195961806,
+      "peak_rss_gib": 7.9378662109375,
+      "speed_score": 45.56333850297115,
+      "overall_score": 91.36883385029711
+    },
+    {
+      "configuration": "sglang/mlx-community--Qwen3.5-4B-8bit/8bit",
+      "quality": 93.58333333333334,
+      "fact_accuracy": 94.01041666666667,
+      "critical_error_cases": 22,
+      "effective_rate": 48.93409026827083,
+      "stability": 100.0,
+      "directions": {
+        "zh_ja": {
+          "quality": 88.79166666666667,
+          "source_chars_per_second": 19.8947475390915
+        },
+        "ja_zh": {
+          "quality": 94.25,
+          "source_chars_per_second": 42.94830136925015
+        },
+        "zh_en": {
+          "quality": 97.54166666666667,
+          "source_chars_per_second": 22.18962419825018
+        },
+        "en_zh": {
+          "quality": 96.79166666666667,
+          "source_chars_per_second": 98.71826479994206
+        },
+        "ja_en": {
+          "quality": 92.20833333333333,
+          "source_chars_per_second": 34.37557689436791
+        },
+        "en_ja": {
+          "quality": 91.91666666666667,
+          "source_chars_per_second": 75.47802680872316
+        }
+      },
+      "mean_decode_tps": 21.559071353167354,
+      "peak_rss_gib": 7.48321533203125,
+      "speed_score": 48.36707909557023,
+      "overall_score": 89.38254124289035
+    },
+    {
+      "configuration": "sglang/mlx-community--Qwen3-8B-4bit/4bit",
+      "quality": 92.83333333333333,
+      "fact_accuracy": 94.01041666666667,
+      "critical_error_cases": 28,
+      "effective_rate": 54.36645930313851,
+      "stability": 100.0,
+      "directions": {
+        "zh_ja": {
+          "quality": 88.04166666666667,
+          "source_chars_per_second": 20.577813780165688
+        },
+        "ja_zh": {
+          "quality": 94.91666666666667,
+          "source_chars_per_second": 49.6765938321634
+        },
+        "zh_en": {
+          "quality": 95.41666666666667,
+          "source_chars_per_second": 26.313193752609365
+        },
+        "en_zh": {
+          "quality": 96.45833333333333,
+          "source_chars_per_second": 114.37513875572533
+        },
+        "ja_en": {
+          "quality": 94.33333333333333,
+          "source_chars_per_second": 40.67581606715302
+        },
+        "en_ja": {
+          "quality": 87.83333333333333,
+          "source_chars_per_second": 74.58019963101428
+        }
+      },
+      "mean_decode_tps": 26.402678693332224,
+      "peak_rss_gib": 6.54736328125,
+      "speed_score": 53.73650195283216,
+      "overall_score": 89.28198352861655
+    },
+    {
+      "configuration": "sglang/mlx-community--Qwen3-VL-8B-Instruct-8bit/8bit",
+      "quality": 93.16666666666666,
+      "fact_accuracy": 94.79166666666667,
+      "critical_error_cases": 24,
+      "effective_rate": 32.25621863120832,
+      "stability": 100.0,
+      "directions": {
+        "zh_ja": {
+          "quality": 87.5,
+          "source_chars_per_second": 11.847510338093294
+        },
+        "ja_zh": {
+          "quality": 96.125,
+          "source_chars_per_second": 30.246365943988934
+        },
+        "zh_en": {
+          "quality": 97.08333333333333,
+          "source_chars_per_second": 15.576357906401668
+        },
+        "en_zh": {
+          "quality": 97.25,
+          "source_chars_per_second": 68.51263416051644
+        },
+        "ja_en": {
+          "quality": 93.95833333333333,
+          "source_chars_per_second": 24.363296077955123
+        },
+        "en_ja": {
+          "quality": 87.08333333333333,
+          "source_chars_per_second": 42.99114736029445
+        }
+      },
+      "mean_decode_tps": 14.51939413343238,
+      "peak_rss_gib": 4.20404052734375,
+      "speed_score": 31.882458002315474,
+      "overall_score": 87.3799124668982
+    },
+    {
+      "configuration": "sglang/mlx-community--Qwen3-8B-8bit/8bit",
+      "quality": 92.80555555555556,
+      "fact_accuracy": 93.57638888888889,
+      "critical_error_cases": 32,
+      "effective_rate": 31.50298410992267,
+      "stability": 100.0,
+      "directions": {
+        "zh_ja": {
+          "quality": 87.20833333333333,
+          "source_chars_per_second": 11.344295176920637
+        },
+        "ja_zh": {
+          "quality": 95.66666666666667,
+          "source_chars_per_second": 29.087116093344484
+        },
+        "zh_en": {
+          "quality": 95.75,
+          "source_chars_per_second": 15.13957327120539
+        },
+        "en_zh": {
+          "quality": 95.70833333333333,
+          "source_chars_per_second": 67.06086147888658
+        },
+        "ja_en": {
+          "quality": 93.16666666666667,
+          "source_chars_per_second": 24.079201966477093
+        },
+        "en_ja": {
+          "quality": 89.33333333333333,
+          "source_chars_per_second": 42.306856672701855
+        }
+      },
+      "mean_decode_tps": 14.392496575382394,
+      "peak_rss_gib": 5.4851837158203125,
+      "speed_score": 31.137951392121895,
+      "overall_score": 86.99851736143441
+    }
+  ],
   "pending_review": [
     {
       "configuration": "deepseek-r1--32b-qwen-distill-q4_K_M/llamacpp",
@@ -95,13 +362,8 @@
     },
     {
       "configuration": "qwen3--30b-a3b-q4_K_M/llamacpp",
-      "reviewed": 39,
-      "unreviewed": 105
-    },
-    {
-      "configuration": "qwen3--30b-a3b-q4_K_M/ollama",
-      "reviewed": 39,
-      "unreviewed": 105
+      "reviewed": 78,
+      "unreviewed": 66
     },
     {
       "configuration": "qwen3--32b-q4_K_M/llamacpp",
@@ -125,28 +387,23 @@
     },
     {
       "configuration": "qwen3.5--9b-q4_K_M/llamacpp",
-      "reviewed": 40,
-      "unreviewed": 104
-    },
-    {
-      "configuration": "qwen3.5--9b-q4_K_M/ollama",
-      "reviewed": 40,
-      "unreviewed": 104
+      "reviewed": 84,
+      "unreviewed": 60
     },
     {
       "configuration": "qwen3.5--9b-q8_0/llamacpp",
-      "reviewed": 41,
-      "unreviewed": 103
+      "reviewed": 49,
+      "unreviewed": 95
     },
     {
       "configuration": "qwen3.5--9b-q8_0/ollama",
-      "reviewed": 40,
-      "unreviewed": 104
+      "reviewed": 56,
+      "unreviewed": 88
     },
     {
       "configuration": "qwen3.6--27b-q4_K_M/ollama",
-      "reviewed": 40,
-      "unreviewed": 104
+      "reviewed": 41,
+      "unreviewed": 103
     },
     {
       "configuration": "sglang/mlx-community--Qwen2.5-VL-7B-Instruct-4bit/4bit",
@@ -159,34 +416,9 @@
       "unreviewed": 118
     },
     {
-      "configuration": "sglang/mlx-community--Qwen3-8B-4bit/4bit",
-      "reviewed": 111,
-      "unreviewed": 33
-    },
-    {
-      "configuration": "sglang/mlx-community--Qwen3-8B-8bit/8bit",
-      "reviewed": 125,
-      "unreviewed": 19
-    },
-    {
       "configuration": "sglang/mlx-community--Qwen3-VL-8B-Instruct-4bit/4bit",
-      "reviewed": 31,
-      "unreviewed": 113
-    },
-    {
-      "configuration": "sglang/mlx-community--Qwen3-VL-8B-Instruct-8bit/8bit",
-      "reviewed": 119,
-      "unreviewed": 25
-    },
-    {
-      "configuration": "sglang/mlx-community--Qwen3.5-4B-4bit/4bit",
-      "reviewed": 22,
-      "unreviewed": 122
-    },
-    {
-      "configuration": "sglang/mlx-community--Qwen3.5-4B-8bit/8bit",
-      "reviewed": 97,
-      "unreviewed": 47
+      "reviewed": 32,
+      "unreviewed": 112
     },
     {
       "configuration": "sglang/mlx-community--translategemma-4b-it-4bit/4bit",

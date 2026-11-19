@@ -6,17 +6,17 @@ Local meeting transcription and bilingual subtitles for macOS.
 
 [Download](https://github.com/elizzzzzz/Neo-Meeting-Translater/releases/latest) · [Release notes](docs/release-0.2.20.md) · [Report an issue](https://github.com/elizzzzzz/Neo-Meeting-Translater/issues) · [Apache-2.0](LICENSE)
 
-**Model selection references:** [Apple M3 / 16 GiB (with reviewed quality scores)](docs/model-benchmark-2026-11-09-m3-16gb.md) · [Apple M5 / 32 GiB (performance snapshot, November 19, 2026)](docs/model-benchmark-2026-11-19-m5-32gb.md) · [Historical high-memory test dashboard](docs/model-benchmark-highmem-dashboard.md)
+**Model selection references:** [Apple M3 / 16 GiB (with reviewed quality scores)](docs/model-benchmark-2026-11-09-m3-16gb.md) · [Apple M5 / 32 GiB (7 fully reviewed configurations, November 19, 2026)](docs/model-benchmark-2026-11-19-m5-32gb.md) · [Historical high-memory test dashboard](docs/model-benchmark-highmem-dashboard.md)
 
-32 GB MacBook candidates, measured on an **M5 MacBook Air / 32 GiB / macOS 26.7.3**. These are text translation performance measurements; quality review is incomplete.
+32 GB MacBook candidates, measured on an **M5 MacBook Air / 32 GiB / macOS 26.7.3**. All three candidates below have complete 144-case quality reviews; the full ranking includes seven configurations.
 
-| Trial use | Configuration | Mean decode TPS | Median whole-sentence latency | Peak process-tree RSS |
-| --- | --- | ---: | ---: | ---: |
-| Larger model with low latency | Qwen3 30B-A3B Q4_K_M / Ollama | 53.26 | 1.03 s | 17.67 GiB |
-| More memory headroom | Qwen3.5 9B Q4_K_M / Ollama | 21.81 | 2.32 s | 7.94 GiB |
-| Small SGLang candidate | Qwen3.5 4B MLX 4bit / SGLang | 38.80 | 1.25 s | 5.35 GiB |
+| Selection goal | Configuration | Overall | Quality | Mean decode TPS | Median sentence latency | Peak process-tree RSS |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| Highest overall among reviewed configurations | Qwen3 30B-A3B Q4_K_M / Ollama | 95.39 | 94.58 | 53.26 | 1.03 s | 17.67 GiB |
+| Highest quality among reviewed configurations; more headroom | Qwen3.5 9B Q4_K_M / Ollama | 91.37 | 96.25 | 21.81 | 2.32 s | 7.94 GiB |
+| Small SGLang candidate; second overall | Qwen3.5 4B MLX 4bit / SGLang | 92.94 | 93.74 | 38.80 | 1.25 s | 5.35 GiB |
 
-Text collection is complete for 39/40 configurations. No complete quality ranking or image-input result is available. RSS is not dedicated VRAM; concurrent ASR has not been validated. SGLang uses local patches and ran with substantial system swap. See the [full 32 GiB table, limitations and evidence](docs/model-benchmark-2026-11-19-m5-32gb.md) (Chinese).
+Text collection is complete for 39/40 configurations. Seven have complete quality reviews and are ranked; 32 incompletely reviewed configurations and one backend failure are excluded. Grading is label-hidden assistant review, without independent human validation. The three candidates have 8, 7 and 17 critical-error cases, respectively. Image input is untested. RSS is not dedicated VRAM; concurrent ASR has not been validated. SGLang uses local patches and ran with substantial system swap. See the [full 32 GiB table, limitations and evidence](docs/model-benchmark-2026-11-19-m5-32gb.md) (Chinese).
 
 NMT turns microphone or routed meeting audio into paired original and translated text, using speech recognition and translation models on your Mac. It supports Chinese, Japanese and English, with a compact desktop workspace and a floating subtitle window for use alongside meetings and videos.
 

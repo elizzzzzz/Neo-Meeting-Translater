@@ -1,0 +1,170 @@
+[
+  {
+    "configuration": "qwen3--30b-a3b-q4_K_M/ollama",
+    "case_id": "I07_zh_ja",
+    "source": "你说的“回归”是回归测试，不是指标又掉回去了，对吧？如果是前者，今晚只跑支付和登录这两组就行。",
+    "reference": "今言った「回帰」って、回帰テストのことで、指標がまた下がったって意味じゃないよね？テストのことなら、今夜は決済とログインの二つのスイートだけでいいよ。",
+    "output": "あなたが言った「リグレス」は、テストのリグレスではなく、指標が再び下がったという意味ですか？もし前者であれば、今夜は支払いとログインの2つのグループだけを実行すればいいです。",
+    "quality_score": 63.0,
+    "error_notes": [
+      "テストではなく指標下降反向确认；リグレス术语错误。"
+    ],
+    "review_fingerprint": "8af777d1777ee39dbbfd68acdb6ea02af865d25d355c307219fd13922ce613be"
+  },
+  {
+    "configuration": "qwen3--30b-a3b-q4_K_M/ollama",
+    "case_id": "I06_zh_ja",
+    "source": "缓存不是越大越好，先把命中率看明白。我们要的是少打后端，不是单纯让内存占满。",
+    "reference": "キャッシュは大きければいいってものじゃないから、まずヒット率をちゃんと見よう。目的はバックエンドへのアクセスを減らすことで、メモリを埋め尽くすことじゃないよ。",
+    "output": "キャッシュは大きければ良いというわけではなく、まずヒット率を理解することが重要です。私たちは後端にアクセスする回数を減らしたいのではなく、単にメモリを満たすだけではありません。",
+    "quality_score": 68.0,
+    "error_notes": [
+      "後端にアクセスする回数を減らしたいのではなく把减少后端请求的目标否定，核心立场反转。"
+    ],
+    "review_fingerprint": "17da8b805421c788b4bd6623c80c8d7f297f504926b70307fb4a83d78643f29e"
+  },
+  {
+    "configuration": "sglang/mlx-community--Qwen3.5-4B-4bit/4bit",
+    "case_id": "I03_zh_ja",
+    "source": "这版先给内部同事用，别一上来就推给所有客户。看起来没问题不等于已经验证过，尤其是退款这条链路。",
+    "reference": "この版はまず社内の人に使ってもらって、いきなり全顧客には出さないでおこう。見た感じ大丈夫でも、検証済みってわけじゃないし、特に返金の処理フローは気を付けたい。",
+    "output": "このバージョンはまず社内同事向けに使用し、すぐにすべての顧客に提案しないでください。問題がないように見えても、検証済みとはなりません。特に返金というフローについては。",
+    "quality_score": 60.0,
+    "error_notes": [
+      "夹带中文同事；提案/推送误作提案；退款句子残缺。"
+    ],
+    "review_fingerprint": "4ac1f3456b8311aa9063114d67b7f65d67841494a3f62b5866af972ab00d8dcd"
+  },
+  {
+    "configuration": "sglang/mlx-community--Qwen3.5-4B-4bit/4bit",
+    "case_id": "F03_zh_ja",
+    "source": "本次报价为30万元人民币，不含税。合同签署后支付30%的预付款，余款在验收通过后30天内支付。",
+    "reference": "今回のお見積額は税別で30万人民元です。契約締結後に30%を前払いし、残額は検収合格後30日以内にお支払いいただきます。",
+    "output": "今回の見積額は 30 万円（税抜）です。契約締結後、30% の前払金を支払い、残金は受領確認完了後 30 日以内に支払います。",
+    "quality_score": 62.0,
+    "error_notes": [
+      "人民币错为円；验收通过弱化为受領確認，影响币种及付款触发条件。"
+    ],
+    "review_fingerprint": "13f44577f6c425780624251fa3ba3bd0047999832bf1563d9e28e35f6cf0aa04"
+  },
+  {
+    "configuration": "qwen3.5--9b-q4_K_M/ollama",
+    "case_id": "F09_ja_zh",
+    "source": "オープンソースのコンポーネントは商用環境で利用できますが、顧客提供のコードはそのライセンスの対象外です。デモ版を外部に公開する場合は、別途お客様の書面による同意を得てください。",
+    "reference": "开源组件可以用于商业部署，但客户提供的代码不在该许可范围内。若需对外展示演示版本，请另行取得客户的书面同意。",
+    "output": "开源组件可在商业环境中使用，但提供给客户的代码不在该许可范围内。若需向外部公开演示版本，请另行获取客户的书面同意。",
+    "quality_score": 75.0,
+    "error_notes": [
+      "客户提供的代码误为提供或交付给客户的代码，颠倒提供主体，改变许可排除范围。"
+    ],
+    "review_fingerprint": "68b4f454e25d0543b2d3c1995ecfa285491bc6fa57b92ff4efb5d1306bd94ac3"
+  },
+  {
+    "configuration": "qwen3.5--9b-q4_K_M/ollama",
+    "case_id": "F09_ja_en",
+    "source": "オープンソースのコンポーネントは商用環境で利用できますが、顧客提供のコードはそのライセンスの対象外です。デモ版を外部に公開する場合は、別途お客様の書面による同意を得てください。",
+    "reference": "The open-source component may be deployed commercially, but the license does not cover code supplied by the customer. Obtain the customer’s separate written consent before showing the demo externally.",
+    "output": "Open-source components may be used in commercial environments; however, code provided to customers is excluded from this license. If you intend to publish a demo version externally, please obtain separate written consent from the customer.",
+    "quality_score": 77.0,
+    "error_notes": [
+      "code provided to customers把客户提供的代码反向译为提供给客户的代码，许可范围改变。"
+    ],
+    "review_fingerprint": "a76a20a548878c3d7fcc833da040322d8a4b7559031271b9043661a68991b423"
+  },
+  {
+    "configuration": "sglang/mlx-community--Qwen3.5-4B-8bit/8bit",
+    "case_id": "I07_zh_ja",
+    "source": "你说的“回归”是回归测试，不是指标又掉回去了，对吧？如果是前者，今晚只跑支付和登录这两组就行。",
+    "reference": "今言った「回帰」って、回帰テストのことで、指標がまた下がったって意味じゃないよね？テストのことなら、今夜は決済とログインの二つのスイートだけでいいよ。",
+    "output": "おっしゃる「リグレッション」は、リグレッションテストのことではなく、指標がまた下がったことでしょうか。もし前者であれば、今夜は決済とログインの 2 つのセットだけ実行すれば十分です。",
+    "quality_score": 54.0,
+    "error_notes": [
+      "确认对象反转成不是测试而是指标下降，随后前者指代可能变成指标下降，条件逻辑错误。"
+    ],
+    "review_fingerprint": "2c08f7d0705fa21df4cb5bb1af30644bf7805a77e83782257f84bd30b0f8fc41"
+  },
+  {
+    "configuration": "sglang/mlx-community--Qwen3.5-4B-8bit/8bit",
+    "case_id": "I07_en_ja",
+    "source": "By “regression,” you mean regression testing, not the metrics dropping again, right? If you mean the tests, just run the payment and login suites tonight.",
+    "reference": "今言った「回帰」って、回帰テストのことで、指標がまた下がったって意味じゃないよね？テストのことなら、今夜は決済とログインの二つのスイートだけでいいよ。",
+    "output": "「回帰」というのは、回帰テストのことではなく、指標が再び低下することでしょうか？テストを指すなら、今夜に決済とログインのテストスイートを実行してください。",
+    "quality_score": 60.0,
+    "error_notes": [
+      "确认含义反转为不是回归测试而是指标下降，且漏仅两套限定，后续条件虽保留。"
+    ],
+    "review_fingerprint": "b7d08f059d8f4ff8fa13cf9e1b3cb4a362897e5e78c969a1be98d4ada6b221ee"
+  },
+  {
+    "configuration": "sglang/mlx-community--Qwen3-8B-4bit/4bit",
+    "case_id": "I05_zh_ja",
+    "source": "别急着甩锅，先把日志对上。昨天卡住的是鉴权，不是数据库；你那边要是已经修好了，发我一下提交号。",
+    "reference": "誰のせいか決めつける前に、まずログを突き合わせよう。昨日詰まっていたのは認証まわりで、データベースじゃない。そっちで直っているなら、コミットIDを送って。",
+    "output": "急いで責任を押し付けるな。まずはログを一致させろ。昨日の問題は認証だったのではない。データベースではなかった。君たちのほうで既に修正済みなら、サブミットIDを送って。",
+    "quality_score": 54.0,
+    "error_notes": [
+      "認証だったのではない将是鉴权颠倒成不是鉴权；サブミットID不规范，命令口气粗硬。"
+    ],
+    "review_fingerprint": "aebc4b474684130030baf45bd3649b17b698aff6596161213df08577b15f1c86"
+  },
+  {
+    "configuration": "sglang/mlx-community--Qwen3-8B-4bit/4bit",
+    "case_id": "I06_zh_ja",
+    "source": "缓存不是越大越好，先把命中率看明白。我们要的是少打后端，不是单纯让内存占满。",
+    "reference": "キャッシュは大きければいいってものじゃないから、まずヒット率をちゃんと見よう。目的はバックエンドへのアクセスを減らすことで、メモリを埋め尽くすことじゃないよ。",
+    "output": "キャッシュは大きい方が良いというものではなく、まずはヒット率を理解することが重要です。我々が目指すのは、後端を減らすことです。単にメモリをいっぱいにするのではなく、それです。",
+    "quality_score": 65.0,
+    "error_notes": [
+      "减少后端请求误为减少后端本体，后端直译後端；缓存规模与命中率、非占满内存保留，末句不自然。"
+    ],
+    "review_fingerprint": "1acc3ed6da84311bde30d4aaf318ebc6247fc6249ba01497d9ee32ac1e15549f"
+  },
+  {
+    "configuration": "sglang/mlx-community--Qwen3-VL-8B-Instruct-8bit/8bit",
+    "case_id": "I07_en_ja",
+    "source": "By “regression,” you mean regression testing, not the metrics dropping again, right? If you mean the tests, just run the payment and login suites tonight.",
+    "reference": "今言った「回帰」って、回帰テストのことで、指標がまた下がったって意味じゃないよね？テストのことなら、今夜は決済とログインの二つのスイートだけでいいよ。",
+    "output": "「リグレッション」というのは、リグレッションテストを指すのではなく、メトリクスが再び下がることを意味するのでしょうか？もしお話の内容がテストであれば、今夜だけ決済とログインのスイートを実行してください。",
+    "quality_score": 62.0,
+    "error_notes": [
+      "反问方向颠倒为不是回归测试而是指标下降；今夜だけ限制时间而非仅两组测试。"
+    ],
+    "review_fingerprint": "5b8151a8b2ed8aafd75f3ace9acd9f6a03336e8e50e591096d7d2073e472604a"
+  },
+  {
+    "configuration": "sglang/mlx-community--Qwen3-VL-8B-Instruct-8bit/8bit",
+    "case_id": "I05_en_ja",
+    "source": "Let’s compare the logs before pointing fingers. Yesterday’s blocker was authentication, not the database. If it’s already fixed on your side, send me the commit ID.",
+    "reference": "誰のせいか決めつける前に、まずログを突き合わせよう。昨日詰まっていたのは認証まわりで、データベースじゃない。そっちで直っているなら、コミットIDを送って。",
+    "output": "指摘する前に、ログを比較しましょう。昨日のブロッカーは認証ではなくデータベースでした。もしあなた側で既に修正されているなら、コミットIDを送ってください。",
+    "quality_score": 63.0,
+    "error_notes": [
+      "把昨天阻塞原因从认证误为数据库，正反关系颠倒。"
+    ],
+    "review_fingerprint": "41ff4bfe5720dcc30927851bc5561fda44ea261b7ecf7a099f420795ec3e753c"
+  },
+  {
+    "configuration": "sglang/mlx-community--Qwen3-8B-8bit/8bit",
+    "case_id": "I05_zh_ja",
+    "source": "别急着甩锅，先把日志对上。昨天卡住的是鉴权，不是数据库；你那边要是已经修好了，发我一下提交号。",
+    "reference": "誰のせいか決めつける前に、まずログを突き合わせよう。昨日詰まっていたのは認証まわりで、データベースじゃない。そっちで直っているなら、コミットIDを送って。",
+    "output": "急いで責任を押し付けるな。まずはログを一致させてくれ。昨日の問題は認証だったのではない。データベースではなかった。君のほうで既に修正したなら、サブミット番号を送ってほしい。",
+    "quality_score": 57.0,
+    "error_notes": [
+      "认证肯定反转为非认证，commit ID误提交编号；先日志、非数据库和修好条件保留，日语命令粗硬。"
+    ],
+    "review_fingerprint": "65d2add28a8dd20f1f7264ebc94229848af2cd811f7eca0098aec0972d0edc73"
+  },
+  {
+    "configuration": "sglang/mlx-community--Qwen3-8B-8bit/8bit",
+    "case_id": "I08_en_ja",
+    "source": "When I said “we can consider it,” I wasn’t committing. Put “pending evaluation by both sides” in the minutes, not a guaranteed delivery next week.",
+    "reference": "さっき「検討できる」って言ったけど、約束したわけじゃないよ。議事録には「両社で評価予定」としておいて、来週必ず納品するとは書かないで。",
+    "output": "私が「検討の余地はある」と言ったのは、コミットメントを示したわけではありません。議事録には「双方による評価が待っている」と記載し、来週の確定的な納品はしないでください。",
+    "quality_score": 72.0,
+    "error_notes": [
+      "纪要勿写下周必交误为下周不要交付；非承诺与双方待评估保留，日文待评措辞生硬。"
+    ],
+    "review_fingerprint": "360b6289675c803d98a6217003fd3d2866fd07c641d08f48ad0cfb6c854ead40"
+  }
+]

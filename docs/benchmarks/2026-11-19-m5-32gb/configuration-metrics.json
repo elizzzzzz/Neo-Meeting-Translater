@@ -43,7 +43,10 @@
     },
     "output_sha256": "37a6958a4a6b3069592be6101fccb9b88fce4c0cdd8d2a8d612b2df7c6362351",
     "recorded_from": "2026-11-13T15:28:54+08:00",
-    "recorded_to": "2026-11-13T18:33:35+08:00"
+    "recorded_to": "2026-11-13T18:33:35+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   },
   {
     "configuration": "qwen3--14b-q4_K_M/llamacpp",
@@ -89,7 +92,10 @@
     },
     "output_sha256": "61ed4d62fbf9773dd37a638779e3dd7b64428457bd9fd358f6fc957264f99be6",
     "recorded_from": "2026-11-13T18:33:58+08:00",
-    "recorded_to": "2026-11-13T18:46:40+08:00"
+    "recorded_to": "2026-11-13T18:46:40+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   },
   {
     "configuration": "gemma3--12b-it-q4_K_M/ollama",
@@ -135,7 +141,10 @@
     },
     "output_sha256": "635f01b07087ba32469b81706477bf7039efd0e18698b627f2ac4680bc17081d",
     "recorded_from": "2026-11-13T18:46:53+08:00",
-    "recorded_to": "2026-11-13T18:59:40+08:00"
+    "recorded_to": "2026-11-13T18:59:40+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   },
   {
     "configuration": "gemma3--12b-it-q4_K_M/llamacpp",
@@ -181,7 +190,10 @@
     },
     "output_sha256": "1e25749e61652dbb22e98e0cbfc3a6023c482a5e24f7a1774e0cabfbbf141e73",
     "recorded_from": "2026-11-13T18:59:51+08:00",
-    "recorded_to": "2026-11-13T19:10:01+08:00"
+    "recorded_to": "2026-11-13T19:10:01+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   },
   {
     "configuration": "qwen3.5--9b-q4_K_M/ollama",
@@ -204,9 +216,9 @@
     "memory_validity": "process_tree_rss_system_swap_observed",
     "possible_truncation_cases": 0,
     "thinking_output_cases": 0,
-    "reviewed_cases": 40,
-    "quality_score": null,
-    "fact_accuracy": null,
+    "reviewed_cases": 144,
+    "quality_score": 96.25,
+    "fact_accuracy": 96.78819444444444,
     "vision_in_source_metadata": true,
     "modality_evidence": "source metadata: vision; text only tested",
     "image_input_tested": false,
@@ -227,7 +239,10 @@
     },
     "output_sha256": "e794e4860dd0412db65c419fdb51291f3805918515139436bb0705e126804bd9",
     "recorded_from": "2026-11-13T20:14:51+08:00",
-    "recorded_to": "2026-11-13T20:20:24+08:00"
+    "recorded_to": "2026-11-13T20:20:24+08:00",
+    "overall_score": 91.36883385029711,
+    "critical_error_cases": 7,
+    "quality_rank_status": "complete_144_reviewed"
   },
   {
     "configuration": "qwen3.5--9b-q4_K_M/llamacpp",
@@ -250,7 +265,7 @@
     "memory_validity": "process_tree_rss_system_swap_observed",
     "possible_truncation_cases": 0,
     "thinking_output_cases": 0,
-    "reviewed_cases": 40,
+    "reviewed_cases": 84,
     "quality_score": null,
     "fact_accuracy": null,
     "vision_in_source_metadata": true,
@@ -273,7 +288,10 @@
     },
     "output_sha256": "ef79046d4b5d5a359df66b3d781323ab951aa9c8e6ff16eff5a14ec1a9497ef4",
     "recorded_from": "2026-11-13T20:20:30+08:00",
-    "recorded_to": "2026-11-13T20:26:44+08:00"
+    "recorded_to": "2026-11-13T20:26:44+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   },
   {
     "configuration": "gemma3--27b-it-q4_K_M/ollama",
@@ -319,7 +337,10 @@
     },
     "output_sha256": "1dc0aa1a73ab1d9984f70b5e18834b719318d1cf0c2d4521ad2bd59c1fcf4800",
     "recorded_from": "2026-11-13T20:27:08+08:00",
-    "recorded_to": "2026-11-13T20:48:43+08:00"
+    "recorded_to": "2026-11-13T20:48:43+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   },
   {
     "configuration": "gemma3--27b-it-q4_K_M/llamacpp",
@@ -365,7 +386,10 @@
     },
     "output_sha256": "83cfabe2cb4328f73d77abee91573808e29dd29796ef0db8fdf2f82f89664f61",
     "recorded_from": "2026-11-13T20:49:03+08:00",
-    "recorded_to": "2026-11-13T21:11:30+08:00"
+    "recorded_to": "2026-11-13T21:11:30+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   },
   {
     "configuration": "qwen3.5--27b-q4_K_M/ollama",
@@ -411,7 +435,10 @@
     },
     "output_sha256": "c4bf96690985eb5ae969f8a770eda4ad1a0ce9945e5a247f01332a0c392f49f2",
     "recorded_from": "2026-11-13T23:09:29+08:00",
-    "recorded_to": "2026-11-13T23:34:30+08:00"
+    "recorded_to": "2026-11-13T23:34:30+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   },
   {
     "configuration": "qwen3.5--27b-q4_K_M/llamacpp",
@@ -457,7 +484,10 @@
     },
     "output_sha256": "4c040d1018a985b9dc1bf5cf37af793acf129c329f57e430b1747461db1d12b3",
     "recorded_from": "2026-11-13T23:35:05+08:00",
-    "recorded_to": "2026-11-14T00:24:42+08:00"
+    "recorded_to": "2026-11-14T00:24:42+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   },
   {
     "configuration": "qwen3.6--27b-q4_K_M/ollama",
@@ -480,7 +510,7 @@
     "memory_validity": "process_tree_rss_system_swap_observed",
     "possible_truncation_cases": 0,
     "thinking_output_cases": 0,
-    "reviewed_cases": 40,
+    "reviewed_cases": 41,
     "quality_score": null,
     "fact_accuracy": null,
     "vision_in_source_metadata": true,
@@ -503,7 +533,10 @@
     },
     "output_sha256": "fe2fbe978aaa1b4912934a56df755aa440ef91bbc6925c319b1d0b6a39d810fe",
     "recorded_from": "2026-11-14T00:25:24+08:00",
-    "recorded_to": "2026-11-14T01:03:54+08:00"
+    "recorded_to": "2026-11-14T01:03:54+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   },
   {
     "configuration": "qwen3.6--27b-q4_K_M/llamacpp",
@@ -537,7 +570,10 @@
     "conditions": null,
     "output_sha256": null,
     "recorded_from": null,
-    "recorded_to": null
+    "recorded_to": null,
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_backend_failed"
   },
   {
     "configuration": "qwen3--30b-a3b-q4_K_M/ollama",
@@ -560,9 +596,9 @@
     "memory_validity": "process_tree_rss_system_swap_observed",
     "possible_truncation_cases": 0,
     "thinking_output_cases": 0,
-    "reviewed_cases": 39,
-    "quality_score": null,
-    "fact_accuracy": null,
+    "reviewed_cases": 144,
+    "quality_score": 94.57638888888889,
+    "fact_accuracy": 96.44097222222223,
     "vision_in_source_metadata": false,
     "modality_evidence": "source metadata: no vision flag; text only tested",
     "image_input_tested": false,
@@ -583,7 +619,10 @@
     },
     "output_sha256": "2cad94cb12d45094f24d67359f0032bcc2d2d4060b3ca97aca61d27368c905a9",
     "recorded_from": "2026-11-14T16:25:34+08:00",
-    "recorded_to": "2026-11-14T16:28:03+08:00"
+    "recorded_to": "2026-11-14T16:28:03+08:00",
+    "overall_score": 95.38993055555555,
+    "critical_error_cases": 8,
+    "quality_rank_status": "complete_144_reviewed"
   },
   {
     "configuration": "qwen3--30b-a3b-q4_K_M/llamacpp",
@@ -606,7 +645,7 @@
     "memory_validity": "process_tree_rss_system_swap_observed",
     "possible_truncation_cases": 0,
     "thinking_output_cases": 0,
-    "reviewed_cases": 39,
+    "reviewed_cases": 78,
     "quality_score": null,
     "fact_accuracy": null,
     "vision_in_source_metadata": false,
@@ -629,7 +668,10 @@
     },
     "output_sha256": "720ea3ec7a3c6903b4b0066898ff1bb852256fbd36e9af11e073e25132adc382",
     "recorded_from": "2026-11-14T16:28:08+08:00",
-    "recorded_to": "2026-11-14T16:30:50+08:00"
+    "recorded_to": "2026-11-14T16:30:50+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   },
   {
     "configuration": "qwen2.5--32b-instruct-q4_K_M/ollama",
@@ -675,7 +717,10 @@
     },
     "output_sha256": "d050c0406e6a900df45f98a8d56bb83902c7c2ae36944f714ac4f4e41bf39580",
     "recorded_from": "2026-11-14T16:31:17+08:00",
-    "recorded_to": "2026-11-14T16:59:35+08:00"
+    "recorded_to": "2026-11-14T16:59:35+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   },
   {
     "configuration": "qwen2.5--32b-instruct-q4_K_M/llamacpp",
@@ -721,7 +766,10 @@
     },
     "output_sha256": "ac1a3597c12a4524c9962536f679a83cb4fa906da4df657efb56821d481ddb40",
     "recorded_from": "2026-11-14T17:00:10+08:00",
-    "recorded_to": "2026-11-14T17:30:55+08:00"
+    "recorded_to": "2026-11-14T17:30:55+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   },
   {
     "configuration": "qwen3--32b-q4_K_M/ollama",
@@ -767,7 +815,10 @@
     },
     "output_sha256": "4004239a6560dbcb53bcc18e1ae6e918169c7e83b337928fea0a21c01ec6c1b9",
     "recorded_from": "2026-11-14T19:14:00+08:00",
-    "recorded_to": "2026-11-14T19:40:59+08:00"
+    "recorded_to": "2026-11-14T19:40:59+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   },
   {
     "configuration": "qwen3--32b-q4_K_M/llamacpp",
@@ -813,7 +864,10 @@
     },
     "output_sha256": "2b3866501c49bad9b68c56702c2f1dfc57f1df8613274ecfd0b269b8109b2d82",
     "recorded_from": "2026-11-14T19:41:31+08:00",
-    "recorded_to": "2026-11-14T20:13:01+08:00"
+    "recorded_to": "2026-11-14T20:13:01+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   },
   {
     "configuration": "deepseek-r1--32b-qwen-distill-q4_K_M/ollama",
@@ -860,7 +914,10 @@
     },
     "output_sha256": "5c749a7097d1a11e0f509db3b9e69855aa5a22e6c63091630ac3326b7e131f99",
     "recorded_from": "2026-11-15T14:44:47+08:00",
-    "recorded_to": "2026-11-19T03:55:52+08:00"
+    "recorded_to": "2026-11-19T03:55:52+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   },
   {
     "configuration": "deepseek-r1--32b-qwen-distill-q4_K_M/llamacpp",
@@ -907,7 +964,10 @@
     },
     "output_sha256": "2554134997f12a3ac8b829b8ef6495fec9aaf2ba22653ebed41088471768b266",
     "recorded_from": "2026-11-19T04:00:38+08:00",
-    "recorded_to": "2026-11-19T08:52:55+08:00"
+    "recorded_to": "2026-11-19T08:52:55+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   },
   {
     "configuration": "qwen2.5--14b-instruct-q8_0/ollama",
@@ -953,7 +1013,10 @@
     },
     "output_sha256": "81170d32d49b911b74e4aa12779d4d4aca5dfbeafef933b629a62a5b4b557d08",
     "recorded_from": "2026-11-15T00:19:14+08:00",
-    "recorded_to": "2026-11-15T00:35:32+08:00"
+    "recorded_to": "2026-11-15T00:35:32+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   },
   {
     "configuration": "qwen2.5--14b-instruct-q8_0/llamacpp",
@@ -999,7 +1062,10 @@
     },
     "output_sha256": "20cca6edb399229980d97f80e727751be73946a10de5d914ccb1fc9a3cf8d3e7",
     "recorded_from": "2026-11-15T00:39:15+08:00",
-    "recorded_to": "2026-11-15T07:24:41+08:00"
+    "recorded_to": "2026-11-15T07:24:41+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   },
   {
     "configuration": "qwen3--14b-q8_0/ollama",
@@ -1045,7 +1111,10 @@
     },
     "output_sha256": "5c870eddbab6ba03c0a07f4a7fe2b973bb2c57a82d6bff618360401c90197f7a",
     "recorded_from": "2026-11-15T07:53:29+08:00",
-    "recorded_to": "2026-11-15T08:07:32+08:00"
+    "recorded_to": "2026-11-15T08:07:32+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   },
   {
     "configuration": "qwen3--14b-q8_0/llamacpp",
@@ -1091,7 +1160,10 @@
     },
     "output_sha256": "2ea20901b005ead190acfa8b7ef8c914a9831fe30a2069ae06db2eaa520c8a85",
     "recorded_from": "2026-11-15T08:07:47+08:00",
-    "recorded_to": "2026-11-15T08:23:25+08:00"
+    "recorded_to": "2026-11-15T08:23:25+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   },
   {
     "configuration": "gemma3--12b-it-q8_0/ollama",
@@ -1137,7 +1209,10 @@
     },
     "output_sha256": "9574fdb7fff5913ac426fe77dc755b58b87e0d624e35b65f370a213b3d5faf34",
     "recorded_from": "2026-11-15T08:23:39+08:00",
-    "recorded_to": "2026-11-15T08:36:34+08:00"
+    "recorded_to": "2026-11-15T08:36:34+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   },
   {
     "configuration": "gemma3--12b-it-q8_0/llamacpp",
@@ -1183,7 +1258,10 @@
     },
     "output_sha256": "9098cbee90636a145f28a18a811edff69f604bfe17e62087fc1a8f66b3575e44",
     "recorded_from": "2026-11-15T08:36:45+08:00",
-    "recorded_to": "2026-11-15T08:49:44+08:00"
+    "recorded_to": "2026-11-15T08:49:44+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   },
   {
     "configuration": "qwen3.5--9b-q8_0/ollama",
@@ -1206,7 +1284,7 @@
     "memory_validity": "process_tree_rss_system_swap_observed",
     "possible_truncation_cases": 0,
     "thinking_output_cases": 0,
-    "reviewed_cases": 40,
+    "reviewed_cases": 56,
     "quality_score": null,
     "fact_accuracy": null,
     "vision_in_source_metadata": true,
@@ -1229,7 +1307,10 @@
     },
     "output_sha256": "4579615e3f103f506c2bc5882d30d33436cfdcd812f038edb1b00f57ab5834d7",
     "recorded_from": "2026-11-15T09:14:36+08:00",
-    "recorded_to": "2026-11-15T09:22:24+08:00"
+    "recorded_to": "2026-11-15T09:22:24+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   },
   {
     "configuration": "qwen3.5--9b-q8_0/llamacpp",
@@ -1252,7 +1333,7 @@
     "memory_validity": "process_tree_rss_system_swap_observed",
     "possible_truncation_cases": 0,
     "thinking_output_cases": 0,
-    "reviewed_cases": 41,
+    "reviewed_cases": 49,
     "quality_score": null,
     "fact_accuracy": null,
     "vision_in_source_metadata": true,
@@ -1275,7 +1356,10 @@
     },
     "output_sha256": "f9a92fe332a749d65b21bdd7a8143015ba06bbf2c1971de645dd9caed654c185",
     "recorded_from": "2026-11-15T09:22:33+08:00",
-    "recorded_to": "2026-11-15T09:31:00+08:00"
+    "recorded_to": "2026-11-15T09:31:00+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   },
   {
     "configuration": "qwen2.5--14b-instruct-q4_K_M/ollama",
@@ -1322,7 +1406,10 @@
     },
     "output_sha256": "3cba71f3d75bf3762e5a770db491fb5a165c301359953971c1b8c93a75904e65",
     "recorded_from": "2026-11-19T19:27:31+08:00",
-    "recorded_to": "2026-11-19T19:37:34+08:00"
+    "recorded_to": "2026-11-19T19:37:34+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   },
   {
     "configuration": "qwen2.5--14b-instruct-q4_K_M/llamacpp",
@@ -1369,7 +1456,10 @@
     },
     "output_sha256": "88e808d280d616a544c577553363016993f434ad7e76179dbac16f2ad4015b4a",
     "recorded_from": "2026-11-19T19:37:52+08:00",
-    "recorded_to": "2026-11-19T19:50:43+08:00"
+    "recorded_to": "2026-11-19T19:50:43+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   },
   {
     "configuration": "sglang/mlx-community--Qwen3-8B-4bit/4bit",
@@ -1392,9 +1482,9 @@
     "memory_validity": "process_tree_rss_system_swap_observed",
     "possible_truncation_cases": 0,
     "thinking_output_cases": 0,
-    "reviewed_cases": 111,
-    "quality_score": null,
-    "fact_accuracy": null,
+    "reviewed_cases": 144,
+    "quality_score": 92.83333333333333,
+    "fact_accuracy": 94.01041666666667,
     "vision_in_source_metadata": null,
     "modality_evidence": "not independently verified for this MLX conversion; text only tested",
     "image_input_tested": false,
@@ -1412,7 +1502,10 @@
     },
     "output_sha256": "02544886abb2486aa393dbe7cc6969e96a5a02d9aa54e61de1807d0f96d9c134",
     "recorded_from": "2026-11-16T22:17:38+08:00",
-    "recorded_to": "2026-11-16T22:22:17+08:00"
+    "recorded_to": "2026-11-16T22:22:17+08:00",
+    "overall_score": 89.28198352861655,
+    "critical_error_cases": 28,
+    "quality_rank_status": "complete_144_reviewed"
   },
   {
     "configuration": "sglang/mlx-community--Qwen3-8B-8bit/8bit",
@@ -1435,9 +1528,9 @@
     "memory_validity": "process_tree_rss_system_swap_observed",
     "possible_truncation_cases": 0,
     "thinking_output_cases": 0,
-    "reviewed_cases": 125,
-    "quality_score": null,
-    "fact_accuracy": null,
+    "reviewed_cases": 144,
+    "quality_score": 92.80555555555556,
+    "fact_accuracy": 93.57638888888889,
     "vision_in_source_metadata": null,
     "modality_evidence": "not independently verified for this MLX conversion; text only tested",
     "image_input_tested": false,
@@ -1455,7 +1548,10 @@
     },
     "output_sha256": "8a3f3d333990863aa3f98b472ce401c6ec33d7a1af59632a0d12d15a2ad2910f",
     "recorded_from": "2026-11-16T23:15:02+08:00",
-    "recorded_to": "2026-11-16T23:23:08+08:00"
+    "recorded_to": "2026-11-16T23:23:08+08:00",
+    "overall_score": 86.99851736143441,
+    "critical_error_cases": 32,
+    "quality_rank_status": "complete_144_reviewed"
   },
   {
     "configuration": "sglang/mlx-community--Qwen3-VL-8B-Instruct-4bit/4bit",
@@ -1478,7 +1574,7 @@
     "memory_validity": "process_tree_rss_system_swap_observed",
     "possible_truncation_cases": 0,
     "thinking_output_cases": 0,
-    "reviewed_cases": 31,
+    "reviewed_cases": 32,
     "quality_score": null,
     "fact_accuracy": null,
     "vision_in_source_metadata": null,
@@ -1498,7 +1594,10 @@
     },
     "output_sha256": "6adefc29eb6d8dfab3463bfcaa8500c147f604b3681f10d2b2b2c1756e61f0ff",
     "recorded_from": "2026-11-17T00:16:31+08:00",
-    "recorded_to": "2026-11-17T00:22:21+08:00"
+    "recorded_to": "2026-11-17T00:22:21+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   },
   {
     "configuration": "sglang/mlx-community--Qwen3-VL-8B-Instruct-8bit/8bit",
@@ -1521,9 +1620,9 @@
     "memory_validity": "process_tree_rss_system_swap_observed",
     "possible_truncation_cases": 0,
     "thinking_output_cases": 0,
-    "reviewed_cases": 119,
-    "quality_score": null,
-    "fact_accuracy": null,
+    "reviewed_cases": 144,
+    "quality_score": 93.16666666666666,
+    "fact_accuracy": 94.79166666666667,
     "vision_in_source_metadata": null,
     "modality_evidence": "VL model identifier/queue image candidate; image pipeline untested",
     "image_input_tested": false,
@@ -1541,7 +1640,10 @@
     },
     "output_sha256": "42f03abe8ec1548dfb02a37ff3ff0dac1733abd177990eeeb6e9be9aca296dba",
     "recorded_from": "2026-11-17T12:05:32+08:00",
-    "recorded_to": "2026-11-17T12:13:25+08:00"
+    "recorded_to": "2026-11-17T12:13:25+08:00",
+    "overall_score": 87.3799124668982,
+    "critical_error_cases": 24,
+    "quality_rank_status": "complete_144_reviewed"
   },
   {
     "configuration": "sglang/mlx-community--Qwen2.5-VL-7B-Instruct-4bit/4bit",
@@ -1584,7 +1686,10 @@
     },
     "output_sha256": "75dc5d79efb7f556f1cb38ab313720f4893ee163e02e53accd59434f1d05b856",
     "recorded_from": "2026-11-17T10:24:58+08:00",
-    "recorded_to": "2026-11-17T10:29:45+08:00"
+    "recorded_to": "2026-11-17T10:29:45+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   },
   {
     "configuration": "sglang/mlx-community--Qwen2.5-VL-7B-Instruct-8bit/8bit",
@@ -1627,7 +1732,10 @@
     },
     "output_sha256": "4d189046f38de5336f522ef556288845ec80c6b32c5564ef88976d9510c231f3",
     "recorded_from": "2026-11-17T13:26:16+08:00",
-    "recorded_to": "2026-11-17T13:34:57+08:00"
+    "recorded_to": "2026-11-17T13:34:57+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   },
   {
     "configuration": "sglang/mlx-community--Qwen3.5-4B-4bit/4bit",
@@ -1650,9 +1758,9 @@
     "memory_validity": "process_tree_rss_system_swap_observed",
     "possible_truncation_cases": 0,
     "thinking_output_cases": 0,
-    "reviewed_cases": 22,
-    "quality_score": null,
-    "fact_accuracy": null,
+    "reviewed_cases": 144,
+    "quality_score": 93.73611111111111,
+    "fact_accuracy": 93.92361111111111,
     "vision_in_source_metadata": null,
     "modality_evidence": "not independently verified for this MLX conversion; text only tested",
     "image_input_tested": false,
@@ -1670,7 +1778,10 @@
     },
     "output_sha256": "f5748e7f6bfcd66deaf128f6987c7aff1fd1e51fcbae2292647ea147700bba23",
     "recorded_from": "2026-11-16T21:35:35+08:00",
-    "recorded_to": "2026-11-16T21:39:00+08:00"
+    "recorded_to": "2026-11-16T21:39:00+08:00",
+    "overall_score": 92.93709500772351,
+    "critical_error_cases": 17,
+    "quality_rank_status": "complete_144_reviewed"
   },
   {
     "configuration": "sglang/mlx-community--Qwen3.5-4B-8bit/8bit",
@@ -1693,9 +1804,9 @@
     "memory_validity": "process_tree_rss_system_swap_observed",
     "possible_truncation_cases": 0,
     "thinking_output_cases": 0,
-    "reviewed_cases": 97,
-    "quality_score": null,
-    "fact_accuracy": null,
+    "reviewed_cases": 144,
+    "quality_score": 93.58333333333334,
+    "fact_accuracy": 94.01041666666667,
     "vision_in_source_metadata": null,
     "modality_evidence": "not independently verified for this MLX conversion; text only tested",
     "image_input_tested": false,
@@ -1713,7 +1824,10 @@
     },
     "output_sha256": "5ab836fc6d549e34e9e665774301308e2ae7dfe04a636e3de60657b20c68ed86",
     "recorded_from": "2026-11-17T14:19:23+08:00",
-    "recorded_to": "2026-11-17T14:25:10+08:00"
+    "recorded_to": "2026-11-17T14:25:10+08:00",
+    "overall_score": 89.38254124289035,
+    "critical_error_cases": 22,
+    "quality_rank_status": "complete_144_reviewed"
   },
   {
     "configuration": "sglang/mlx-community--translategemma-4b-it-4bit/4bit",
@@ -1756,7 +1870,10 @@
     },
     "output_sha256": "0b99457bbd2feb94ed7de1e4f7b9782536853bba2e82ca0fb505e34f7ad6f997",
     "recorded_from": "2026-11-18T11:57:32+08:00",
-    "recorded_to": "2026-11-18T12:27:47+08:00"
+    "recorded_to": "2026-11-18T12:27:47+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   },
   {
     "configuration": "sglang/mlx-community--translategemma-4b-it-8bit/8bit",
@@ -1799,6 +1916,9 @@
     },
     "output_sha256": "2c0f077a67c7509dd825b8c2bae4e0ef6a7dac29afe6f596df6c0a6621cfc8b2",
     "recorded_from": "2026-11-18T12:54:00+08:00",
-    "recorded_to": "2026-11-18T13:48:44+08:00"
+    "recorded_to": "2026-11-18T13:48:44+08:00",
+    "overall_score": null,
+    "critical_error_cases": null,
+    "quality_rank_status": "excluded_incomplete_review"
   }
 ]

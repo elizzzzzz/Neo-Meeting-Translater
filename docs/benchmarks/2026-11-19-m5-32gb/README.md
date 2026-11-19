@@ -1,6 +1,6 @@
 # M5 / 32 GiB 冻结证据：2026-11-19
 
-这是[32 GB MacBook 模型选型参考表](../../model-benchmark-2026-11-19-m5-32gb.md)的可核验快照。采集完毕不等于质量通过；当前 39/40 项文字采集完整，尚无完成全部题目质量评审的配置。
+这是[32 GB MacBook 模型选型参考表](../../model-benchmark-2026-11-19-m5-32gb.md)的可核验快照。采集完毕不等于质量通过；当前 39/40 项文字采集完整，7项已完成144题质量评审入榜，32项未完整评审配置排除。
 
 | 文件 | 用途 |
 |---|---|
@@ -10,8 +10,12 @@
 | [cases.jsonl](cases.jsonl) / [scenes.json](scenes.json) / [corpus.sha256.json](corpus.sha256.json) | 冻结的 144 题、参考译文、原子事实和语料哈希 |
 | [outputs.jsonl](outputs.jsonl) | 5,616 条最终采集输出与计时的可读合并版，按 configuration + case_id 关联语料 |
 | [raw-evidence.zip](raw-evidence.zip) / [source-audit.json](source-audit.json) | 原样保留每配置 outputs、summary、conditions、memory 文件及 SHA256；包括先前失败行和重试内存样本 |
-| [annotations.jsonl](annotations.jsonl) / [progress.json](progress.json) | 1,130 条部分评审与覆盖进度；不是完整准确率结果 |
-| [ranking.json](ranking.json) | 当前质量排名为空；每配置已评/未评数量 |
+| [annotations.jsonl](annotations.jsonl) / [progress.json](progress.json) | 1,584条逐项评审及覆盖进度；仅7项配置评审齐全 |
+| [case-scores.csv](case-scores.csv) / [quality-ranking.csv](quality-ranking.csv) | 7项完整配置的1,008条逐题分数与综合排名 |
+| [review-completion-scope.json](review-completion-scope.json) / [new-review-decisions.jsonl](new-review-decisions.jsonl) | 本次预选范围、454条新增隐藏标签题包及明确评分 |
+| [reviewed-output-audit.json](reviewed-output-audit.json) / [critical-error-examples.json](critical-error-examples.json) | 完整覆盖审计与关键错误例句 |
+| [direction-quality.json](direction-quality.json) / [register-quality.json](register-quality.json) | 六方向、正式与非正式场景分数 |
+| [ranking.json](ranking.json) | 7项完整配置的综合排名；其余32项已评/未评数量 |
 | [measurement-invalidations.json](measurement-invalidations.json) | Qwen2.5 14B Q4 两后端 RSS/swap/available 作废原因；原始错误值仍在 ZIP 的 summary 中，仅作审计 |
 | [failures.json](failures.json) / [scope.json](scope.json) | Qwen3.6 / llama.cpp 失败与按资源策略排除的配置 |
 | [queue-policy-20261115.md](queue-policy-20261115.md) | 当时的范围决策；其中“约4–5 TPS”的上界概括已被本报告的 MoE 53 TPS 实测更新，具体结论以本快照为准 |
@@ -22,7 +26,7 @@
 
 `outputs.jsonl` 保留原 prompt、response、thinking、计时与后端统计；完整原文件位于 ZIP。`source-audit.json` 中的路径均相对 ZIP 根目录。原样文件只含固定合成语料及运行记录，没有私人会议转写或模型权重。
 
-`annotations.jsonl` 是标签隐藏的本助手辅助评审，含与 M3 研究逐题语料和译文完全一致时复用的记录；无独立人类译者复核。仅完整评审配置才可生成质量/综合分，本快照没有这样的配置。
+`annotations.jsonl` 是标签隐藏的本助手辅助评审，含与 M3 研究逐题语料和译文完全一致时复用的记录；无独立人类译者复核。仅完整评审配置才可生成质量/综合分，本快照有7项这样的配置；其余32项不发布质量分。
 
 源码按原研究布局引用兄弟目录；仅为审计，不是一键重跑包。`sglang_runner.py` 的本机 Python 与缓存绝对路径已换成示例路径，其余代码保留；原始与发布哈希及路径处理记录见 [provenance.json](collection-code/provenance.json)。离线校验器使用 Python 标准库，不启动模型、不联网：
 

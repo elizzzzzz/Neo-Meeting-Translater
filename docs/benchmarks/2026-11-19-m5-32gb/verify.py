@@ -40,7 +40,10 @@ metrics = load('configuration-metrics.json')
 assert len(metrics) == 40
 assert Counter(m['status'] for m in metrics) == {'collected': 39, 'backend_failed': 1}
 assert Counter(m['backend'] for m in metrics) == {'ollama': 15, 'llamacpp': 15, 'sglang': 10}
-assert all(m['quality_score'] is None and m['fact_accuracy'] is None and m['image_input_tested'] is False for m in metrics)
+assert all(m['image_input_tested'] is False for m in metrics)
+assert sum(m['quality_rank_status'] == 'complete_144_reviewed' for m in metrics) == 7
+assert sum(m['quality_rank_status'] == 'excluded_incomplete_review' for m in metrics) == 32
+assert sum(m['quality_rank_status'] == 'excluded_backend_failed' for m in metrics) == 1
 audit = load('source-audit.json')
 normalized = defaultdict(dict)
 for r in rows((ROOT / 'outputs.jsonl').read_bytes()):
@@ -100,10 +103,11 @@ for a in annotations.values():
 progress = load('progress.json')
 assert sum(len(v) for v in normalized.values()) == progress['outputs'] == 5616
 assert len(unique) == progress['unique_packets'] == 3948
-assert len(annotations) == progress['reviewed_packets'] == 1130
-assert len(unique - annotations.keys()) == progress['pending_packets'] == 2818
-assert load('ranking.json')['rankings'] == []
-assert len(load('ranking.json')['pending_review']) == 39
+assert len(annotations) == progress['reviewed_packets'] == 1584
+assert len(unique - annotations.keys()) == progress['pending_packets'] == 2364
+assert len(load('ranking.json')['rankings']) == 7
+assert len(load('ranking.json')['pending_review']) == 32
+assert all(m['reviewed_cases'] == 144 for m in metrics if m['quality_rank_status'] == 'complete_144_reviewed')
 assert sum(m['memory_validity'] == 'invalid_collector_fallback' for m in metrics) == 2
 assert all(m['possible_truncation_cases'] == 144 for m in metrics if 'TranslateGemma' in m['model'])
-print('Verified: file hashes, 40 statuses, 39 complete configurations, 5,616 outputs, timings, memory scope, 2 invalidations, corpus and 1,130 partial reviews.')
+print('Verified: file hashes, 40 statuses, 39 complete configurations, 5,616 outputs, timings, memory scope, 2 invalidations, corpus, 1,584 reviews, 1,008 complete quality rows and 32 excluded partial configurations.')

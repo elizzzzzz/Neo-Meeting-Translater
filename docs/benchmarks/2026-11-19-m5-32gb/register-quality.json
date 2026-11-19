@@ -1,0 +1,37 @@
+[
+  {
+    "configuration": "qwen3--30b-a3b-q4_K_M/ollama",
+    "formal_quality": 96.25,
+    "informal_quality": 92.90277777777777
+  },
+  {
+    "configuration": "sglang/mlx-community--Qwen3.5-4B-4bit/4bit",
+    "formal_quality": 95.40277777777777,
+    "informal_quality": 92.06944444444444
+  },
+  {
+    "configuration": "qwen3.5--9b-q4_K_M/ollama",
+    "formal_quality": 96.47222222222223,
+    "informal_quality": 96.02777777777777
+  },
+  {
+    "configuration": "sglang/mlx-community--Qwen3.5-4B-8bit/8bit",
+    "formal_quality": 95.45833333333333,
+    "informal_quality": 91.70833333333333
+  },
+  {
+    "configuration": "sglang/mlx-community--Qwen3-8B-4bit/4bit",
+    "formal_quality": 94.18055555555556,
+    "informal_quality": 91.48611111111111
+  },
+  {
+    "configuration": "sglang/mlx-community--Qwen3-VL-8B-Instruct-8bit/8bit",
+    "formal_quality": 94.40277777777777,
+    "informal_quality": 91.93055555555556
+  },
+  {
+    "configuration": "sglang/mlx-community--Qwen3-8B-8bit/8bit",
+    "formal_quality": 94.44444444444444,
+    "informal_quality": 91.16666666666667
+  }
+]
