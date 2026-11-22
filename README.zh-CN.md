@@ -10,7 +10,7 @@ NMT 会听取一个音频来源，把讲话变成文字，并在屏幕上同时�
 
 选择本地语音识别和翻译模型后，音频、文字和模型都留在这台 Mac 上。当前版本以文字字幕为主，暂时不提供翻译语音播放。
 
-当前版本：**v0.2.20** · Apple 芯片 Mac（arm64）· 原生 macOS App
+当前版本：**v0.2.21** · Apple 芯片 Mac（arm64）· 原生 macOS App
 
 ## 目前可以做什么
 
@@ -43,17 +43,18 @@ NMT 会听取一个音频来源，把讲话变成文字，并在屏幕上同时�
 
 1. 打开[最新版发布页](https://github.com/elizzzzzz/Neo-Meeting-Translater/releases/latest)。
 2. 下载 **NMT-portable.zip**。解压后双击 **NMT.app**，无需安装。
-3. 或下载 **NMT.dmg**，打开后把 **NMT.app** 复制到你选择的文件夹。
-4. 第一次采集声音时，允许 macOS 使用麦克风。
-5. NMT 会打开为独立的 Mac 窗口，不会启动浏览器。
+3. 如果希望正常安装，下载 **NMT.pkg**，双击后按 macOS 提示安装。
+4. 或下载 **NMT.dmg**，打开后把 **NMT.app** 拖到“应用程序”快捷方式。
+5. 从“应用程序”启动 NMT，第一次采集声音时允许 macOS 使用麦克风。
+6. NMT 会打开为独立的 Mac 窗口，不会启动浏览器。
 
-发布页还提供 **NMT-0.2.20.sha256**。如需检查下载文件，把校验文件和 ZIP、DMG 放在同一个文件夹中，打开“终端”执行：
+发布页还提供 **NMT-0.2.21.sha256**。如需检查下载文件，把校验文件和 ZIP、DMG、PKG 放在同一个文件夹中，打开“终端”执行：
 
 ~~~bash
-shasum -a 256 -c NMT-0.2.20.sha256
+shasum -a 256 -c NMT-0.2.21.sha256
 ~~~
 
-安装包使用临时签名，尚未通过 Apple 公证。如果 macOS 第一次阻止打开，请在 Finder 中按住 Control 点击 NMT.app，选择“打开”并确认。
+正式公开包应使用 Apple Developer ID 签名并完成公证。没有这些凭据构建的是测试包；如果 macOS 第一次阻止打开，请在 Finder 中按住 Control 点击 NMT.app，选择“打开”并确认。
 
 ## 第一次设置
 

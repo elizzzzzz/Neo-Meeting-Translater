@@ -1,6 +1,6 @@
 # macOS 安装包
 
-项目针对 Apple M3 / 16G 统一内存提供三种运行方式：源码运行适合开发和模型调试，DMG 适合固定安装，免安装 ZIP 适合直接解压运行。安装包只包含程序和界面，不包含语音识别、翻译或 TTS 模型权重。
+项目针对 Apple M3 / 16G 统一内存提供四种运行方式：源码运行适合开发和模型调试，PKG 适合双击安装，DMG 适合拖入“应用程序”，免安装 ZIP 适合直接解压运行。安装包只包含程序和界面，不包含语音识别、翻译或 TTS 模型权重。
 
 免安装方式：解压 `NMT-portable.zip`，直接双击里面的 `NMT.app`。App 不需要拖入 Applications，也不会启动浏览器。
 
@@ -19,6 +19,14 @@ python -m meeting_interpreter.desktop
 点击“字幕浮窗”可切换为半透明、置顶、可移动的字幕窗口。浮窗会缩小到会议软件上方的一块区域，并可拖动标题栏移动；点击“退出浮窗”恢复完整工作台。App 使用单实例锁，重复双击安装包不会再启动第二个本地服务副本。
 
 如果之前打开过旧版本，先关闭旧的 `LocalMeetingInterpreter` 或 `NMT` 窗口，再启动新安装包，避免同时运行多个本地服务实例。
+
+## 选择安装方式
+
+- `NMT.pkg`：标准 macOS 安装器。双击后按提示安装到“应用程序”，安装结束后从“应用程序”打开 NMT。
+- `NMT.dmg`：打开磁盘映像，把 `NMT.app` 拖到“应用程序”快捷方式，再从“应用程序”启动。
+- `NMT-portable.zip`：无需安装，解压后直接运行 `NMT.app`。
+
+DMG 和 PKG 的构建布局已经分开，双击 DMG 不会把应用当作安装器直接执行；PKG 才负责安装。
 
 ## DMG 本地模型配置
 
@@ -51,11 +59,26 @@ pip install -e '.[apple,installer,speaker]'
 MEETING_INTERPRETER_BUILD_PYTHON=/opt/homebrew/bin/python3 ./scripts/build_macos_app.sh
 ```
 
-构建脚本会解压 ZIP、挂载 DMG 并检查依赖、arm64 和签名，通过后发布两个归档；App 可从 ZIP 解压得到：
+构建脚本会解压 ZIP、检查 PKG 的安装载荷、挂载 DMG 并检查依赖、arm64 和签名，通过后发布三个归档；App 可从 ZIP 解压得到：
 
 - `dist/NMT.app`
 - `dist/NMT.dmg`
+- `dist/NMT.pkg`
 - `dist/NMT-portable.zip`
+
+### 正式分发签名和公证
+
+如果要让其他用户双击后不出现“无法验证开发者”或“程序严重不安全”，必须使用 Apple Developer ID 证书并完成公证。当前脚本支持以下环境变量：
+
+```bash
+MEETING_INTERPRETER_CODESIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
+MEETING_INTERPRETER_INSTALLER_IDENTITY="Developer ID Installer: Your Name (TEAMID)" \
+MEETING_INTERPRETER_NOTARY_PROFILE="nmt-notary" \
+MEETING_INTERPRETER_NOTARIZE=1 \
+./scripts/build_macos_app.sh
+```
+
+没有证书时仍可生成可运行的本地测试包，但它只能使用临时 ad-hoc 签名，无法消除 Gatekeeper 的安全提示。`NMT.pkg` 会正常安装，但首次打开测试包可能需要在 Finder 中 Control-点击并选择“打开”。
 
 默认使用 NMT 图标。如需使用历史方案 B（声谱门）或 C（翻译书签）重新构建：
 

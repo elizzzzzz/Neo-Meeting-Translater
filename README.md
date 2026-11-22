@@ -10,7 +10,7 @@ NMT listens to one audio source, turns speech into text, and shows the original 
 
 When local speech and translation models are selected, audio, text and models stay on your Mac. The current release focuses on text subtitles; speech output is not included yet.
 
-Current release: **v0.2.20** · Apple Silicon Mac (arm64) · native macOS app
+Current release: **v0.2.21** · Apple Silicon Mac (arm64) · native macOS app
 
 ## What you can use
 
@@ -43,17 +43,18 @@ The app package does not include model weights. This keeps the download smaller 
 
 1. Open the [latest release page](https://github.com/elizzzzzz/Neo-Meeting-Translater/releases/latest).
 2. Download **NMT-portable.zip** for the no-install version. Open the ZIP, then double-click **NMT.app**.
-3. Or download **NMT.dmg**, open it, and copy **NMT.app** to a folder you choose.
-4. Start NMT and allow microphone access when macOS asks.
-5. NMT opens as a native Mac window. It does not open a browser.
+3. Download **NMT.pkg** if you want a normal installer. Double-click it and follow the macOS installation steps.
+4. Or download **NMT.dmg**, open it, and drag **NMT.app** to the **Applications** shortcut.
+5. Start NMT from Applications and allow microphone access when macOS asks.
+6. NMT opens as a native Mac window. It does not open a browser.
 
-The release also contains **NMT-0.2.20.sha256**. To check a download, put the checksum file beside the ZIP and DMG and run:
+The release also contains **NMT-0.2.21.sha256**. To check a download, put the checksum file beside the ZIP, DMG and PKG and run:
 
 ~~~bash
-shasum -a 256 -c NMT-0.2.20.sha256
+shasum -a 256 -c NMT-0.2.21.sha256
 ~~~
 
-The package is ad-hoc signed and has not been notarized by Apple. If macOS blocks the first launch, Control-click NMT.app in Finder, choose Open, and confirm.
+Public releases must be signed with Apple Developer ID and notarized. A locally built package without those credentials is a test package; if macOS blocks its first launch, Control-click NMT.app in Finder, choose Open, and confirm.
 
 ## First setup in the app
 

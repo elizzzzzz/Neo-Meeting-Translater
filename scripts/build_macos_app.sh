@@ -5,6 +5,10 @@ PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$PROJECT_ROOT"
 PYTHON_BIN="${MEETING_INTERPRETER_BUILD_PYTHON:-python3}"
 ICON_VARIANT="${MEETING_INTERPRETER_ICON_VARIANT:-nmt}"
+APP_SIGN_IDENTITY="${MEETING_INTERPRETER_CODESIGN_IDENTITY:-}"
+INSTALLER_SIGN_IDENTITY="${MEETING_INTERPRETER_INSTALLER_IDENTITY:-}"
+NOTARY_PROFILE="${MEETING_INTERPRETER_NOTARY_PROFILE:-}"
+NOTARIZE="${MEETING_INTERPRETER_NOTARIZE:-0}"
 case "$ICON_VARIANT" in
   nmt) ICON_PATH="assets/icons/nmt.icns" ;;
   a|b|c) ICON_PATH="assets/icons/variant-${ICON_VARIANT}.icns" ;;
@@ -87,19 +91,61 @@ rm -rf "$STAGING_DIR/frozen" "$STAGING_DIR/work"
 # MLX locates its default GPU library relative to libmlx.dylib. PyInstaller
 # moves the dylib to Frameworks and the data to Resources; bridge that layout.
 ln -s ../Resources/mlx/lib/mlx.metallib "$STAGING_DIR/delivery/NMT.app/Contents/Frameworks/mlx.metallib"
-codesign --force --deep --sign - "$STAGING_DIR/delivery/NMT.app"
+
+if [[ -n "$APP_SIGN_IDENTITY" ]]; then
+  codesign --force --deep --options runtime --timestamp \
+    --sign "$APP_SIGN_IDENTITY" "$STAGING_DIR/delivery/NMT.app"
+  SIGNING_STATUS="Developer ID signed"
+else
+  # A local ad-hoc signature keeps the app runnable during development, but it
+  # cannot satisfy Gatekeeper on another Mac. A Developer ID identity and
+  # notarization are required for a public download to open without warnings.
+  codesign --force --deep --sign - "$STAGING_DIR/delivery/NMT.app"
+  SIGNING_STATUS="ad-hoc test signature (not notarized)"
+fi
 codesign --verify --deep --strict "$STAGING_DIR/delivery/NMT.app"
 ditto -c -k --norsrc --noextattr --keepParent \
   "$STAGING_DIR/delivery/NMT.app" "$STAGING_DIR/packages/NMT-portable.zip"
 test -s "$STAGING_DIR/packages/NMT-portable.zip"
+
+# A DMG is a disk image, not an installer. Include the conventional
+# Applications shortcut so a user can drag the app into /Applications instead
+# of accidentally launching a second copy from the mounted image.
+ln -s /Applications "$STAGING_DIR/delivery/Applications"
 hdiutil create -fs HFS+ -volname "NMT" \
   -srcfolder "$STAGING_DIR/delivery" -ov -format UDZO "$STAGING_DIR/packages/NMT.dmg"
 test -s "$STAGING_DIR/packages/NMT.dmg"
+
+# Also produce a real double-click installer. It is unsigned unless an
+# installer identity is supplied, but its payload and install destination are
+# standard macOS package metadata.
+if [[ -n "$INSTALLER_SIGN_IDENTITY" ]]; then
+  productbuild --component "$STAGING_DIR/delivery/NMT.app" /Applications \
+    --sign "$INSTALLER_SIGN_IDENTITY" "$STAGING_DIR/packages/NMT.pkg"
+else
+  productbuild --component "$STAGING_DIR/delivery/NMT.app" /Applications \
+    "$STAGING_DIR/packages/NMT.pkg"
+fi
+test -s "$STAGING_DIR/packages/NMT.pkg"
+
+if [[ "$NOTARIZE" == "1" ]]; then
+  if [[ -z "$APP_SIGN_IDENTITY" || -z "$INSTALLER_SIGN_IDENTITY" || -z "$NOTARY_PROFILE" ]]; then
+    echo "MEETING_INTERPRETER_NOTARIZE=1 requires application identity, installer identity and MEETING_INTERPRETER_NOTARY_PROFILE" >&2
+    exit 2
+  fi
+  xcrun notarytool submit "$STAGING_DIR/packages/NMT.dmg" \
+    --keychain-profile "$NOTARY_PROFILE" --wait
+  xcrun stapler staple "$STAGING_DIR/packages/NMT.dmg"
+  xcrun notarytool submit "$STAGING_DIR/packages/NMT.pkg" \
+    --keychain-profile "$NOTARY_PROFILE" --wait
+  xcrun stapler staple "$STAGING_DIR/packages/NMT.pkg"
+fi
 "${PYTHON_CMD[@]}" scripts/verify_macos_release.py "$STAGING_DIR/packages"
 # Publish only after extracting the ZIP and mounting the DMG both succeed.
 mkdir -p "$PROJECT_ROOT/dist"
 ditto "$STAGING_DIR/packages/NMT-portable.zip" "$PROJECT_ROOT/dist/NMT-portable.zip"
 ditto "$STAGING_DIR/packages/NMT.dmg" "$PROJECT_ROOT/dist/NMT.dmg"
+ditto "$STAGING_DIR/packages/NMT.pkg" "$PROJECT_ROOT/dist/NMT.pkg"
 # Keep the direct-open artifact current too; previous releases are retained.
 RELEASE_DIR="$HOME/Library/Application Support/LocalMeetingInterpreter/releases/$APP_VERSION"
 mkdir -p "$RELEASE_DIR"
@@ -116,3 +162,10 @@ if not shortcut.exists():
 PY
 echo "Built and verified: $PROJECT_ROOT/dist/NMT-portable.zip"
 echo "Built and verified: $PROJECT_ROOT/dist/NMT.dmg"
+echo "Built and verified: $PROJECT_ROOT/dist/NMT.pkg"
+echo "Signing: $SIGNING_STATUS"
+if [[ "$NOTARIZE" == "1" ]]; then
+  echo "Notarization: stapled"
+else
+  echo "Notarization: not requested"
+fi

@@ -52,10 +52,18 @@ def main(directory: Path) -> None:
     mounts = [Path(item['mount-point']) for item in attached['system-entities'] if item.get('mount-point')]
     assert mounts, 'DMG did not mount'
     try:
-        verify_bundle(mounts[0] / 'NMT.app')
+        mount = mounts[0]
+        verify_bundle(mount / 'NMT.app')
+        applications = mount / 'Applications'
+        assert applications.is_symlink() and applications.resolve() == Path('/Applications'), \
+            'DMG is missing the standard /Applications shortcut'
     finally:
         run('hdiutil', 'detach', str(mounts[0]))
-    print('Portable ZIP extraction and mounted DMG verification passed.', flush=True)
+    package = directory / 'NMT.pkg'
+    assert package.is_file() and package.stat().st_size > 0, f'Missing installer package: {package}'
+    payload = run('pkgutil', '--payload-files', str(package)).decode('utf-8', errors='replace')
+    assert './NMT.app/Contents' in payload, 'Installer package does not contain the NMT.app payload'
+    print('Portable ZIP, installer package and mounted DMG verification passed.', flush=True)
 
 
 if __name__ == '__main__':

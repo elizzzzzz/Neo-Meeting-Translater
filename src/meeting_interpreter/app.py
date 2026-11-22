@@ -72,7 +72,7 @@ def create_app() -> FastAPI:
     connections = {}
     cleanup_tasks = set()
     runtime["options"] = read_model_options()
-    app = FastAPI(title="NMT · Neo Meeting Translater", version="0.2.20")
+    app = FastAPI(title="NMT · Neo Meeting Translater", version="0.2.21")
     app.mount("/web", StaticFiles(directory=WEB_DIR), name="web")
 
     @app.get("/health")

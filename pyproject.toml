@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "local-meeting-interpreter"
-version = "0.2.20"
+version = "0.2.21"
 description = "NMT: local meeting transcription and bilingual subtitles for macOS."
 readme = "README.md"
 license = {file = "LICENSE"}

@@ -8,4 +8,11 @@ xcrun swiftc -parse-as-library -O -target arm64-apple-macos14.0 \
   -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __info_plist \
   -Xlinker "$PROJECT_ROOT/native/AppleSpeechBridge-Info.plist" \
   "$PROJECT_ROOT/native/AppleSpeechBridge.swift" -o "$OUTPUT_DIR/AppleSpeechBridge"
-codesign --force --sign - --identifier com.localmeetinginterpreter.speech "$OUTPUT_DIR/AppleSpeechBridge"
+SPEECH_SIGN_IDENTITY="${MEETING_INTERPRETER_CODESIGN_IDENTITY:--}"
+if [[ "$SPEECH_SIGN_IDENTITY" == "-" ]]; then
+  codesign --force --sign - --identifier com.localmeetinginterpreter.speech "$OUTPUT_DIR/AppleSpeechBridge"
+else
+  codesign --force --options runtime --timestamp \
+    --sign "$SPEECH_SIGN_IDENTITY" --identifier com.localmeetinginterpreter.speech \
+    "$OUTPUT_DIR/AppleSpeechBridge"
+fi
