@@ -1,155 +1,170 @@
 # NMT · Neo Meeting Translater
 
-在 Mac 上本地运行的会议语音识别与双语字幕工具。
+**在 Mac 上运行的中文、日语、英语会议语音识别与实时双语字幕软件。**
 
-[English](README.md) | **简体中文**
+[English](README.md) · [日本語](README.ja.md) · [下载最新版](https://github.com/elizzzzzz/Neo-Meeting-Translater/releases/latest) · [许可证](LICENSE)
 
-[下载](https://github.com/elizzzzzz/Neo-Meeting-Translater/releases/latest) · [版本说明](docs/release-0.2.20.md) · [反馈问题](https://github.com/elizzzzzz/Neo-Meeting-Translater/issues) · [Apache-2.0](LICENSE)
+## NMT 是做什么的
 
-**模型选型参考**：[Apple M3 / 16 GiB（已有质量评分）](docs/model-benchmark-2026-11-09-m3-16gb.md) · [Apple M5 / 32 GiB（7项完整质量评审，2026-11-19）](docs/model-benchmark-2026-11-19-m5-32gb.md) · [高配环境历史测试看板](docs/model-benchmark-highmem-dashboard.md)
+NMT 会听取一个音频来源，把讲话变成文字，并在屏幕上同时显示原文和译文。它适合现场会议、腾讯会议、Microsoft Teams 和网页视频。
 
-32 GB MacBook 参考配置（实测硬件：**M5 MacBook Air / 32 GiB / macOS 26.7.3**；下表三项已完成144题质量评审，完整榜单共7项）：
+选择本地语音识别和翻译模型后，音频、文字和模型都留在这台 Mac 上。当前版本以文字字幕为主，暂时不提供翻译语音播放。
 
-| 选型方向 | 配置 | 综合分 | 质量分 | 平均 TPS | 整句中位延迟 | 峰值进程树 RSS |
-| --- | --- | ---: | ---: | ---: | ---: | ---: |
-| 已评配置中综合第一 | Qwen3 30B-A3B Q4_K_M / Ollama | 95.39 | 94.58 | 53.26 | 1.03 秒 | 17.67 GiB |
-| 已评配置中质量第一、内存余量较多 | Qwen3.5 9B Q4_K_M / Ollama | 91.37 | 96.25 | 21.81 | 2.32 秒 | 7.94 GiB |
-| SGLang 小模型、综合第二 | Qwen3.5 4B MLX 4bit / SGLang | 92.94 | 93.74 | 38.80 | 1.25 秒 | 5.35 GiB |
+当前版本：**v0.2.20** · Apple 芯片 Mac（arm64）· 原生 macOS App
 
-已完成39/40项文字采集；仅7项完成全部质量评审并入榜，32项未评完与1项后端失败排除。评分为标签隐藏的助手辅助评审，无独立人类复核；三个候选分别有8、7、17道关键错误题。未测试图像输入。RSS 不等于独立显存，未验证 ASR 并行；SGLang 使用本地补丁且测试时存在较高系统 swap。详见 [32 GiB 完整表、限制与原始证据](docs/model-benchmark-2026-11-19-m5-32gb.md)。
+## 目前可以做什么
 
-NMT 将麦克风或经音频回环接入的会议声音转换为原文与译文，使用 Mac 上的语音识别与翻译模型处理。支持中文、日语和英语，提供双栏发言记录和可置顶的半透明字幕浮窗，适用于现场会议、在线会议和视频观看。
+- 中文 ↔ 日语、中文 ↔ 英语、英语 ↔ 日语。
+- 在选定的语言对中自动判断当前发言语言。
+- 自动判断不准确时，用按钮快速指定中文、日本語或 English。
+- 连续保留同一段发言，识别结果可以修订，原文和译文并排显示，历史内容可以滚动查看。
+- 可选匿名说话人标签。
+- 半透明字幕浮窗：可以置顶、拖动、缩放，也可以只显示原文或只显示译文。
+- 中文、日语、英语三种界面语言。
+- 亮色、暗色或跟随系统外观。
+- 翻译支持 Ollama、llama.app 或 SGLang 本地服务。
+- 识别支持 Apple SpeechAnalyzer、MLX Whisper 或 SenseVoice。
+- 显示本地模型状态、Ollama 状态、冷启动进度和输入音量。
+- 保存设置后立即生效，不需要手动重启。
 
-当前版本：**0.2.20** · **Apple Silicon（arm64）** · **文字字幕优先**
+## 下载前需要准备什么
 
-![NMT 暗色工作区：画面为界面测试字幕，不代表实时识别结果](docs/images/nmt-workspace.png)
+你需要：
 
-<details>
-<summary>查看亮色界面</summary>
+- 一台 Apple 芯片 Mac。当前安装包是 arm64，Intel Mac 不能使用这个安装包。
+- macOS 麦克风权限。
+- 一个语音识别引擎和模型。Apple SpeechAnalyzer 需要 macOS 26 或更高版本；Whisper 和 SenseVoice 使用本地模型文件。
+- 一个本地翻译服务。大多数用户选择 Ollama 即可。
+- 如果要识别腾讯会议、Teams 或网页视频声音，需要 BlackHole 或 Loopback 这样的虚拟音频设备。
 
-![NMT 亮色工作区：画面为界面测试字幕，不代表实时识别结果](docs/images/nmt-workspace-light.png)
+安装包不包含模型权重，这样下载文件更小，也方便你选择模型保存位置。
 
-</details>
+## 下载和打开
 
-## 主要功能
+1. 打开[最新版发布页](https://github.com/elizzzzzz/Neo-Meeting-Translater/releases/latest)。
+2. 下载 **NMT-portable.zip**。解压后双击 **NMT.app**，无需安装。
+3. 或下载 **NMT.dmg**，打开后把 **NMT.app** 复制到你选择的文件夹。
+4. 第一次采集声音时，允许 macOS 使用麦克风。
+5. NMT 会打开为独立的 Mac 窗口，不会启动浏览器。
 
-- **三组双向翻译**：中文 ↔ 日语、中文 ↔ 英语、英语 ↔ 日语。两侧语言顺序固定，“源 / 译”标志随当前发言语言切换。
-- **连续发言记录**：保留段落、支持原文修订与译文增量更新，可滚动查看历史并导出 UTF-8 文本。
-- **快捷语言控制**：在选定语言对内自动判断源语言，判断不准确时可用按钮锁定当前语言。
-- **字幕模式**：半透明、置顶、可移动、可缩放；支持双栏、仅原文或仅译文。
-- **本地引擎选择**：语音识别支持 Apple SpeechAnalyzer、MLX Whisper、SenseVoice；翻译支持 Ollama、llama.app 和兼容的 SGLang 本机服务。
-- **发言人标签**：可选本地说话人区分，以匿名标签显示，不读取会议软件中的真实姓名。
-- **桌面体验**：中文、日语、英语界面；亮色、暗色及跟随系统；保存设置、模型状态提示和单实例启动。
+发布页还提供 **NMT-0.2.20.sha256**。如需检查下载文件，把校验文件和 ZIP、DMG 放在同一个文件夹中，打开“终端”执行：
 
-## 运行要求
-
-| 项目 | 要求 |
-| --- | --- |
-| 电脑 | Apple Silicon Mac；历史翻译评测使用 M3 / 16 GB 统一内存；32 GB 性能参考使用 M5 MacBook Air / 32 GB 统一内存 |
-| 安装包 | arm64 ZIP 或 DMG，暂未提供 Intel 版本 |
-| 语音识别 | 本机模型文件，或 macOS 26+ 的 Apple SpeechAnalyzer 语言资源 |
-| 翻译 | 已安装模型的本机 Ollama、llama.app 或兼容 SGLang 服务 |
-| 音频 | 麦克风权限；在线会议和网页播放音频需要另装音频回环设备 |
-| 开发 | Python 3.11+；前端测试需要 Node.js；构建 Apple 语音助手需要 Swift 工具链 |
-
-内存占用与延迟取决于模型大小和其他程序的负载。SGLang 接入提供本地服务客户端，NMT 不负责安装或保证特定 SGLang 运行环境在 Apple Silicon 上可用。
-
-## 下载与运行
-
-1. 打开 [最新版本发布页](https://github.com/elizzzzzz/Neo-Meeting-Translater/releases/latest)。
-2. 下载 **`NMT-portable.zip`**，解压后双击 **`NMT.app`**，无需安装或移入 Applications。也可打开 **`NMT.dmg`**，将 App 复制到本机目录。
-3. 开始采集音频时允许麦克风访问。详情见 [macOS 安装与权限说明](docs/macos-install.md)。
-
-发布页同时提供 `NMT-0.2.20.sha256`。将它和两个安装包放在同一目录，执行：
-
-```bash
+~~~bash
 shasum -a 256 -c NMT-0.2.20.sha256
-```
+~~~
 
-App 使用原生 macOS 窗口，不另开浏览器。当前安装包采用临时签名，**尚未通过 Apple 公证**。升级前请关闭旧版；现有配置和权限身份继续保留，包括历史名称 `LocalMeetingInterpreter` 对应的 Application Support 目录。
+安装包使用临时签名，尚未通过 Apple 公证。如果 macOS 第一次阻止打开，请在 Finder 中按住 Control 点击 NMT.app，选择“打开”并确认。
 
-仓库与下载的访问范围以 GitHub 当前的可见性和访问权限为准。
+## 第一次设置
 
-## 首次配置
+1. 打开“设置”。
+2. 在“语音识别”中选择 Apple SpeechAnalyzer、Whisper 或 SenseVoice。
+3. 在“翻译”中选择 Ollama、llama.app 或 SGLang。
+4. 选择语言对：中日、中英或英日。
+5. 选择 Mac 麦克风或音频回环输入。
+6. 点击“保存并返回”。
+7. 等待状态显示语音识别和翻译模型可用，再点击“开始”。
 
-1. 打开“设置 → 模型与服务”，选择语音识别引擎。
-2. 选择本地语音模型及目录。Apple 语言资源由 macOS 管理，不受这个目录控制。
-3. 选择 Ollama、llama.app 或 SGLang，填写本机服务地址并选择已安装的翻译模型；服务未运行时先启动服务。
-4. 选择语言对与音频输入设备，点击“保存并返回”。
-5. 等待模型状态显示可用后，开始识别。
+以后可以随时修改模型、服务、模型目录、语言对和外观。保存后立即生效，不需要重启。已有模型文件不会因为修改目录而自动移动。
 
-设置无需手动重启即可应用。录音中应用设置时，会短暂停止收音以切换引擎。已有配置的用户再次打开时直接进入工作区，无需重复设置。
+## Ollama：最简单的本地翻译设置
 
-界面提供 Ollama 安装 / 升级和受支持模型下载的明确操作。打开 App、进入设置或刷新模型列表不会自动安装模型或升级服务。安装包**不包含模型权重**；模型文件保留在指定目录或由对应引擎管理，修改路径不会迁移已有文件。
+Ollama 是大多数用户最容易使用的本地翻译服务。NMT 默认连接本机地址：**http://127.0.0.1:11434**。
 
-各引擎配置和源码环境变量见 [模型与本地服务配置](docs/model-setup.zh-CN.md)。
+### 安装并启动 Ollama
 
-## 在线会议与网页音频
+从 [ollama.com](https://ollama.com/download/mac) 下载 Ollama，打开 Mac App 并保持运行。NMT 的设置页面也提供“安装 Ollama”入口。
 
-NMT **一次采集一个输入设备**：
+在“终端”检查：
 
-- **现场发言**：选择 Mac 内置麦克风或耳机麦克风。
-- **腾讯会议、Microsoft Teams、网页视频**：通过另行安装的 BlackHole 或 Loopback 等虚拟音频设备路由播放声音，再在 NMT 中选择对应输入。
-- **同时听到原声**：在 macOS“音频 MIDI 设置”中创建多输出设备，将声音同时送至耳机和回环设备。
+~~~bash
+ollama --version
+ollama list
+~~~
 
-NMT 不直接读取会议软件内部音频通道，也不调用其云端转写接口。若需同时采集本机麦克风与远端声音，需要先由外部混音设备合并输入。详见 [会议音频接入指南](docs/macos-meeting-audio.md)。
+如果 ollama list 能正常显示，通常说明本地服务已经可以使用。回到 NMT 的“设置”，点击“重新检查”，确认显示“已安装”和“已连接”。
 
-## 隐私与网络访问
+### 模型怎么选
 
-配置本地引擎和模型后，语音识别与翻译在本机执行；内置服务接入使用本机回环 HTTP 地址。NMT 不将会议音频或字幕发送到云端识别、翻译 API。
+对于 M3、16 GB 统一内存的 Mac：
 
-环境检测、版本检查，以及用户明确发起的下载和更新可能访问外部服务。如需离线使用，请提前准备模型与语言资源。会议记录由用户选择导出位置，请妥善保管导出文件。
+| 需求 | 模型 | 简单建议 |
+| --- | --- | --- |
+| 实时字幕默认选择 | **translategemma:4b** | 先用这个，速度和质量比较均衡 |
+| 更重视长句和措辞 | **translategemma:12b** | 质量更高，但速度更慢、占用更多内存 |
+| 需要通用上下文纠错 | **qwen3:4b** | 通用能力较强，译文风格需要自行检查 |
+| 内存紧张或试用 | **qwen2.5:3b** | 占用较小，质量低于上面几款 |
 
-## 当前限制
+建议先安装一个模型：**translategemma:4b**。不要一开始安装多个模型。
 
-- 当前属于早期版本，翻译语音输出尚未完成，交付功能以文字字幕为主。
-- 噪声、短句和多人重叠发言可能影响识别、语言判断及说话人区分；正式使用前请复核导出内容。
-- Apple SpeechAnalyzer 需要 macOS 26+；双语自动判断采用实验性的应用层候选比较，可用源语言按钮手动纠正。
-- 真实麦克风、腾讯会议和 Teams 的音频路由需要在各目标设备验证，回放测试不等于这些采集路径已验收。
-- 无法保证始终达到“识别约一秒、翻译再增加一秒”的目标；模型准备、文本修订、音频长度和系统负载均会影响延迟。
+~~~bash
+ollama pull translategemma:4b
+ollama list
+~~~
 
-历史中日语音回放结果、方法与限制见 [识别评估](docs/asr-evaluation-0.2.3.md) 和 [流式评估](docs/asr-evaluation-0.2.4.md)。这些结果不代表所有引擎或当前版本的整体表现。
+然后在 NMT“设置”中选择“翻译服务：Ollama”，模型选择 **translategemma:4b**，点击“保存并返回”。第一次翻译可能较慢，因为模型需要冷启动；模型保持热启动后，后续句子会更快。
 
-## 开发与构建
+### 模型保存目录怎么设置
 
-```bash
-git clone https://github.com/elizzzzzz/Neo-Meeting-Translater.git
-cd Neo-Meeting-Translater
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e '.[dev]'
-python -m meeting_interpreter --mock
-```
+Ollama 通常使用自己的模型目录。在 NMT 设置里点击“使用 Ollama 当前目录”，软件会填入检测到的目录。ASR 模型或其他本地资源也可以使用你自己选择的目录。
 
-`--mock` 为开发模拟模式，输出并非真实识别。使用本地引擎启动桌面 App：
+修改 NMT 里的目录不会自动搬运 Ollama 已经管理的模型。如果想把 Ollama 的模型整体放到外置硬盘，请先在 Ollama 自己的设置中修改存储位置并重启 Ollama，再回到 NMT 点击“重新检查”。
 
-```bash
-pip install -e '.[apple,audio,speaker]'
-export MEETING_INTERPRETER_MODE=local
-python -m meeting_interpreter.desktop
-```
+### 已安装 Ollama，但 NMT 显示不可用
 
-在设置中连接真实模型。测试和构建 arm64 安装包：
+按下面顺序检查：
 
-```bash
-pytest -q
-node --test tests/frontend.test.cjs
-pip install -e '.[apple,audio,installer,speaker]'
-./scripts/build_macos_app.sh
-```
+1. 打开 Ollama App，等待几秒。
+2. 在终端执行 **ollama list**。
+3. 确认 NMT 的服务是“Ollama”，地址是 **http://127.0.0.1:11434**。
+4. 点击“重新检查”。
+5. 确认模型名称和 ollama list 中完全一致。
+6. 如果没有模型，执行 **ollama pull translategemma:4b**。
+7. 如果刚改过模型目录，重启 Ollama，再重新检查。
 
-产物为 `dist/NMT.app`、`dist/NMT-portable.zip` 和 `dist/NMT.dmg`。Python 包名、环境变量前缀及 bundle identifier 保留历史命名以兼容现有配置。架构细节见 [流式处理说明](docs/streaming-architecture.md)。
+NMT 只连接本机服务，不会把会议声音或字幕发送到远程翻译服务器。
 
-## 反馈与贡献
+## 会议和网页声音
 
-欢迎通过 [GitHub Issues](https://github.com/elizzzzzz/Neo-Meeting-Translater/issues) 反馈可复现的问题或提出改进建议。请附 App 版本、macOS 版本、所选引擎、相关状态信息及复现步骤；提交前移除私人会议内容、录音、凭据和个人文件路径。代码贡献应说明变更及验证方式，请勿提交模型权重或会议录音。
+### 使用 Mac 麦克风
 
-## 商用授权与署名
+在 NMT 选择内置麦克风或耳机麦克风，允许权限，然后点击“开始”。
 
-NMT 原创代码与文档采用 **[Apache License 2.0](LICENSE)**，允许商业使用、修改和分发，须遵守许可证条款。再分发时请附许可证、保留适用的版权与署名信息、保留相关 [NOTICE 声明](NOTICE)，并按许可证要求标明修改过的文件。
+### 使用腾讯会议、Teams 或网页视频
 
-推荐署名：
+1. 安装 BlackHole 2ch 或 Loopback。
+2. 在会议或视频软件里，把扬声器输出改为这个设备。
+3. 在 NMT 中选择同一个设备作为输入。
+4. 点击“开始”。
 
-> 基于 NMT（Neo Meeting Translater），作者 elizzzzzz 及贡献者。项目来源：https://github.com/elizzzzzz/Neo-Meeting-Translater ，采用 Apache License 2.0。
+如果还想听到原声，可在 macOS“音频 MIDI 设置”中建立多输出设备，把耳机和虚拟音频设备一起加入。
 
-第三方依赖、模型权重、系统语言资源和评估材料分别遵循原有许可证，NMT 的许可证不会改变其授权，也不授予第三方名称或商标的使用权。详见 [第三方说明](THIRD_PARTY_NOTICES.md)。
+NMT 一次读取一个输入设备。如果要同时采集自己的麦克风和远端声音，需要使用外部混音器或能提供混合输入的虚拟设备。
+
+## 字幕模式
+
+点击“字幕模式”打开小型半透明浮窗，把它拖到会议窗口的空白位置。可以选择原文和译文、仅原文或仅译文。
+
+历史段落可以滚轮查看，最新段落保持在最下面。识别修订会更新当前段落，不会快速清空整段历史。
+
+## 隐私和限制
+
+- 选择本地引擎后，音频、识别文字、译文和模型都留在本机。
+- NMT 不调用腾讯会议或 Teams 的云端转写。
+- 房间嘈杂、声音太轻或多人同时说话时，识别可能出错。
+- 说话人标签是匿名的，不会显示会议软件中的真实姓名。
+- 延迟取决于模型、句子长度和 Mac 负载。“识别约一秒、翻译再增加一秒”是目标，不是保证。
+- 当前版本以文字为主，翻译语音输出尚未提供。
+
+## 商用授权和署名
+
+NMT 的原创代码与文档采用 [Apache License 2.0](LICENSE)，允许商业使用、修改和分发，但必须遵守许可证条款。
+
+再分发 NMT 时，请附带 LICENSE、NOTICE 及适用的第三方声明，并保留以下署名：
+
+> 基于 NMT（Neo Meeting Translater），作者 elizzzzzz 及贡献者。项目来源：https://github.com/elizzzzzz/Neo-Meeting-Translater
+
+模型、Apple 系统资源、Ollama、音频驱动和其他第三方组件仍遵循各自许可证。商业部署前请单独核对所选模型的授权条件。
+
+遇到问题时，请提交 Issue，并写明软件版本、macOS 版本、所选模型和页面显示的具体状态。分享日志前请删除会议内容和个人信息。
+\n
