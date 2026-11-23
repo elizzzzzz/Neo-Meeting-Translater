@@ -1,0 +1,76 @@
+name: Build macOS release
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Full commit SHA to build (must match the release target)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 40
+    permissions:
+      contents: write
+    env:
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ inputs.source_ref }}
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+          architecture: arm64
+      - name: Check architecture and release target
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_REF: ${{ inputs.source_ref }}
+        run: |
+          test "$(uname -m)" = arm64
+          python - <<'PY'
+          import json, os, re, subprocess, tomllib
+          ref = os.environ['SOURCE_REF']
+          assert re.fullmatch(r'[a-f0-9]{40}', ref), 'Use a full commit SHA'
+          assert subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip() == ref
+          version = tomllib.load(open('pyproject.toml', 'rb'))['project']['version']
+          assert re.fullmatch(r'\d+\.\d+\.\d+', version)
+          release = json.loads(subprocess.check_output(['gh', 'release', 'view', 'v'+version, '--json', 'isDraft,targetCommitish'], text=True))
+          assert release['isDraft'], 'Only a draft release may receive build assets'
+          assert release['targetCommitish'] == ref, 'Release target differs from the build source'
+          with open(os.environ['GITHUB_ENV'], 'a') as env:
+              env.write('NMT_VERSION='+version+'\n')
+          PY
+      - name: Install build and test dependencies
+        run: python -m pip install '.[apple,audio,speaker,installer,dev]'
+      - name: Run tests without models
+        run: |
+          python -m pytest -q
+          node --test tests/frontend.test.cjs
+      - name: Build and validate arm64 ZIP, DMG and PKG
+        run: |
+          export MEETING_INTERPRETER_BUILD_PYTHON="$(command -v python)"
+          bash scripts/build_macos_app.sh
+          cd dist
+          shasum -a 256 -c "NMT-$NMT_VERSION.sha256"
+      - name: Upload verified packages to draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "v$NMT_VERSION" dist/NMT-portable.zip dist/NMT.dmg dist/NMT.pkg "dist/NMT-$NMT_VERSION.sha256" --clobber
+          cp docs/macos-first-open.txt dist/NMT-first-open.txt
+          gh release upload "v$NMT_VERSION" dist/NMT-first-open.txt --clobber
+          printf 'Built source: %s\n' "$(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+          cat "dist/NMT-$NMT_VERSION.sha256" >> "$GITHUB_STEP_SUMMARY"
