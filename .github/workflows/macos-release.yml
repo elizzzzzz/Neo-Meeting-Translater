@@ -54,7 +54,7 @@ jobs:
               env.write('NMT_VERSION='+version+'\n')
           PY
       - name: Install build and test dependencies
-        run: python -m pip install '.[apple,audio,speaker,installer,dev]'
+        run: python -m pip install -e '.[apple,audio,speaker,installer,dev]'
       - name: Run tests without models
         run: |
           python -m pytest -q
