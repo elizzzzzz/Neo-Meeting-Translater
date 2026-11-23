@@ -112,6 +112,7 @@ test -s "$STAGING_DIR/packages/NMT-portable.zip"
 # Applications shortcut so a user can drag the app into /Applications instead
 # of accidentally launching a second copy from the mounted image.
 ln -s /Applications "$STAGING_DIR/delivery/Applications"
+ditto "$PROJECT_ROOT/docs/macos-first-open.txt" "$STAGING_DIR/delivery/Read Me - First Open.txt"
 hdiutil create -fs HFS+ -volname "NMT" \
   -srcfolder "$STAGING_DIR/delivery" -ov -format UDZO "$STAGING_DIR/packages/NMT.dmg"
 test -s "$STAGING_DIR/packages/NMT.dmg"
@@ -141,11 +142,18 @@ if [[ "$NOTARIZE" == "1" ]]; then
   xcrun stapler staple "$STAGING_DIR/packages/NMT.pkg"
 fi
 "${PYTHON_CMD[@]}" scripts/verify_macos_release.py "$STAGING_DIR/packages"
+# Keep checksums paired with the actual archives on every rebuild.
+(
+  cd "$STAGING_DIR/packages"
+  shasum -a 256 NMT-portable.zip NMT.dmg NMT.pkg > "NMT-$APP_VERSION.sha256"
+)
 # Publish only after extracting the ZIP and mounting the DMG both succeed.
 mkdir -p "$PROJECT_ROOT/dist"
 ditto "$STAGING_DIR/packages/NMT-portable.zip" "$PROJECT_ROOT/dist/NMT-portable.zip"
 ditto "$STAGING_DIR/packages/NMT.dmg" "$PROJECT_ROOT/dist/NMT.dmg"
 ditto "$STAGING_DIR/packages/NMT.pkg" "$PROJECT_ROOT/dist/NMT.pkg"
+ditto "$STAGING_DIR/packages/NMT-$APP_VERSION.sha256" "$PROJECT_ROOT/dist/NMT-$APP_VERSION.sha256"
+ditto "$PROJECT_ROOT/docs/macos-first-open.txt" "$PROJECT_ROOT/dist/Read Me - First Open.txt"
 # Keep the direct-open artifact current too; previous releases are retained.
 RELEASE_DIR="$HOME/Library/Application Support/LocalMeetingInterpreter/releases/$APP_VERSION"
 mkdir -p "$RELEASE_DIR"

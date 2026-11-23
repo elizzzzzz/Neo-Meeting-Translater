@@ -36,11 +36,34 @@ class SpeakerClusters:
         self.candidate_at_ms = 0
         self.candidate_count = 0
         self.changed_at_ms = 0
+        self.candidate_observed_ms = 0
+        self._last_observation_ms: int | None = None
+        self._after_pause = False
 
-    def assign(self, embedding: list[float], at_ms: int) -> str:
+    def _clear_candidate(self) -> None:
+        self.candidate = None
+        self.candidate_count = 0
+
+    def begin_turn(self, at_ms: int) -> None:
+        """A pause clears evidence, but is not itself evidence of a new person."""
+        self._clear_candidate()
+        self._last_observation_ms = None
+        self._after_pause = True
+
+    def assign(self, embedding: list[float], at_ms: int, *, observed_until_ms: int | None = None) -> str:
         norm = math.sqrt(sum(x*x for x in embedding))
         if not norm or not math.isfinite(norm):
             return self.label
+        if self.centroids and len(embedding) != len(self.centroids[0]):
+            return self.label
+        observed_ms = at_ms if observed_until_ms is None else observed_until_ms
+        if self._last_observation_ms is not None:
+            if observed_ms <= self._last_observation_ms:
+                return self.label
+            if observed_ms - self._last_observation_ms > 2500:
+                self._clear_candidate()
+                self._after_pause = False
+        self._last_observation_ms = observed_ms
         vector = [x / norm for x in embedding]
         if not self.centroids:
             self.centroids.append(vector)
@@ -52,10 +75,10 @@ class SpeakerClusters:
         if proposed != self.active and proposed >= 0 and scores[best] - scores[self.active] < .10:
             proposed = self.active
         if proposed == self.active:
-            self.candidate = None
-            self.candidate_count = 0
+            self._clear_candidate()
+            self._after_pause = False
             # Update only high-confidence observations, not mixed transitions.
-            if scores[best] >= .75:
+            if best == self.active and scores[best] >= .75:
                 averaged = [.9*a + .1*b for a,b in zip(self.centroids[best], vector)]
                 length = math.sqrt(sum(x*x for x in averaged))
                 self.centroids[best] = [x/length for x in averaged]
@@ -63,10 +86,12 @@ class SpeakerClusters:
         same_candidate = self.candidate is not None and self.candidate_id == proposed and sum(a*b for a,b in zip(vector, self.candidate)) >= .70
         if not same_candidate:
             self.candidate, self.candidate_id, self.candidate_at_ms = vector, proposed, at_ms
+            self.candidate_observed_ms = observed_ms
             self.candidate_count = 1
             return self.label
         self.candidate_count += 1
-        if self.candidate_count < 3 or at_ms - self.candidate_at_ms < 1600:
+        required_count, required_ms = (2, 600) if self._after_pause else (3, 1600)
+        if self.candidate_count < required_count or observed_ms - self.candidate_observed_ms < required_ms:
             return self.label
         if proposed < 0:
             if len(self.centroids) >= self.max_speakers:
@@ -75,7 +100,8 @@ class SpeakerClusters:
             proposed = len(self.centroids) - 1
         self.active = proposed
         self.changed_at_ms = self.candidate_at_ms
-        self.candidate = None
+        self._clear_candidate()
+        self._after_pause = False
         return self.label
 
     @property
@@ -96,6 +122,9 @@ class EmbeddingSpeakerBackend:
     @property
     def changed_at_ms(self) -> int:
         return self.clusters.changed_at_ms
+
+    def begin_turn(self, at_ms: int) -> None:
+        self.clusters.begin_turn(at_ms)
 
     def for_session(self) -> EmbeddingSpeakerBackend:
         backend = EmbeddingSpeakerBackend(str(self.model))
@@ -131,7 +160,8 @@ class EmbeddingSpeakerBackend:
             if not self._extractor.is_ready(stream):
                 return self.clusters.label
             embedding = self._extractor.compute(stream)
-        return self.clusters.assign(list(embedding), start_ms)
+        end_ms = start_ms + round(len(pcm) / 2 / sample_rate * 1000)
+        return self.clusters.assign(list(embedding), start_ms, observed_until_ms=end_ms)
 
 
 class PyannoteSpeakerBackend:

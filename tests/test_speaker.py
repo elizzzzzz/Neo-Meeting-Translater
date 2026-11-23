@@ -29,3 +29,34 @@ def test_two_noisy_probes_do_not_split_a_continuing_speaker():
     for at, vector in [(900, [0, 1, 0]), (1800, [0, 1, 0]), (2700, [1, 0, 0])]:
         assert voices.assign(vector, at) == 'SPEAKER_00'
     assert len(voices.centroids) == 1
+
+
+def test_stale_candidate_cannot_confirm_a_change_across_a_long_pause():
+    voices = SpeakerClusters()
+    voices.assign([1, 0], 0)
+    voices.assign([0, 1], 2000)
+    voices.assign([0, 1], 2900)
+    assert voices.assign([0, 1], 30000) == 'SPEAKER_00'
+    assert len(voices.centroids) == 1
+
+
+def test_pause_allows_two_consistent_observations_and_recognizes_returning_voice():
+    voices = SpeakerClusters()
+    voices.assign([1, 0], 0)
+    voices.begin_turn(2000)
+    assert voices.assign([0, 1], 2000, observed_until_ms=2800) == 'SPEAKER_00'
+    assert voices.assign([0, 1], 2000, observed_until_ms=3700) == 'SPEAKER_01'
+    assert voices.changed_at_ms == 2000
+    voices.begin_turn(5000)
+    assert voices.assign([1, 0], 5000, observed_until_ms=5800) == 'SPEAKER_01'
+    assert voices.assign([1, 0], 5000, observed_until_ms=6700) == 'SPEAKER_00'
+    assert voices.changed_at_ms == 5000
+    assert len(voices.centroids) == 2
+
+
+def test_pause_alone_does_not_create_a_new_speaker():
+    voices = SpeakerClusters()
+    voices.assign([1, 0], 0)
+    voices.begin_turn(2000)
+    assert voices.assign([.99, .01], 2000) == 'SPEAKER_00'
+    assert len(voices.centroids) == 1

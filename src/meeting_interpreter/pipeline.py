@@ -166,6 +166,8 @@ class Pipeline:
         self._decoded_has_timestamps: dict[str, bool] = {}
         self._speaker_ids: dict[str, str] = {}
         self._last_speaker_probe_ms: dict[str, int] = {}
+        self._speaker_buffers: dict[str, bytearray] = {}
+        self._speaker_voice_ms: dict[str, float] = {}
         self._voice_gates: dict[str, AdaptiveVoiceGate] = {}
         self._last_events: dict[str, AudioEvent] = {}
         self._latest_caption: dict[str, CaptionEvent] = {}
@@ -268,8 +270,15 @@ class Pipeline:
         audio_ms = round(self._audio_samples[session] / event.sample_rate * 1000)
         self._audio_ms[session] = audio_ms
         previous_voice_ms = self._last_voice_ms.get(session)
-        new_turn = active_ms and (previous_voice_ms is None or previous_audio_ms - previous_voice_ms >= 1200)
+        has_speaker_model = not isinstance(self.speaker, PendingSpeakerBackend)
+        # A short pause starts a clean acoustic window for voice comparison.
+        # Only a confirmed identity change creates a new display paragraph.
+        pause_ms = 350 if has_speaker_model else 1200
+        new_turn = active_ms and (previous_voice_ms is None or previous_audio_ms - previous_voice_ms >= pause_ms)
         if new_turn:
+            if buffer and self._last_infer_ms.get(session, -1) < (previous_voice_ms or 0):
+                async for caption in self._decode_window(event, bytes(buffer), self._buffer_start_ms[session]):
+                    yield caption
             if self._last_text.get(session):
                 self._context_text[session] = self._last_text[session][-240:]
             buffer.clear()
@@ -281,7 +290,17 @@ class Pipeline:
             self._voice_duration_ms[session] = 0
             self._last_infer_ms.pop(session, None)
             self._speaker_ids.setdefault(session, self._manual_label)
+            self._speaker_buffers.pop(session, None)
+            self._speaker_voice_ms[session] = 0
+            self._last_speaker_probe_ms.pop(session, None)
+            if previous_voice_ms is not None and hasattr(self.speaker, 'begin_turn'):
+                self.speaker.begin_turn(previous_audio_ms)
         buffer.extend(filtered_audio)
+        if has_speaker_model:
+            speaker_buffer = self._speaker_buffers.setdefault(session, bytearray())
+            speaker_buffer.extend(filtered_audio)
+            del speaker_buffer[:-event.sample_rate * 2 * 2]
+            self._speaker_voice_ms[session] = self._speaker_voice_ms.get(session, 0) + active_ms
         if active_ms:
             self._last_voice_ms[session] = audio_ms
             self._voice_duration_ms[session] = self._voice_duration_ms.get(session, 0) + active_ms
@@ -297,15 +316,15 @@ class Pipeline:
                     buffer.clear()
                 return
 
-        if active_ms and not isinstance(self.speaker, PendingSpeakerBackend) and audio_ms - self._last_speaker_probe_ms.get(session, -1000) >= 900:
-            probe_bytes = min(len(buffer), event.sample_rate * 2 * 2)
-            probe_start = self._buffer_start_ms.get(session, 0) + round((len(buffer) - probe_bytes) / 2 / event.sample_rate * 1000)
-            identity = await self.speaker.identify(bytes(buffer[-probe_bytes:]), event.sample_rate, probe_start)
+        if active_ms and has_speaker_model and self._speaker_voice_ms.get(session, 0) >= 800 and audio_ms - self._last_speaker_probe_ms.get(session, -1000) >= 900:
+            probe_start = audio_ms - round(len(speaker_buffer) / 2 / event.sample_rate * 1000)
+            identity = await self.speaker.identify(bytes(speaker_buffer), event.sample_rate, probe_start)
             self._last_speaker_probe_ms[session] = audio_ms
             previous_identity = self._speaker_ids.get(session, "SPEAKER_PENDING")
             if identity != "SPEAKER_PENDING" and identity != previous_identity:
                 if previous_identity != "SPEAKER_PENDING":
-                    split_ms = max(self._buffer_start_ms[session], min(audio_ms, getattr(self.speaker, "changed_at_ms", probe_start)))
+                    # Never move a new identity behind already committed text.
+                    split_ms = max(self._buffer_start_ms[session], self._active_start_ms.get(session, 0), min(audio_ms, getattr(self.speaker, "changed_at_ms", probe_start)))
                     split_bytes = round((split_ms - self._buffer_start_ms[session]) * event.sample_rate * 2 / 1000)
                     new_caption_needed = split_ms > self._active_start_ms.get(session, 0)
                     if split_bytes and new_caption_needed:
@@ -467,6 +486,11 @@ class Pipeline:
         boundary = round(self._audio_samples[session] * 1000 / event.sample_rate)
         self._audio_ms[session] = boundary
         self._buffers.pop(session, None)
+        self._speaker_buffers.pop(session, None)
+        self._speaker_voice_ms.pop(session, None)
+        self._last_speaker_probe_ms.pop(session, None)
+        if hasattr(self.speaker, 'begin_turn'):
+            self.speaker.begin_turn(boundary)
         for state in (self._last_voice_ms, self._last_infer_ms, self._active_segment_id,
                       self._last_text, self._latest_caption, self._voice_duration_ms,
                       self._context_text, self._paragraph_text):
@@ -499,6 +523,8 @@ class Pipeline:
         for session in self._last_events:
             buffer = self._buffers.get(session, bytearray())
             buffer.clear()
+            self._speaker_buffers.pop(session, None)
+            self._speaker_voice_ms.pop(session, None)
             self._last_voice_ms.pop(session, None)
             self._speaker_ids[session] = f"MANUAL_{self._manual_speaker_number}"
             self._paragraph_ids[session] = f"turn-{next(self._paragraph_sequence):06d}"

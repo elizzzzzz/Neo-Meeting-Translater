@@ -57,6 +57,7 @@ def main(directory: Path) -> None:
         applications = mount / 'Applications'
         assert applications.is_symlink() and applications.resolve() == Path('/Applications'), \
             'DMG is missing the standard /Applications shortcut'
+        assert (mount / 'Read Me - First Open.txt').is_file(), 'DMG is missing first-opening instructions'
     finally:
         run('hdiutil', 'detach', str(mounts[0]))
     package = directory / 'NMT.pkg'

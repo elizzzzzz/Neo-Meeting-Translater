@@ -297,6 +297,88 @@ async def test_speaker_change_closes_old_audio_before_starting_the_next_paragrap
 
 
 @pytest.mark.asyncio
+async def test_speaker_probes_keep_a_full_window_across_asr_rollover():
+    class Speakers:
+        def __init__(self): self.sizes = []
+        async def identify(self, pcm, sample_rate, start_ms):
+            self.sizes.append(len(pcm))
+            return 'SPEAKER_00'
+
+    pipeline = Pipeline(mode='local', source_language='zh', target_language='zh', asr_backend=Recognizer())
+    pipeline.speaker = Speakers()
+    for _ in range(10):
+        _ = [c async for c in pipeline.process_audio(audio([2000, -2000] * 8000))]
+    assert pipeline.speaker.sizes[-2:] == [64000, 64000]
+
+
+@pytest.mark.asyncio
+async def test_turn_probes_exclude_previous_voice_after_short_pause():
+    class Speakers:
+        def __init__(self): self.windows = []
+        async def identify(self, pcm, sample_rate, start_ms):
+            self.windows.append(pcm)
+            return 'SPEAKER_00'
+
+    pipeline = Pipeline(mode='local', source_language='zh', target_language='zh', asr_backend=Recognizer())
+    pipeline.speaker = Speakers()
+    latest = {}
+    for event in [audio([1000, -1000] * 8000), audio([0] * 6400), audio([2000, -2000] * 8000)]:
+        for c in [c async for c in pipeline.process_audio(event)]:
+            latest[c.segment_id] = c
+    assert 1000 not in memoryview(pipeline.speaker.windows[-1]).cast('h')
+    assert len({c.paragraph_id for c in latest.values()}) == 1
+
+
+@pytest.mark.asyncio
+async def test_alternating_voice_evidence_creates_three_persistent_paragraphs():
+    from meeting_interpreter.speaker import SpeakerClusters
+
+    class Voices:
+        # Deterministic embeddings test the pipeline, not acoustic accuracy.
+        def __init__(self): self.clusters = SpeakerClusters()
+        def begin_turn(self, at_ms): self.clusters.begin_turn(at_ms)
+        @property
+        def changed_at_ms(self): return self.clusters.changed_at_ms
+        async def identify(self, pcm, sample_rate, start_ms):
+            vector = [1, 0] if 1000 in memoryview(pcm).cast('h') else [0, 1]
+            return self.clusters.assign(vector, start_ms, observed_until_ms=start_ms + len(pcm) // 32)
+
+    pipeline = Pipeline(mode='local', source_language='zh', target_language='zh', asr_backend=Recognizer())
+    pipeline.speaker = Voices()
+    latest = {}
+    for amplitude in (1000, 2000, 1000):
+        for event in [audio([amplitude, -amplitude] * 8000)] * 2 + [audio([0] * 6400)]:
+            for caption in [c async for c in pipeline.process_audio(event)]:
+                latest[caption.segment_id] = caption
+    rows = sorted(latest.values(), key=lambda c: c.start_ms)
+    assert [c.speaker_id for c in rows] == ['SPEAKER_00', 'SPEAKER_01', 'SPEAKER_00']
+    assert len({c.paragraph_id for c in rows}) == 3
+    assert [c.start_ms for c in rows] == [0, 2400, 4800]
+    assert all(a.end_ms <= b.start_ms for a, b in zip(rows, rows[1:]))
+    assert len(pipeline.speaker.clusters.centroids) == 2
+
+
+@pytest.mark.asyncio
+async def test_delayed_voice_change_does_not_rewind_committed_audio():
+    class Speakers:
+        changed_at_ms = 7000  # confirmation arrives after the 8-second commit
+        async def identify(self, pcm, sample_rate, start_ms):
+            return 'SPEAKER_01' if start_ms >= 8000 else 'SPEAKER_00'
+
+    pipeline = Pipeline(mode='local', source_language='zh', target_language='zh', asr_backend=Recognizer())
+    pipeline.speaker = Speakers()
+    latest = {}
+    for _ in range(11):
+        for caption in [c async for c in pipeline.process_audio(audio([2000, -2000] * 8000))]:
+            latest[caption.segment_id] = caption
+    rows = list(latest.values())
+    assert rows[0].speaker_id == 'SPEAKER_00'
+    assert rows[0].end_ms == 8000
+    assert rows[-1].speaker_id == 'SPEAKER_01'
+    assert rows[-1].start_ms >= rows[0].end_ms
+
+
+@pytest.mark.asyncio
 async def test_manual_change_flushes_the_old_speaker_and_keeps_audio_out_of_next_speech():
     pipeline=Pipeline(mode='local',source_language='zh',target_language='zh',asr_backend=Recognizer())
     first=[c async for c in pipeline.process_audio(audio([1000,-1000]*8000))]

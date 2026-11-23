@@ -1,0 +1,41 @@
+NMT 首次打开说明 / First opening / 初回起動
+
+中文
+NMT 的语音识别与翻译支持全本地运行。模型准备完成后，会议音频和文字无需上传云端。
+当前安装器没有 Apple Developer ID 签名，也未进行 Apple 公证。
+如果 NMT.pkg 或 NMT.app 提示无法验证开发者或安全性：
+1. 先尝试打开，再关闭提示。
+2. 打开“系统设置 → 隐私与安全性”，向下找到“安全性”。
+3. 点击 NMT 旁的“仍要打开”，按提示认证并确认“打开”。
+4. 安装器和应用如果分别被阻止，需要分别允许。
+无需关闭系统安全保护。
+DMG：把 NMT.app 拖到 Applications 后，从“应用程序”启动。
+PKG：双击安装，按步骤完成后，从“应用程序”启动。
+ZIP：解压后直接打开 NMT.app。
+
+English
+NMT supports fully local speech recognition and translation. Once models are ready,
+meeting audio and text do not need to be uploaded to the cloud.
+The installer currently has no Apple Developer ID signature or Apple notarization.
+If macOS cannot verify NMT.pkg or NMT.app:
+1. Try opening the file, then dismiss the warning.
+2. Open System Settings > Privacy & Security and scroll to Security.
+3. Click Open Anyway beside NMT, authenticate and confirm Open.
+4. If the installer and app are both blocked, allow each separately.
+You do not need to disable system security.
+DMG: Drag NMT.app to Applications, then open it from Applications.
+PKG: Double-click, follow the installer, then open NMT from Applications.
+ZIP: Extract, then open NMT.app directly.
+
+日本語
+NMTは音声認識も翻訳もローカルで実行できます。モデルの準備後は、会議の音声や文字をクラウドに送る必要はありません。
+現在のインストーラはApple Developer IDによる署名とAppleの公証を行っていません。
+NMT.pkgまたはNMT.appの開発元や安全性を確認できないと表示された場合：
+1. 一度開こうとして、警告を閉じます。
+2. 「システム設定 → プライバシーとセキュリティ」の「セキュリティ」を開きます。
+3. NMTの横にある「このまま開く」を押し、認証して「開く」を確認します。
+4. インストーラとアプリがそれぞれブロックされた場合は、個別に許可します。
+システム全体のセキュリティを無効にする必要はありません。
+DMG：NMT.appをApplicationsへドラッグし、「アプリケーション」から起動します。
+PKG：ダブルクリックしてインストールし、「アプリケーション」から起動します。
+ZIP：解凍してNMT.appを直接開きます。

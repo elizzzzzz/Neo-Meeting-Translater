@@ -1,6 +1,6 @@
 # NMT · Neo Meeting Translater
 
-**Local speech-to-text and live subtitles for Chinese, Japanese and English meetings on Mac.**
+**NMT supports fully local speech recognition and translation. Once models are ready, your Mac can recognize Chinese, Japanese and English speech and produce bilingual subtitles offline, without uploading meeting audio or text to the cloud.**
 
 [简体中文](README.zh-CN.md) · [日本語](README.ja.md) · [Download the latest version](https://github.com/elizzzzzz/Neo-Meeting-Translater/releases/latest) · [License](LICENSE)
 
@@ -54,7 +54,20 @@ The release also contains **NMT-0.2.21.sha256**. To check a download, put the ch
 shasum -a 256 -c NMT-0.2.21.sha256
 ~~~
 
-Public releases must be signed with Apple Developer ID and notarized. A locally built package without those credentials is a test package; if macOS blocks its first launch, Control-click NMT.app in Finder, choose Open, and confirm.
+The installer currently has no Apple Developer ID signature or Apple notarization. If macOS cannot verify the developer or safety of `NMT.pkg` or `NMT.app` on first opening:
+
+1. Try opening the file, then dismiss the warning.
+2. Open **System Settings → Privacy & Security** and scroll to **Security**.
+3. Click **Open Anyway** beside the NMT warning, authenticate with your password or Touch ID, and confirm **Open**.
+4. If you allowed the installer, finish installing and open NMT. If the app is also blocked, repeat these steps for the app.
+
+Allow NMT individually; you do not need to disable system security. The app extracted from the portable ZIP follows the same first-opening steps.
+
+## Speaker recognition and paragraphs
+
+Choose **Automatic speaker split (test)** to distinguish voices with a local speaker model. This option is unavailable without the model; use **Manual speaker change** instead. Voice labels do not identify real names.
+
+A confirmed voice change starts a new paragraph. A pause followed by the same speaker keeps the existing paragraph. Automatic detection needs enough speech and repeated confirmation; short interjections, similar voices and overlapping speech may be misclassified. It is not a substitute for manually verified meeting minutes.
 
 ## First setup in the app
 

@@ -68,7 +68,9 @@ MEETING_INTERPRETER_BUILD_PYTHON=/opt/homebrew/bin/python3 ./scripts/build_macos
 
 ### 正式分发签名和公证
 
-如果要让其他用户双击后不出现“无法验证开发者”或“程序严重不安全”，必须使用 Apple Developer ID 证书并完成公证。当前脚本支持以下环境变量：
+当前交付暂不使用 Apple Developer ID 签名或 Apple 公证，PKG 安装器默认不签名。App 保留 Apple 芯片运行所需的本地 ad-hoc 签名，无需配置开发者证书。首次被 macOS 阻止时，先关闭提示，打开“系统设置 → 隐私与安全性 → 安全性”，在 NMT 旁点击“仍要打开”，按提示认证并确认。安装器和 App 如分别被阻止，需分别允许；无需关闭系统安全保护。
+
+以下为后续可选的开发者签名与公证配置，当前构建不要求提供：
 
 ```bash
 MEETING_INTERPRETER_CODESIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
@@ -78,7 +80,7 @@ MEETING_INTERPRETER_NOTARIZE=1 \
 ./scripts/build_macos_app.sh
 ```
 
-没有证书时仍可生成可运行的本地测试包，但它只能使用临时 ad-hoc 签名，无法消除 Gatekeeper 的安全提示。`NMT.pkg` 会正常安装，但首次打开测试包可能需要在 Finder 中 Control-点击并选择“打开”。
+没有证书时仍可生成本地测试包，首次打开按上面的“隐私与安全性”步骤允许 NMT。
 
 默认使用 NMT 图标。如需使用历史方案 B（声谱门）或 C（翻译书签）重新构建：
 
