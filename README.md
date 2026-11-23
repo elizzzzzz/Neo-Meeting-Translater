@@ -98,25 +98,81 @@ ollama list
 
 If ollama list works, the local service is usually ready. In NMT Settings, click **Check again** and confirm that Ollama is installed and connected.
 
-### Choose one model first
+### Choose a translation model by memory and measured results
 
-For an M3 Mac with 16 GB unified memory:
+The tables separate **M3 / 16 GiB** and **M5 / 32 GiB** text translation tests so you can choose quality, waiting time and memory headroom. Other chips with the same memory need not have the same speed. Every listed configuration completed 144 cases covering all six Chinese, Japanese and English translation directions.
 
-| Goal | Model | Simple recommendation |
-| --- | --- | --- |
-| Best default for live subtitles | **translategemma:4b** | Start here for Chinese, Japanese and English |
-| Better long-context wording | **translategemma:12b** | Use when quality matters more than speed and memory use |
-| General context correction | **qwen3:4b** | Useful for context work; check the translation style |
-| Lowest-memory fallback | **qwen2.5:3b** | Use for a quick trial or a memory-constrained Mac |
+Overall = 85% quality + 10% speed + 5% collection completion. Compare overall scores within each test round, not across these two machines. Quality is a label-hidden AI-assisted review against fixed references and fact checklists, without independent human translator review; it is **not speech recognition accuracy or a sentence correctness percentage**. These are provisional snapshots; small score differences are not proven advantages.
 
-Install the default model first:
+#### 16G: Apple M3, November 9–12, 2026
+
+| Model, precision and service | Overall /100 | Quality /100 | Mean TPS | Median sentence latency (s) | P95 latency (s) | Peak RSS (GiB) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Qwen3-4B-Instruct-2507 Q4_K_M · llama.cpp | 92.59 | 92.29 | 31.56 | 1.59 | 2.19 | 3.11 |
+| Qwen3-4B-Instruct-2507 Q4_K_M · Ollama | 91.56 | 92.29 | 29.51 | 1.79 | 2.60 | 3.18 |
+| Qwen3-4B-Instruct-2507 4bit · SGLang MLX | 90.42 | 92.40 | 30.70 | 1.61 | 6.22 | 4.59 |
+| Hy-MT2 7B Q4_K_M · llama.cpp | 90.01 | 95.26 | 16.79 | 3.32 | 6.70 | 6.64 |
+| Qwen3.5 4B Q4_K_M · llama.cpp | 89.66 | 93.44 | 21.35 | 2.30 | 4.89 | 4.40 |
+| Qwen3 4B Q4_K_M · Ollama | 87.34 | 90.18 | 20.58 | 2.64 | 3.85 | 3.09 |
+| TranslateGemma 4B Q8_0 · Ollama | 83.41 | 85.85 | 20.92 | 2.73 | 3.42 | 4.62 |
+| TranslateGemma 4B Q4_K_M · Ollama | 81.38 | 87.24 | 9.50 | 5.95 | 11.26 | 3.02 |
+
+- **For subtitle speed**: consider Qwen3-4B-Instruct-2507 Q4_K_M. Ollama is easier to set up; llama.cpp was faster in this round. This checkpoint differs from ordinary `qwen3:4b`.
+- **For translation quality**: Hy-MT2 7B Q4_K_M / llama.cpp scored 95.26 for quality, with 3.32 s median sentence latency. Its Ollama median was 11.74 s; do not apply the llama.cpp result to Ollama.
+- Qwen3.5 4B Q4_K_M / llama.cpp is another compromise to try. TranslateGemma 4B results are included for comparison; it is not the default choice. TranslateGemma 12B and Qwen2.5 3B were not measured in this round and are not recommended on the basis of these results.
+
+This is a selection of reviewed configurations. See the [full 16G results and conditions](docs/model-benchmark-2026-11-09-m3-16gb.md) and [per-configuration latency and memory data](docs/benchmarks/2026-11-09-m3-16gb/configuration-metrics.csv) for more choices.
+
+#### 32G: Apple M5, November 13–19, 2026
+
+| Model, precision and service | Overall /100 | Quality /100 | Mean TPS | Median sentence latency (s) | P95 latency (s) | Peak RSS (GiB) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Qwen3 30B-A3B Q4_K_M · Ollama | 95.39 | 94.58 | 53.26 | 1.03 | 1.38 | 17.67 |
+| Qwen3.5-4B 4bit · SGLang MLX | 92.94 | 93.74 | 38.80 | 1.25 | 1.73 | 5.35 |
+| Qwen3.5 9B Q4_K_M · Ollama | 91.37 | 96.25 | 21.81 | 2.32 | 3.19 | 7.94 |
+| Qwen3.5-4B 8bit · SGLang MLX | 89.38 | 93.58 | 21.56 | 2.16 | 3.11 | 7.48 |
+| Qwen3-8B 4bit · SGLang MLX | 89.28 | 92.83 | 26.40 | 1.88 | 2.67 | 6.55 |
+| Qwen3-VL-8B 8bit · SGLang MLX | 87.38 | 93.17 | 14.52 | 3.32 | 4.66 | 4.20 |
+| Qwen3-8B 8bit · SGLang MLX | 87.00 | 92.81 | 14.39 | 3.33 | 4.77 | 5.49 |
+
+- **For quality and room for speech recognition and meeting apps**: try Qwen3.5 9B Q4_K_M / Ollama first. It had the highest quality score in this round, with 2.32 s median sentence latency.
+- **For speed with more memory available**: consider Qwen3 30B-A3B Q4_K_M / Ollama. Median latency was 1.03 s, but sampled peak RSS was 17.67 GiB and peak system swap was 1.47 GiB. A3B does not mean only 3B of weights must be loaded; this is not a recommendation for 16G.
+- **If you already run SGLang MLX**: Qwen3.5 4B 4bit is a low-latency candidate. This run needed a compatibility patch and reached 10.46 GiB system swap (11.91 GiB for 8bit); retest under clean load. Low RSS alone does not establish enough memory headroom.
+
+Only the 7 fully quality-reviewed configurations are listed here. The [full 32G report](docs/model-benchmark-2026-11-19-m5-32gb.md) and [per-configuration data](docs/benchmarks/2026-11-19-m5-32gb/configuration-metrics.csv) also cover incomplete reviews, failures and slower configurations. The 9B and 30B-A3B configurations still had critical errors in 7/144 and 8/144 cases respectively; high scores do not mean error-free translation.
+
+**Reading the measurements**: median latency is typical waiting time for a complete translation; P95 is the time within which about 95% of cases finished. TPS measures generation speed, not waiting time. RSS samples resident memory of the service process tree, not the full unified-memory budget; swap is system-wide. Tests exclude speech recognition, audio segmentation, cold starts and subtitle rendering, and do not validate sustained parallel speech recognition and translation. llama.cpp was tested directly, not through llama.app; changing service, template or quantization needs another trial. These are translation models; choose a speech recognition engine separately.
+
+### Install the model you choose
+
+For **Qwen3-4B-Instruct-2507 Q4_K_M** on 16G, download a GGUF conversion of that checkpoint. You can load it in llama.app and enable its local server. For Ollama, create a text file named `Modelfile` containing the actual path:
+
+~~~text
+FROM /full/path/Qwen3-4B-Instruct-2507-Q4_K_M.gguf
+~~~
+
+Run from the folder containing `Modelfile` (use the actual filename; quote paths containing spaces):
 
 ~~~bash
-ollama pull translategemma:4b
+ollama create nmt-qwen3-4b-2507 -f Modelfile
 ollama list
 ~~~
 
-Then in NMT Settings choose **Ollama**, select **translategemma:4b**, and click **Save and return**. The first sentence can be slower while the model starts. Later sentences are faster while the model stays warm.
+Check the [original model page](https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507), the conversion publisher and its license when selecting a Q4_K_M file. `nmt-qwen3-4b-2507` is a local name you create, not a public download tag. The benchmark used fixed files and templates; a newly downloaded conversion need not reproduce its scores.
+
+For either of these 32G Ollama choices, **run only the download command for your chosen model**:
+
+~~~bash
+ollama pull qwen3.5:9b-q4_K_M
+~~~
+
+Or:
+
+~~~bash
+ollama pull qwen3:30b-a3b-q4_K_M
+~~~
+
+In NMT Settings select the matching translation service and exact model name shown by `ollama list`, then click **Save and return**. Wait for readiness on the first load. Run these commands yourself when ready; they do not automatically replace existing models.
 
 ### Model folder
 
@@ -131,7 +187,7 @@ Changing NMT's folder field does not move models managed by Ollama. To move Olla
 3. Check that NMT uses the service **Ollama** and address **http://127.0.0.1:11434**.
 4. Click **Check again**.
 5. Make sure the selected model name exactly matches **ollama list**.
-6. If the model is missing, run **ollama pull translategemma:4b**.
+6. If the model is missing, download or import the model you chose above, then select its exact local name.
 7. If you changed the storage location, restart Ollama and check again.
 
 NMT only connects to local loopback services. It does not send meeting audio or transcript text to a remote translation server.
@@ -179,4 +235,3 @@ When redistributing NMT, include LICENSE, NOTICE and applicable third-party noti
 Models, Apple system resources, Ollama, audio drivers and other third-party components keep their own licenses. Check the model license before commercial deployment.
 
 For help, open an issue with the app version, macOS version, selected models and the exact status message. Remove private meeting content before sharing logs.
-\n
