@@ -97,15 +97,29 @@ rm -rf "$STAGING_DIR/frozen" "$STAGING_DIR/work"
 # moves the dylib to Frameworks and the data to Resources; bridge that layout.
 ln -s ../Resources/mlx/lib/mlx.metallib "$STAGING_DIR/delivery/NMT.app/Contents/Frameworks/mlx.metallib"
 
-if [[ -n "$APP_SIGN_IDENTITY" ]]; then
-  codesign --force --deep --options runtime --timestamp \
+if [[ -n "$APP_SIGN_IDENTITY" && "$APP_SIGN_IDENTITY" != "-" ]]; then
+  while IFS= read -r -d '' nested; do
+    if file -b "$nested" | grep -q 'Mach-O'; then
+      codesign --force --options runtime --timestamp \
+        --sign "$APP_SIGN_IDENTITY" "$nested"
+    fi
+  done < <(find "$STAGING_DIR/delivery/NMT.app/Contents" -type f -print0)
+  codesign --force --options runtime --timestamp \
     --sign "$APP_SIGN_IDENTITY" "$STAGING_DIR/delivery/NMT.app"
   SIGNING_STATUS="Developer ID signed"
 else
   # A local ad-hoc signature keeps the app runnable during development, but it
   # cannot satisfy Gatekeeper on another Mac. A Developer ID identity and
   # notarization are required for a public download to open without warnings.
-  codesign --force --deep --sign - "$STAGING_DIR/delivery/NMT.app"
+  # PyInstaller embeds Python.framework and native bridges. Re-sign every
+  # nested Mach-O payload explicitly before signing the outer app. This keeps
+  # dyld from rejecting an ad-hoc bundle with mismatched Team IDs at launch.
+  while IFS= read -r -d '' nested; do
+    if file -b "$nested" | grep -q 'Mach-O'; then
+      codesign --force --sign - "$nested"
+    fi
+  done < <(find "$STAGING_DIR/delivery/NMT.app/Contents" -type f -print0)
+  codesign --force --sign - "$STAGING_DIR/delivery/NMT.app"
   SIGNING_STATUS="ad-hoc test signature (not notarized)"
 fi
 codesign --verify --deep --strict "$STAGING_DIR/delivery/NMT.app"
@@ -161,6 +175,7 @@ ditto "$STAGING_DIR/packages/NMT-$APP_VERSION.sha256" "$PROJECT_ROOT/dist/NMT-$A
 ditto "$PROJECT_ROOT/docs/macos-first-open.txt" "$PROJECT_ROOT/dist/Read Me - First Open.txt"
 # Keep the direct-open artifact current too; previous releases are retained.
 RELEASE_DIR="$HOME/Library/Application Support/LocalMeetingInterpreter/releases/$APP_VERSION"
+rm -rf "$RELEASE_DIR"
 mkdir -p "$RELEASE_DIR"
 ditto --noextattr --norsrc "$STAGING_DIR/delivery/NMT.app" "$RELEASE_DIR/NMT.app"
 codesign --verify --deep --strict "$RELEASE_DIR/NMT.app"
