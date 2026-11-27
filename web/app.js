@@ -86,6 +86,7 @@ const sourceLanguageButtons = [...document.querySelectorAll('.source-language-bu
 let socket;
 let audioContext;
 let mediaStream;
+let nativeAudioWindowId = null;
 let activeInputLabel = '';
 let pendingAudio = new Float32Array();
 let latestCaptureAt = 0;
@@ -133,7 +134,7 @@ const UI_TEXT = {
     'language.autoDetect': '自动识别', 'language.zhSimplified': '中文（简体）',
     'actions.guide': '使用指南', 'actions.settings': '本地设置', 'actions.subtitleMode': '字幕模式', 'actions.exitSubtitleMode': '退出字幕模式', 'actions.export': '导出记录', 'actions.startAudio': '开启音频输入', 'actions.stop': '停止', 'actions.latest': '回到最新 ↓', 'actions.clear': '清空', 'actions.floating': '字幕浮窗', 'actions.exitFloating': '退出浮窗',
     'status.localRun': '本地运行', 'status.liveText': '实时文字', 'intro.title': '把会议内容留在本机。', 'intro.description': '实时识别、区分说话人，并生成中日、中英、英日双向字幕。', 'transcript.segments': '段发言', 'tips.kicker': '使用提示', 'tips.title': '三步开始本地会议翻译', 'tips.lead': '所有音频和模型都留在这台 Mac 上。字幕模式只显示已经收到的真实原文和译文，不生成模拟内容。', 'tips.audioTitle': '选音频', 'tips.audioBody': '麦克风用于现场会议；腾讯会议、Teams 和网页视频请选择 BlackHole、Loopback 等系统回环设备。', 'tips.modelTitle': '等模型就绪', 'tips.modelBody': '顶部显示冷启动进度。看到“模型可用 · 热启动”后再开始会议。', 'tips.floatingTitle': '需要时开浮窗', 'tips.floatingBody': '点击“字幕模式”，字幕会置顶、半透明并可拖动、缩放到会议窗口空白处。', 'tips.remember': '以后不再提醒', 'actions.later': '稍后再看', 'actions.setup': '开始设置', 'actions.close': '关闭', 'settings.kicker': '本机环境', 'settings.title': '模型与 Ollama 设置', 'settings.ollamaInstall': 'Ollama 安装', 'settings.version': '当前版本', 'settings.recommendedModel': '推荐翻译模型', 'settings.modelStatus': '模型状态', 'settings.asrEngine': '语音转文字引擎', 'settings.prepareAsr': '准备语音模型', 'settings.captionContent': '字幕显示内容', 'settings.bilingual': '双语对照：源与译', 'settings.sourceOnly': '仅显示源文', 'settings.translationOnly': '仅显示译文', 'settings.captionHint': '中日：中文左、日文右；中英：中文左、英文右；英日：英文左、日文右。“源 / 译”随实际发言切换。', 'settings.modelDirectory': '模型保存目录', 'settings.chooseDirectory': '选择目录', 'settings.ollamaDirectory': '使用 Ollama 当前目录', 'settings.directoryHint': '默认使用 Ollama 当前模型目录，可随时自定义。更改后重新检测，保存后自动加载；现有文件不会自动迁移。Ollama / llama.app 的模型仍由对应服务管理。', 'settings.onlineAudio': '在线会议 / 网页视频音频', 'settings.onlineAudioHint': '系统音频捕获需要 macOS 音频回环设备。安装 BlackHole 或 Loopback 后，在设置的“音频输入”中选择对应设备；应用不会把会议音频上传到网络。', 'settings.recheck': '重新检查', 'settings.installOllama': '安装 Ollama', 'settings.upgradeOllama': '升级 Ollama', 'settings.installModel': '安装推荐模型', 'settings.save': '保存并返回', 'footer.config': '文字模式 · M3 / 16G 配置', 'footer.service': '服务地址',
-    'controls.ariaLabel': '会议输入设置', 'controls.audioInput': '音频输入', 'controls.defaultMic': '默认麦克风（授权后显示名称）', 'controls.sourceLanguage': '源语言', 'controls.targetLanguage': '目标语言', 'controls.speaker': '说话人',
+    'controls.ariaLabel': '会议输入设置', 'controls.audioInput': '音频输入', 'controls.defaultMic': '默认麦克风（授权后显示名称）', 'controls.systemAudio': '系统音频 / 播放器声音（原生采集）', 'controls.sourceLanguage': '源语言', 'controls.targetLanguage': '目标语言', 'controls.speaker': '说话人',
     'speaker.manual': '手动换人', 'speaker.autoTest': '自动分人（测试）', 'direction.ariaLabel': '翻译方向快捷设置', 'direction.sourceLanguage': '源语言', 'direction.eyebrow': 'TRANSLATION DIRECTIONS', 'direction.title': '选择会议语言', 'direction.hint': '双方轮流发言，自动识别与互译',
     'transcript.eyebrow': 'LIVE TRANSCRIPT', 'transcript.title': '发言记录', 'transcript.footnote': '同一发言人连续记录 · 向上滚动查看历史，回到底部继续跟随', 'session.waitingAudio': '等待音频输入', 'status.eyebrow': 'SESSION', 'status.title': '当前状态', 'status.inputSource': '输入来源', 'status.inputLevel': '输入电平', 'status.recognitionLanguage': '识别语言', 'status.direction': '方向', 'status.speakerMode': '说话人模式', 'status.runMode': '运行模式', 'status.asr': '语音识别', 'status.ollama': '翻译引擎', 'status.translationModel': '翻译模型', 'status.translation': '翻译状态', 'status.audio': '音频链路', 'status.diagnostic': '诊断',
     'status.loading': '加载中', 'status.ready': '已就绪', 'status.running': '运行中', 'status.processing': '推理中', 'status.configured': '已配置', 'status.offline': '未连接', 'status.missing': '缺少模型', 'status.error': '错误', 'status.mock': '演示', 'status.unknown': '未知',
@@ -958,6 +959,28 @@ async function loadDevices(activeTrack = null) {
     updateSummary();
   } catch { inputDevice.innerHTML = '<option value="">默认音频输入</option>'; sourceStatus.textContent = '设备读取失败'; }
 }
+window.__onNativeAudioStatus = event => {
+  if (event.type === 'windows') {
+    const windows = (event.items || []).filter(row => row.title || row.application);
+    if (!windows.length) { setDiagnostic('没有找到可采集的播放器或会议窗口'); return; }
+    const promptText = windows.map((row, index) => (index + 1) + '. ' + (row.application || '应用') + ' · ' + (row.title || '窗口')).join('\n');
+    const requested = window.prompt('选择要采集声音的窗口：\n' + promptText, '1');
+    const index = Math.max(0, Math.min(windows.length - 1, Number.parseInt(requested || '1', 10) - 1));
+    const selected = windows[index];
+    nativeAudioWindowId = selected.id;
+    activeInputLabel = (selected.application || '应用') + ' · ' + (selected.title || '窗口');
+    setDiagnostic('已选择系统音频窗口：' + activeInputLabel + '，正在启动采集');
+    window.webkit?.messageHandlers?.native?.postMessage({type:'system_audio_start', window_id:nativeAudioWindowId});
+  } else if (event.type === 'started') {
+    setDiagnostic(event.message || '系统音频已开启'); setRuntime(true, '运行中');
+  } else if (event.type === 'error') {
+    setDiagnostic(event.message || '系统音频采集失败');
+  }
+};
+window.__onNativeAudio = event => {
+  if (!socket || socket.readyState !== WebSocket.OPEN) return;
+  socket.send(JSON.stringify({type:'audio', session_id:captureSessionId, audio_base64:event.audio_base64, sample_rate:event.sample_rate || 16000, channels:1, source:'file', captured_at_ms:Date.now()}));
+};
 async function startSession() {
   if (modelSettingsSaving || settingsApplyRevision || runtimeMode !== 'LOCAL' || !modelsReady || (socket && socket.readyState < 3)) return;
   if (!['auto', 'zh', 'ja', 'en'].includes(sourceLanguage.value)) sourceLanguage.value = 'auto';
@@ -993,6 +1016,11 @@ async function startSession() {
       });
       configuration = null;
       if (socket !== sessionSocket || sessionSocket.readyState !== WebSocket.OPEN) return;
+      if (inputDevice.value === '__nmt_system_audio' && window.webkit?.messageHandlers?.native) {
+        setDiagnostic('正在查找播放器和会议窗口…');
+        window.webkit.messageHandlers.native.postMessage({type:'system_audio_list'});
+        return;
+      }
       const audio = { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true, voiceIsolation: true };
       if (inputDevice.value) audio.deviceId = { exact: inputDevice.value };
       let selectedStream;
@@ -1107,7 +1135,7 @@ async function startSession() {
   socket.onclose = () => { if (socket !== sessionSocket) return; configuration?.reject(new Error('录音准备已取消')); cleanupAudio(); setSessionControls(false); recognitionLanguageStatus.textContent = '未开始'; startBtn.disabled = modelSettingsSaving || Boolean(settingsApplyRevision) || runtimeMode !== 'LOCAL' || !modelsReady; stopBtn.disabled = !resumeAfterSettings; setRuntime(false, '已停止'); maybeResumeAfterSettings(); };
   socket.onerror = () => { configuration?.reject(new Error('本地服务连接失败')); setDiagnostic('本地服务连接失败'); setRuntime(false, '连接失败'); };
 }
-function stopCapture() { if (processor) processor.disconnect(); if (audioContext) audioContext.close(); if (mediaStream) mediaStream.getTracks().forEach((track) => track.stop()); processor = null; audioContext = null; mediaStream = null; updateInputLevel(new Float32Array()); }
+function stopCapture() { if (processor) processor.disconnect(); if (audioContext) audioContext.close(); if (mediaStream) mediaStream.getTracks().forEach((track) => track.stop()); if (inputDevice.value === '__nmt_system_audio') window.webkit?.messageHandlers?.native?.postMessage({type:'system_audio_stop'}); processor = null; audioContext = null; mediaStream = null; nativeAudioWindowId = null; updateInputLevel(new Float32Array()); }
 function cleanupAudio() { stopCapture(); activeInputLabel = ''; pendingAudio = new Float32Array(); audioInFlight = false; pendingBoundaryAudio = null; pendingSpeakerBoundary = false; sessionEnding = false; finishSent = false; }
 function stopSession(keepResume = false) {
   if (keepResume !== true) { resumeAfterSettings = false; stopBtn.disabled = true; }

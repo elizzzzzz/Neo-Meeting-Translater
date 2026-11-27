@@ -71,7 +71,7 @@ llama.cpp 与 Ollama 都指定 CPU 线程 4、batch／microbatch 128。SGLang �
 
 每次只加载一个模型配置；完成该配置在适用平台的测试、落盘输出和校验后，卸载并删除本轮权重，再下载下一配置。评测用独立缓存和带前缀的 Ollama 名称；只删除清单精确标记的本次权重、模型条目和临时转换文件，绝不全局 prune。结果、元数据、校验和、日志和评分保留。启动前估算文件及导入副本大小，磁盘不足时不下载。
 
-从TranslateGemma Q8_0开始，临时HF和Ollama权重改放在本机 `/private/tmp/codex-translation-benchmark-9c6152d3c717941d/`，以项目路径生成隔离名称并用owner.json核对所有权。此前文稿目录存在iCloud文件提供器标记；此次迁移避免临时权重位于该目录，不能据此断言此前磁盘下降由iCloud造成。语料、评分、结果与运行版本均保留在原项目。迁移时该Q8_0文件尚未进入推理；中断后的下载器未保留权重断点，需重新下载这一文件，详见results/storage-migration.json。
+从TranslateGemma Q8_0开始，临时HF和Ollama权重改放在本机 `/private/tmp/nmt-test-run/`，以项目路径生成隔离名称并用owner.json核对所有权。此前文稿目录存在iCloud文件提供器标记；此次迁移避免临时权重位于该目录，不能据此断言此前磁盘下降由iCloud造成。语料、评分、结果与运行版本均保留在原项目。迁移时该Q8_0文件尚未进入推理；中断后的下载器未保留权重断点，需重新下载这一文件，详见results/storage-migration.json。
 
 后续Ollama导入将已校验GGUF以同卷硬链接放入本次独立store，并核对相同inode；避免权重双份占用。链接在Ollama服务启动清理结束后创建，模型删除只移除该链接，全部平台结束后再删除原始缓存。空间预算为唯一权重加5 GiB余量；前两次GGUF平台试运行使用普通导入，其推理输入不受该存储方式变化影响。
 

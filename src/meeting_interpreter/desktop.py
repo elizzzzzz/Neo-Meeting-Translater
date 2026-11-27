@@ -7,6 +7,7 @@ import socket
 import threading
 import time
 import urllib.request
+import subprocess
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -111,6 +112,7 @@ class _NativeAppDelegate(NSObject):
             self.bridge_handler = None
             self.normal_frame = None
             self.floating = False
+            self.system_audio_process = None
         return self
 
     def handleNativeMessage_(self, body):
@@ -125,6 +127,38 @@ class _NativeAppDelegate(NSObject):
             self.chooseModelDirectory()
         elif message_type == "export_transcript":
             self.exportTranscript_(body)
+        elif message_type == "system_audio_list":
+            self._systemAudioSend({"id": int(time.time() * 1000), "action": "list"})
+        elif message_type == "system_audio_start":
+            self._systemAudioSend({"action": "start", "window_id": int(body.get("window_id"))})
+        elif message_type == "system_audio_stop":
+            self._systemAudioSend({"action": "stop"})
+
+    @objc.python_method
+    def _systemAudioSend(self, body):
+        if self.system_audio_process is None or self.system_audio_process.poll() is not None:
+            root = Path(getattr(__import__("sys"), "_MEIPASS", Path(__file__).resolve().parents[2]))
+            executable = root / "native" / "SystemAudioBridge"
+            self.system_audio_process = subprocess.Popen(
+                [str(executable)], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL, text=True, bufsize=1,
+            )
+            threading.Thread(target=self._systemAudioRead, daemon=True).start()
+        self.system_audio_process.stdin.write(json.dumps(body, ensure_ascii=False) + "\n")
+        self.system_audio_process.stdin.flush()
+
+    def _systemAudioRead(self):
+        process = self.system_audio_process
+        for line in process.stdout:
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if self.web_view is None:
+                continue
+            callback = "__onNativeAudio" if event.get("type") == "audio" else "__onNativeAudioStatus"
+            script = f"window.{callback}({json.dumps(event, ensure_ascii=False)});"
+            self.web_view.evaluateJavaScript_completionHandler_(script, None)
 
     def applyAppearance_(self, mode):
         if mode not in ('system', 'light', 'dark'):

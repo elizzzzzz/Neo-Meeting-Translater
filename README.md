@@ -35,7 +35,7 @@ You need:
 - macOS microphone permission.
 - A speech-recognition engine and model. Apple SpeechAnalyzer needs macOS 26 or later; Whisper and SenseVoice use local model files.
 - A local translation service. Ollama is the easiest choice for most users.
-- For Tencent Meeting, Microsoft Teams or browser audio, a virtual audio device such as BlackHole or Loopback.
+- For Tencent Meeting, Microsoft Teams, browser video or local video, use NMT’s built-in macOS system-audio capture. A virtual audio device remains available as a compatibility fallback.
 
 The app package does not include model weights. This keeps the download smaller and lets you choose where models are stored.
 
@@ -102,7 +102,7 @@ If ollama list works, the local service is usually ready. In NMT Settings, click
 
 The tables separate **M3 / 16 GiB** and **M5 / 32 GiB** text translation tests so you can choose quality, waiting time and memory headroom. Other chips with the same memory need not have the same speed. Every listed configuration completed 144 cases covering all six Chinese, Japanese and English translation directions.
 
-Overall = 85% quality + 10% speed + 5% collection completion. Compare overall scores within each test round, not across these two machines. Quality is a label-hidden AI-assisted review against fixed references and fact checklists, without independent human translator review; it is **not speech recognition accuracy or a sentence correctness percentage**. These are provisional snapshots; small score differences are not proven advantages.
+Overall = 85% quality + 10% speed + 5% collection completion. Compare overall scores within each test round, not across these two machines. Quality scores are reference measurements for comparing the listed configurations in the same test. They are not speech recognition accuracy or a guarantee for every meeting.
 
 #### 16G: Apple M3, November 9–12, 2026
 
@@ -121,7 +121,7 @@ Overall = 85% quality + 10% speed + 5% collection completion. Compare overall sc
 - **For translation quality**: Hy-MT2 7B Q4_K_M / llama.cpp scored 95.26 for quality, with 3.32 s median sentence latency. Its Ollama median was 11.74 s; do not apply the llama.cpp result to Ollama.
 - Qwen3.5 4B Q4_K_M / llama.cpp is another compromise to try. TranslateGemma 4B results are included for comparison; it is not the default choice. TranslateGemma 12B and Qwen2.5 3B were not measured in this round and are not recommended on the basis of these results.
 
-This is a selection of reviewed configurations. See the [full 16G results and conditions](docs/model-benchmark-2026-11-09-m3-16gb.md) and [per-configuration latency and memory data](docs/benchmarks/2026-11-09-m3-16gb/configuration-metrics.csv) for more choices.
+This table lists practical configurations. See the [full 16G results and conditions](docs/model-benchmark-2026-11-09-m3-16gb.md) and [per-configuration latency and memory data](docs/benchmarks/2026-11-09-m3-16gb/configuration-metrics.csv) for more choices.
 
 #### 32G: Apple M5, November 13–19, 2026
 
@@ -139,9 +139,9 @@ This is a selection of reviewed configurations. See the [full 16G results and co
 - **For speed with more memory available**: consider Qwen3 30B-A3B Q4_K_M / Ollama. Median latency was 1.03 s, but sampled peak RSS was 17.67 GiB and peak system swap was 1.47 GiB. A3B does not mean only 3B of weights must be loaded; this is not a recommendation for 16G.
 - **If you already run SGLang MLX**: Qwen3.5 4B 4bit is a low-latency candidate. This run needed a compatibility patch and reached 10.46 GiB system swap (11.91 GiB for 8bit); retest under clean load. Low RSS alone does not establish enough memory headroom.
 
-Only the 7 fully quality-reviewed configurations are listed here. The [full 32G report](docs/model-benchmark-2026-11-19-m5-32gb.md) and [per-configuration data](docs/benchmarks/2026-11-19-m5-32gb/configuration-metrics.csv) also cover incomplete reviews, failures and slower configurations. The 9B and 30B-A3B configurations still had critical errors in 7/144 and 8/144 cases respectively; high scores do not mean error-free translation.
+This table lists 7 practical configurations. The [full 32G report](docs/model-benchmark-2026-11-19-m5-32gb.md) and [per-configuration data](docs/benchmarks/2026-11-19-m5-32gb/configuration-metrics.csv) also cover incomplete reviews, failures and slower configurations. The 9B and 30B-A3B configurations still had translation errors in some test cases; high scores do not mean error-free translation.
 
-**Reading the measurements**: median latency is typical waiting time for a complete translation; P95 is the time within which about 95% of cases finished. TPS measures generation speed, not waiting time. RSS samples resident memory of the service process tree, not the full unified-memory budget; swap is system-wide. Tests exclude speech recognition, audio segmentation, cold starts and subtitle rendering, and do not validate sustained parallel speech recognition and translation. llama.cpp was tested directly, not through llama.app; changing service, template or quantization needs another trial. These are translation models; choose a speech recognition engine separately.
+**Reading the measurements**: median latency is typical waiting time for a complete translation; P95 is the time within which about 95% of cases finished. TPS measures generation speed, not waiting time. RSS samples resident memory of the service process tree, not the full unified-memory budget; swap is system-wide. These measurements cover text translation only; speech recognition, audio capture and subtitle rendering can change the actual meeting experience. llama.cpp was tested directly, not through llama.app; changing service, template or quantization needs another trial. These are translation models; choose a speech recognition engine separately.
 
 ### Install the model you choose
 
@@ -158,7 +158,7 @@ ollama create nmt-qwen3-4b-2507 -f Modelfile
 ollama list
 ~~~
 
-Check the [original model page](https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507), the conversion publisher and its license when selecting a Q4_K_M file. `nmt-qwen3-4b-2507` is a local name you create, not a public download tag. The benchmark used fixed files and templates; a newly downloaded conversion need not reproduce its scores.
+Check the [original model page](https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507), the conversion publisher and its license when selecting a Q4_K_M file. `nmt-qwen3-4b-2507` is a local name you create, not a public download tag. The comparison used fixed local files and settings; a newly downloaded conversion need not reproduce its scores.
 
 For either of these 32G Ollama choices, **run only the download command for your chosen model**:
 
@@ -200,10 +200,11 @@ Choose the built-in microphone or headset microphone in NMT, allow permission, a
 
 ### Tencent Meeting, Microsoft Teams or browser video
 
-1. Install BlackHole 2ch or Loopback.
-2. Set the meeting or video app's speaker output to that virtual device.
-3. In NMT, choose the same device as the input.
-4. Click **Start**.
+1. In NMT, choose **System audio / Player audio**.
+2. Select the meeting or player window when macOS asks for screen and audio permission.
+3. Click **Start**.
+
+If system capture is unavailable on your macOS version, a compatible virtual audio device can still be selected as the input.
 
 If you also want to hear the meeting, create a macOS Multi-Output Device that includes your headphones and the virtual audio device.
 

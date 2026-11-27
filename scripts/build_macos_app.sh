@@ -22,6 +22,7 @@ trap 'rm -rf "$STAGING_DIR"' EXIT
 
 "${PYTHON_CMD[@]}" -c 'import PyInstaller, AppKit, WebKit, mlx_whisper, sherpa_onnx'
 bash scripts/build_apple_speech.sh "$STAGING_DIR/native"
+bash scripts/build_system_audio.sh "$STAGING_DIR/native"
 "${PYTHON_CMD[@]}" -m PyInstaller --noconfirm --clean --windowed \
   --distpath "$STAGING_DIR/frozen" \
   --workpath "$STAGING_DIR/work" \
@@ -36,6 +37,7 @@ bash scripts/build_apple_speech.sh "$STAGING_DIR/native"
   --add-data "$PROJECT_ROOT/NOTICE:legal" \
   --add-data "$PROJECT_ROOT/THIRD_PARTY_NOTICES.md:legal" \
   --add-binary "$STAGING_DIR/native/AppleSpeechBridge:native" \
+  --add-binary "$STAGING_DIR/native/SystemAudioBridge:native" \
   --exclude-module "torch" \
   --exclude-module "transformers" \
   --exclude-module "pyannote" \
@@ -76,6 +78,9 @@ plutil -replace NSMicrophoneUsageDescription \
   "$BUNDLE/Contents/Info.plist"
 plutil -replace NSSpeechRecognitionUsageDescription \
   -string "使用 Apple 本机语音识别生成会议原文，音频不上传到云端。" \
+  "$BUNDLE/Contents/Info.plist"
+plutil -replace NSScreenCaptureUsageDescription \
+  -string "用于采集用户选择的播放器或会议窗口声音，音频只在本机用于字幕识别。" \
   "$BUNDLE/Contents/Info.plist"
 plutil -replace CFBundleName -string "NMT" "$BUNDLE/Contents/Info.plist"
 plutil -replace CFBundleDisplayName -string "NMT" "$BUNDLE/Contents/Info.plist"

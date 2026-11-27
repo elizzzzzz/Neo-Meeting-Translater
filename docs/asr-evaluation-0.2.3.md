@@ -23,7 +23,7 @@ SenseVoice 直接转写纯静音及随机噪声时曾输出“我”。现已要
 
 ## 本地模型连接
 
-已下载评测用权重并校验后连接到用户当前指定的模型目录 `/Volumes/WDW_T9WJYFA/models/asr/sensevoice`，未提交模型或音频到 GitHub，未改动 Ollama 或默认识别引擎。SenseVoice 默认位置为 `~/Library/Application Support/LocalMeetingInterpreter/models/asr/sensevoice`，需要 `model.int8.onnx`、`tokens.txt`、`silero_vad.onnx`；自定义模型根目录后对应 `asr/sensevoice` 子目录，或设置 `MEETING_INTERPRETER_SENSEVOICE_MODEL`。运行时不会下载文件。Whisper 若发现该 Silero 文件，也会用它辅助抑制噪声及避免错误的整句拒绝。
+已下载评测用权重并校验后连接到用户当前指定的模型目录 `/path/to/models/asr/sensevoice`，未提交模型或音频到 GitHub，未改动 Ollama 或默认识别引擎。SenseVoice 默认位置为 `~/Library/Application Support/LocalMeetingInterpreter/models/asr/sensevoice`，需要 `model.int8.onnx`、`tokens.txt`、`silero_vad.onnx`；自定义模型根目录后对应 `asr/sensevoice` 子目录，或设置 `MEETING_INTERPRETER_SENSEVOICE_MODEL`。运行时不会下载文件。Whisper 若发现该 Silero 文件，也会用它辅助抑制噪声及避免错误的整句拒绝。
 
 ## 本机实际对比
 
