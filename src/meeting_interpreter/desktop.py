@@ -130,7 +130,12 @@ class _NativeAppDelegate(NSObject):
         elif message_type == "system_audio_list":
             self._systemAudioSend({"id": int(time.time() * 1000), "action": "list"})
         elif message_type == "system_audio_start":
-            self._systemAudioSend({"action": "start", "window_id": int(body.get("window_id"))})
+            request = {"action": "start"}
+            if body.get("display_id") is not None:
+                request["display_id"] = int(body.get("display_id"))
+            elif body.get("window_id") is not None:
+                request["window_id"] = int(body.get("window_id"))
+            self._systemAudioSend(request)
         elif message_type == "system_audio_stop":
             self._systemAudioSend({"action": "stop"})
 
@@ -294,7 +299,7 @@ def main() -> None:
             break
         except Exception:
             time.sleep(0.1)
-    app_url = f"http://{host}:{port}/?v=0.2.21"
+    app_url = f"http://{host}:{port}/?v=0.2.22"
     if not ready:
         print(f"Local Meeting Interpreter server did not become ready: {health_url}")
     _open_native_window(app_url)

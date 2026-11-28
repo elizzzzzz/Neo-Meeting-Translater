@@ -7,6 +7,7 @@ struct Request: Decodable {
     let id: Int?
     let action: String
     let window_id: UInt32?
+    let display_id: UInt32?
 }
 
 final class AudioOutput: NSObject, SCStreamOutput {
@@ -72,28 +73,44 @@ final class Capture: NSObject, SCStreamDelegate {
         let content = try await SCShareableContent.excludingDesktopWindows(
             false, onScreenWindowsOnly: true
         )
-        return content.windows.compactMap { window in
+        var items: [[String: Any]] = []
+        if let display = content.displays.first {
+            items.append([
+                "id": display.displayID,
+                "kind": "display",
+                "title": "系统 / 屏幕音频（MPV、浏览器、会议软件）",
+                "application": "全部播放声音"
+            ])
+        }
+        items.append(contentsOf: content.windows.compactMap { window in
             guard let app = window.owningApplication else { return nil }
             return [
                 "id": window.windowID,
+                "kind": "window",
                 "title": window.title ?? "",
                 "application": app.applicationName,
                 "bundle_id": app.bundleIdentifier
             ]
-        }
+        })
+        return items
     }
 
-    func start(windowID: UInt32) async throws {
+    func start(windowID: UInt32?, displayID: UInt32?) async throws {
         let content = try await SCShareableContent.excludingDesktopWindows(
             false, onScreenWindowsOnly: true
         )
-        guard let window = content.windows.first(where: { $0.windowID == windowID }) else {
-            throw NSError(
-                domain: "NMTSystemAudio", code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "找不到所选窗口，请重新选择"]
-            )
+        let filter: SCContentFilter
+        if let displayID, let display = content.displays.first(where: { $0.displayID == displayID }) {
+            // MPV may render audio through a child/player surface that does
+            // not expose a capturable window. Display audio is the reliable
+            // fallback and also covers browsers, Teams and Tencent Meeting.
+            filter = SCContentFilter(display: display, excludingApplications: [], exceptingWindows: [])
+        } else if let windowID, let window = content.windows.first(where: { $0.windowID == windowID }) {
+            filter = SCContentFilter(desktopIndependentWindow: window)
+        } else {
+            throw NSError(domain: "NMTSystemAudio", code: 1,
+                          userInfo: [NSLocalizedDescriptionKey: "找不到所选播放源，请重新选择"])
         }
-        let filter = SCContentFilter(desktopIndependentWindow: window)
         let configuration = SCStreamConfiguration()
         configuration.capturesAudio = true
         configuration.sampleRate = 16_000
@@ -114,7 +131,10 @@ final class Capture: NSObject, SCStreamDelegate {
         )
         try await stream.startCapture()
         self.stream = stream
-        emit(["type": "started", "window_id": windowID, "message": "系统音频已开始采集"])
+        var started: [String: Any] = ["type": "started", "message": "系统音频已开始采集"]
+        if let windowID { started["window_id"] = windowID }
+        if let displayID { started["display_id"] = displayID }
+        emit(started)
     }
 
     func stop() async {
@@ -148,13 +168,7 @@ struct SystemAudioBridge {
                 case "list":
                     emit(["id": request.id as Any, "type": "windows", "items": try await capture.list()])
                 case "start":
-                    guard let id = request.window_id else {
-                        throw NSError(
-                            domain: "NMTSystemAudio", code: 2,
-                            userInfo: [NSLocalizedDescriptionKey: "缺少窗口编号"]
-                        )
-                    }
-                    try await capture.start(windowID: id)
+                    try await capture.start(windowID: request.window_id, displayID: request.display_id)
                 case "stop":
                     await capture.stop()
                     emit(["id": request.id as Any, "ok": true])

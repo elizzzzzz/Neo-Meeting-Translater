@@ -14,7 +14,7 @@
         document.documentElement.dataset.theme = mode === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : mode;
       })();
     </script>
-    <link rel="stylesheet" href="/web/styles.css?v=0.2.21" />
+    <link rel="stylesheet" href="/web/styles.css?v=0.2.22" />
   </head>
   <body>
     <header class="global-bar">
@@ -49,7 +49,7 @@
         <article class="transcript-panel">
           <div class="panel-header"><div><span class="section-label" data-i18n="transcript.eyebrow">LIVE TRANSCRIPT</span><h2 data-i18n="transcript.title">发言记录</h2><span id="captionCount" class="transcript-count">0</span></div><div class="panel-header-actions"><span id="sessionLabel" class="session-label" data-i18n="session.waitingAudio">等待音频输入</span><button id="latestBtn" class="button button-primary compact-button" type="button" hidden data-i18n="actions.latest">回到最新 ↓</button><button id="changeSpeakerBtn" class="button button-ghost compact-button" type="button" disabled title="自动分人不准确时，切换到手动并标记换人" data-i18n="speaker.manual">手动换人</button><button id="clearBtn" class="button button-ghost compact-button icon-action" data-i18n-title="actions.clear" data-i18n-aria-label="actions.clear" type="button" data-i18n="actions.clear">清空</button><button id="floatingBtn" class="button button-ghost compact-button icon-action" data-i18n-title="actions.floating" data-i18n-aria-label="actions.floating" type="button" data-i18n="actions.floating">字幕浮窗</button></div></div>
           <div class="transcript-head"><span id="captionSourceHeader">中文</span><span id="captionTranslationHeader">日本語</span></div>
-          <div id="captions" class="captions" role="region" aria-label="双语发言记录，可滚动查看历史" tabindex="0"><div class="empty-state"><strong>还没有字幕</strong><span>选择麦克风或 BlackHole 回环设备后开始会议。</span></div></div>
+          <div id="captions" class="captions" role="region" aria-label="双语发言记录，可滚动查看历史" tabindex="0"><div class="empty-state"><strong>还没有字幕</strong><span>选择麦克风或“系统音频 / 播放器声音”后开始会议。</span></div></div>
           <div class="transcript-footnote" data-i18n="transcript.footnote">同一发言人连续记录 · 向上滚动查看历史，回到底部继续跟随</div>
         </article>
         <aside class="side-column">
@@ -66,7 +66,7 @@
         <h2 id="tipsTitle" data-i18n="tips.title">三步开始本地会议翻译</h2>
         <p class="modal-lead" data-i18n="tips.lead">所有音频和模型都留在这台 Mac 上。字幕模式只显示已经收到的真实原文和译文，不生成模拟内容。</p>
         <div class="tip-grid">
-          <article class="tip-item"><span class="tip-number">01</span><div><strong data-i18n="tips.audioTitle">选音频</strong><p data-i18n="tips.audioBody">麦克风用于现场会议；腾讯会议、Teams 和网页视频请选择 BlackHole、Loopback 等系统回环设备。</p></div></article>
+          <article class="tip-item"><span class="tip-number">01</span><div><strong data-i18n="tips.audioTitle">选音频</strong><p data-i18n="tips.audioBody">麦克风用于现场会议；MPV、腾讯会议、Teams 和网页视频请选择“系统音频 / 播放器声音”，首次使用时允许屏幕录制权限。</p></div></article>
           <article class="tip-item"><span class="tip-number">02</span><div><strong data-i18n="tips.modelTitle">等模型就绪</strong><p data-i18n="tips.modelBody">顶部显示冷启动进度。看到“模型可用 · 热启动”后再开始会议。</p></div></article>
           <article class="tip-item"><span class="tip-number">03</span><div><strong data-i18n="tips.floatingTitle">需要时开浮窗</strong><p data-i18n="tips.floatingBody">点击“字幕模式”，字幕会置顶、半透明并可拖动、缩放到会议窗口空白处。</p></div></article>
         </div>
@@ -113,11 +113,11 @@
         <div id="modelSaveNotice" class="model-save-notice" role="status" hidden></div>
         <div class="settings-field"><label for="captionDisplayMode" data-i18n="settings.captionContent">字幕显示内容</label><select id="captionDisplayMode"><option value="both" data-i18n="settings.bilingual">双语对照：源与译</option><option value="source" data-i18n="settings.sourceOnly">仅显示源文</option><option value="translation" data-i18n="settings.translationOnly">仅显示译文</option></select><small data-i18n="settings.captionHint">中日：中文左、日文右；中英：中文左、英文右；英日：英文左、日文右。“源 / 译”随实际发言切换。</small></div>
         <div class="settings-field"><label for="modelDirectory" data-i18n="settings.modelDirectory">模型保存目录</label><div class="path-picker"><input id="modelDirectory" type="text" spellcheck="false" /><button id="chooseModelDirectoryBtn" class="button button-ghost" type="button" data-i18n="settings.chooseDirectory">选择目录</button><button id="useOllamaDirectoryBtn" class="button button-ghost" type="button" data-i18n="settings.ollamaDirectory">使用 Ollama 当前目录</button></div><small data-i18n="settings.directoryHint">默认使用 Ollama 当前模型目录，可随时自定义。更改后重新检测，保存后自动加载；现有文件不会自动迁移。Ollama / llama.app 的模型仍由对应服务管理。</small></div>
-        <div class="settings-field"><label data-i18n="settings.onlineAudio">在线会议 / 网页视频音频</label><div class="audio-source-note" data-i18n="settings.onlineAudioHint">系统音频捕获需要 macOS 音频回环设备。安装 BlackHole 或 Loopback 后，在设置的“音频输入”中选择对应设备；应用不会把会议音频上传到网络。</div></div>
+        <div class="settings-field"><label data-i18n="settings.onlineAudio">在线会议 / 网页视频音频</label><div class="audio-source-note" data-i18n="settings.onlineAudioHint">系统音频捕获由 NMT 在 macOS 中直接读取所选播放器或屏幕的声音，不需要额外安装音频回环软件。首次使用时允许屏幕录制权限；音频不会上传到网络。</div></div>
         <div class="modal-actions settings-actions"><button id="saveSettingsBtn" class="button button-dark" type="button" data-i18n="settings.save">保存并返回</button></div>
       </section>
     </div>
     <footer class="footer-bar"><span data-i18n="footer.config">文字模式 · M3 / 16G 配置</span><span id="footerStatus"><span data-i18n="footer.service">服务地址</span> <span id="serviceAddress">127.0.0.1:8000</span></span></footer>
-    <script src="/web/app.js?v=0.2.21" defer></script>
+    <script src="/web/app.js?v=0.2.22" defer></script>
   </body>
 </html>
